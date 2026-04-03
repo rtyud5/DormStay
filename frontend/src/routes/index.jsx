@@ -16,6 +16,8 @@ import RequestDetailPage from "../pages/RequestDetailPage";
 import RoomDetailPage from "../pages/RoomDetailPage";
 import RoomListPage from "../pages/RoomListPage";
 
+import RentalRequestListPage from "../pages/RentalRequestListPage";
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -45,7 +47,7 @@ const router = createBrowserRouter([
       {
         element: <DashboardLayout />,
         children: [
-          { path: "/rental-requests/new", element: <RentalRequestPage /> },
+          { path: "/deposits", element: <RentalRequestListPage /> },
           { path: "/rental-requests/:id", element: <RequestDetailPage /> },
           { path: "/contracts", element: <ContractListPage /> },
           { path: "/contracts/:id", element: <ContractDetailPage /> },
