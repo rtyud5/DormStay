@@ -4,10 +4,10 @@ import { getToken } from "../lib/storage";
 function ProtectedRoute() {
   const token = getToken();
 
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
+  // Tạm thời tắt check login để bạn có thể xem trước giao diện
+  // if (!token) {
+  //   return <Navigate to="/login" replace />;
+  // }
   return <Outlet />;
 }
 
