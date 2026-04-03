@@ -1,9 +1,11 @@
 import { Outlet } from "react-router-dom";
+import Header from "../components/common/Header";
 
 function AuthLayout() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-12">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+    <div className="flex flex-col min-h-screen bg-white">
+      <Header />
+      <div className="flex-1 flex w-full">
         <Outlet />
       </div>
     </div>

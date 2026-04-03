@@ -7,6 +7,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import ContractDetailPage from "../pages/ContractDetailPage";
 import ContractListPage from "../pages/ContractListPage";
 import HomePage from "../pages/HomePage";
+import AboutPage from "../pages/AboutPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import RegisterPage from "../pages/RegisterPage";
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: "about", element: <AboutPage /> },
       { path: "rooms", element: <RoomListPage /> },
       { path: "rooms/:id", element: <RoomDetailPage /> },
     ],

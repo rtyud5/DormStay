@@ -1,4 +1,4 @@
-export const APP_NAME = "DormiCare Starter";
+export const APP_NAME = "DormStay Starter";
 
 export const ROUTES = {
   home: "/",
@@ -13,8 +13,8 @@ export const ROUTES = {
 };
 
 export const STORAGE_KEYS = {
-  token: "dormicare_token",
-  user: "dormicare_user",
+  token: "dormstay_token",
+  user: "dormstay_user",
 };
 
 export const REQUEST_STATUS = {
