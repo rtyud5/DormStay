@@ -1,0 +1,18 @@
+const RoomService = require("../services/room.service");
+const asyncHandler = require("../utils/asyncHandler");
+const { sendSuccess } = require("../utils/apiResponse");
+
+const getList = asyncHandler(async (req, res) => {
+  const result = await RoomService.getList();
+  return sendSuccess(res, result, "Fetch rooms successful");
+});
+
+const getDetail = asyncHandler(async (req, res) => {
+  const result = await RoomService.getDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch room detail successful");
+});
+
+module.exports = {
+  getList,
+  getDetail,
+};
