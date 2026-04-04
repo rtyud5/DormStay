@@ -13,7 +13,7 @@ const register = asyncHandler(async (req, res) => {
 });
 
 const me = asyncHandler(async (req, res) => {
-  const result = await AuthService.getMe();
+  const result = await AuthService.getMe(req.user);
   return sendSuccess(res, result, "Fetch profile successful");
 });
 

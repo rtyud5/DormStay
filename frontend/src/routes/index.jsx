@@ -11,12 +11,14 @@ import AboutPage from "../pages/AboutPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
 import RegisterPage from "../pages/RegisterPage";
+import VerifyOtpPage from "../pages/VerifyOtpPage";
 import RentalRequestPage from "../pages/RentalRequestPage";
 import RequestDetailPage from "../pages/RequestDetailPage";
 import RoomDetailPage from "../pages/RoomDetailPage";
 import RoomListPage from "../pages/RoomListPage";
 
 import RentalRequestListPage from "../pages/RentalRequestListPage";
+import DashboardPage from "../pages/DashboardPage";
 
 const router = createBrowserRouter([
   {
@@ -37,6 +39,7 @@ const router = createBrowserRouter([
         children: [
           { path: "/login", element: <LoginPage /> },
           { path: "/register", element: <RegisterPage /> },
+          { path: "/verify-otp", element: <VerifyOtpPage /> },
         ],
       },
     ],
@@ -47,6 +50,9 @@ const router = createBrowserRouter([
       {
         element: <DashboardLayout />,
         children: [
+          { index: true, element: <DashboardPage /> },
+          { path: "/dashboard", element: <DashboardPage /> },
+          { path: "/profile", element: <DashboardPage /> }, // Tạm thời dùng chung Dashboard
           { path: "/deposits", element: <RentalRequestListPage /> },
           { path: "/rental-requests/:id", element: <RequestDetailPage /> },
           { path: "/contracts", element: <ContractListPage /> },

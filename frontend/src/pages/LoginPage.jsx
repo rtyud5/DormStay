@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthService from "../services/auth.service";
-import { setToken, setUser } from "../lib/storage";
 
 function LoginPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -14,14 +16,15 @@ function LoginPage() {
 
   async function handleLogin(e) {
     e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
-      const response = await AuthService.login(form);
-      const { token, user } = response.data.data;
-      setToken(token);
-      setUser(user);
+      await AuthService.login(form);
       navigate("/");
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      setError(err.message || "Tên đăng nhập hoặc mật khẩu không chính xác.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -59,6 +62,13 @@ function LoginPage() {
                 <h2 className="text-[32px] font-extrabold text-[#0F172A] mb-2 tracking-tight">Chào mừng trở lại</h2>
                 <p className="text-[15px] text-[#64748B] font-medium">Vui lòng nhập thông tin để truy cập hệ thống quản lý.</p>
              </div>
+
+             {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 text-[13px] rounded-xl flex items-center gap-3 font-medium">
+                   <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                   {error}
+                </div>
+             )}
 
              <form onSubmit={handleLogin} className="space-y-6">
                 <div>

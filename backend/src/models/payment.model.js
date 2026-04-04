@@ -1,32 +1,38 @@
 const { supabase } = require("../config/supabase");
 
-const TABLE_NAME = "payments";
+const TABLE_NAME = "thanh_toan";
 
 const PaymentModel = {
-  async list() {
-    if (!supabase) {
-      return [
-        { id: "payment-001", invoice_id: "invoice-001", amount: 5200000, status: "success" },
-      ];
-    }
+  async listByUserId(userId) {
+    if (!supabase) return [];
 
-    const { data, error } = await supabase.from(TABLE_NAME).select("*");
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select(`
+        *,
+        hoa_don!inner (
+          ma_hop_dong,
+          hop_dong!inner (
+            ho_so!inner ( ma_nguoi_dung_xac_thuc )
+          )
+        )
+      `)
+      .eq("hoa_don.hop_dong.ho_so.ma_nguoi_dung_xac_thuc", userId)
+      .order('created_at', { ascending: false });
+
     if (error) throw error;
     return data || [];
   },
 
   async create(payload) {
-    const enrichedPayload = {
-      status: "success",
-      paid_at: new Date().toISOString(),
-      ...payload,
-    };
+    if (!supabase) return null;
 
-    if (!supabase) {
-      return { id: `payment-${Date.now()}`, ...enrichedPayload };
-    }
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .insert(payload)
+      .select("*")
+      .single();
 
-    const { data, error } = await supabase.from(TABLE_NAME).insert(enrichedPayload).select("*").single();
     if (error) throw error;
     return data;
   },

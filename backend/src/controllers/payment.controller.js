@@ -3,12 +3,12 @@ const asyncHandler = require("../utils/asyncHandler");
 const { sendSuccess } = require("../utils/apiResponse");
 
 const getInvoices = asyncHandler(async (req, res) => {
-  const result = await PaymentService.getInvoices();
+  const result = await PaymentService.getInvoices(req.user.id);
   return sendSuccess(res, result, "Fetch invoices successful");
 });
 
 const getHistory = asyncHandler(async (req, res) => {
-  const result = await PaymentService.getHistory();
+  const result = await PaymentService.getHistory(req.user.id);
   return sendSuccess(res, result, "Fetch payment history successful");
 });
 

@@ -2,12 +2,12 @@ const InvoiceModel = require("../models/invoice.model");
 const PaymentModel = require("../models/payment.model");
 
 const PaymentService = {
-  async getInvoices() {
-    return InvoiceModel.list();
+  async getInvoices(userId) {
+    return InvoiceModel.listByUserId(userId);
   },
 
-  async getHistory() {
-    return PaymentModel.list();
+  async getHistory(userId) {
+    return PaymentModel.listByUserId(userId);
   },
 
   async create(payload) {

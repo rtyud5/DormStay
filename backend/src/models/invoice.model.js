@@ -1,17 +1,26 @@
 const { supabase } = require("../config/supabase");
 
-const TABLE_NAME = "invoices";
+const TABLE_NAME = "hoa_don";
 
 const InvoiceModel = {
-  async list() {
-    if (!supabase) {
-      return [
-        { id: "invoice-001", contract_id: "contract-001", amount: 5200000, status: "pending" },
-        { id: "invoice-002", contract_id: "contract-001", amount: 3500000, status: "paid" },
-      ];
-    }
+  async listByUserId(userId) {
+    if (!supabase) return [];
 
-    const { data, error } = await supabase.from(TABLE_NAME).select("*");
+    // Filter by joining with hop_dong or yeu_cau_thue then ho_so
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select(`
+        *,
+        hop_dong (
+          ho_so!inner ( ma_nguoi_dung_xac_thuc )
+        ),
+        yeu_cau_thue (
+          ho_so!inner ( ma_nguoi_dung_xac_thuc )
+        )
+      `)
+      .or(`hop_dong.ho_so.ma_nguoi_dung_xac_thuc.eq.${userId},yeu_cau_thue.ho_so.ma_nguoi_dung_xac_thuc.eq.${userId}`)
+      .order('created_at', { ascending: false });
+
     if (error) throw error;
     return data || [];
   },

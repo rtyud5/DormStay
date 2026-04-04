@@ -25,12 +25,13 @@ const AuthService = {
     return user;
   },
 
-  async getMe() {
+  async getMe(reqUser) {
     return {
-      id: "demo-user-001",
-      email: "customer@example.com",
-      fullName: "Demo Customer",
-      role: "customer",
+      id: reqUser.id,
+      email: reqUser.email,
+      fullName: reqUser.profile?.full_name || "Unknown",
+      role: reqUser.role,
+      phone: reqUser.profile?.phone || "",
     };
   },
 };
