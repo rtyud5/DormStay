@@ -1,88 +1,25 @@
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-
-const requests = [
-  {
-    id: "#REQ-8821",
-    statusText: "Đang xử lý",
-    statusBadge: "bg-[#E6F0FF] text-[#0052CC]",
-    roomName: "Phòng Deluxe - G01",
-    date: "24/05/2024",
-    amount: "2.000.000đ",
-    deadline: "--/--/----",
-    actionLink: "#",
-    actionLabel: "Xem chi tiết",
-    actionStyle: "bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A]",
-    hasIcon: true,
-  },
-  {
-    id: "#REQ-8790",
-    statusText: "Chờ thanh toán cọc",
-    statusBadge: "bg-[#FFF3E0] text-[#E65100]",
-    roomName: "Giường đơn - B04 (P.402)",
-    date: "20/05/2024",
-    amount: "1.500.000đ",
-    deadline: "28/05/2024",
-    deadlineColor: "text-red-600",
-    actionLink: "#",
-    actionLabel: "Thanh toán ngay",
-    actionStyle: "bg-[#0A192F] hover:bg-[#112240] text-white border border-[#0A192F]",
-    iconType: "lightning",
-  },
-  {
-    id: "#REQ-8755",
-    statusText: "Chờ duyệt cọc",
-    statusBadge: "bg-[#E6F0FF] text-[#0052CC]",
-    roomName: "Phòng Studio - S10",
-    date: "18/05/2024",
-    amount: "3.500.000đ",
-    statusColText: "Đã chuyển khoản",
-    statusColColor: "text-[#0052CC]",
-    actionLink: "#",
-    actionLabel: "Xem chứng từ",
-    actionStyle: "bg-[#E2E8F0] hover:bg-[#CBD5E1] text-[#0F172A]",
-    iconType: "document",
-  },
-  {
-    id: "#REQ-8610",
-    statusText: "Đã xác nhận",
-    statusBadge: "bg-[#E4F2ED] text-[#22A06B]",
-    roomName: "Phòng Tiêu chuẩn - N05",
-    date: "10/05/2024",
-    amount: "1.200.000đ",
-    confirmDateText: "Ngày xác nhận",
-    confirmDate: "12/05/2024",
-    actionLink: "#",
-    actionLabel: "Tải hợp đồng",
-    actionStyle: "bg-[#E6F0FF] hover:bg-[#DBEAFE] text-[#0052CC]",
-    iconType: "download",
-  },
-  {
-    id: "#REQ-8500",
-    statusText: "Từ chối",
-    statusBadge: "bg-[#FEE2E2] text-[#DC2626]",
-    roomName: "Giường tầng - A12 (P.201)",
-    date: "05/05/2024",
-    rejectionReason: "Lý do: Không đủ điều kiện hồ sơ cư trú.",
-    actionLink: "#",
-    actionLabel: "Xem chi tiết",
-    actionStyle: "bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] text-[#475569]",
-  },
-  {
-    id: "#REQ-8422",
-    statusText: "Quá hạn",
-    statusBadge: "bg-[#7F1D1D] text-white",
-    cardBorder: "border-l-4 border-l-[#DC2626]",
-    roomName: "Phòng Studio - S02",
-    date: "01/05/2024",
-    amount: "3.500.000đ",
-    deadlineLabel: "HẾT HẠN VÀO",
-    deadline: "10/05/2024",
-    deadlineColor: "text-red-600",
-    multiAction: true,
-  },
-];
+import RentalRequestService from "../services/rentalRequest.service";
 
 function RentalRequestListPage() {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchRequests() {
+      try {
+        const res = await RentalRequestService.getList();
+        setRequests(res.data.data || []);
+      } catch (err) {
+        console.error("Lỗi khi lấy danh sách yêu cầu thuê:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchRequests();
+  }, []);
+
   return (
     <div className="w-full font-sans pb-12">
       <div className="mb-10">
@@ -92,18 +29,22 @@ function RentalRequestListPage() {
 
       <div className="flex flex-wrap gap-3 mb-8">
          <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-slate-300 text-[14px] font-bold text-[#0F172A] shadow-sm transition-all">
-            Tất cả <span className="bg-[#E2E8F0] text-[#0F172A] text-[11px] px-2 py-0.5 rounded-full">12</span>
+            Tất cả <span className="bg-[#E2E8F0] text-[#0F172A] text-[11px] px-2 py-0.5 rounded-full">{requests.length}</span>
          </button>
          <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FAFAFA] border border-transparent text-[14px] font-bold text-[#475569] hover:text-[#0F172A] transition-all">
-            Chờ thanh toán <span className="bg-[#E6F0FF] text-[#0052CC] text-[11px] px-2 py-0.5 rounded-full font-extrabold">3</span>
+            Chờ thanh toán <span className="bg-[#E6F0FF] text-[#0052CC] text-[11px] px-2 py-0.5 rounded-full font-extrabold">{requests.filter(req => req.statusText === 'Chờ thanh toán cọc').length}</span>
          </button>
          <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FAFAFA] border border-transparent text-[14px] font-bold text-[#475569] hover:text-[#0F172A] transition-all">
-            Đã xác nhận <span className="bg-[#E4F2ED] text-[#22A06B] text-[11px] px-2 py-0.5 rounded-full font-extrabold">8</span>
+            Đã xác nhận <span className="bg-[#E4F2ED] text-[#22A06B] text-[11px] px-2 py-0.5 rounded-full font-extrabold">{requests.filter(req => req.statusText === 'Đã xác nhận').length}</span>
          </button>
       </div>
 
       <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
-         {requests.map((req, i) => (
+         {loading ? (
+            <div className="col-span-full py-20 text-center text-[#64748B] font-bold">Đang tải danh sách yêu cầu...</div>
+         ) : requests.length === 0 ? (
+            <div className="col-span-full py-20 text-center text-[#64748B] font-bold">Không có yêu cầu thuê nào.</div>
+         ) : requests.map((req, i) => (
             <div key={i} className={`bg-white rounded-[24px] p-6 shadow-[0_4px_25px_rgb(0,0,0,0.03)] border border-slate-50 relative overflow-hidden flex flex-col ${req.cardBorder || ''}`}>
                <div className="flex justify-between items-center mb-6">
                   <div className={`px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide flex items-center gap-1.5 ${req.statusBadge}`}>

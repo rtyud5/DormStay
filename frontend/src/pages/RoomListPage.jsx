@@ -1,61 +1,24 @@
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-
-const mockRooms = [
-  {
-    id: "room-1",
-    name: "Phòng P.303",
-    price: "2.5tr",
-    unit: "/tháng/người",
-    status: "SẮP ĐẦY",
-    statusColor: "text-orange-600 bg-orange-100",
-    gender: "NAM / NỮ",
-    capacity: "Còn 1/4 giường",
-    floor: "Tầng 3",
-    amenities: ["Điều hòa", "Wifi"],
-    image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "room-2",
-    name: "Phòng P.301",
-    price: "1.8tr",
-    unit: "/tháng/người",
-    status: "CÒN TRỐNG",
-    statusColor: "text-emerald-700 bg-emerald-100",
-    gender: "NỮ",
-    capacity: "Còn 4/4 giường",
-    floor: "Tầng 3",
-    amenities: ["Ban công", "Máy giặt"],
-    image: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "room-3",
-    name: "Phòng P.204",
-    price: "2.2tr",
-    unit: "/tháng/người",
-    status: "CÒN TRỐNG",
-    statusColor: "text-emerald-700 bg-emerald-100",
-    gender: "NAM",
-    capacity: "Còn 2/2 giường",
-    floor: "Tầng 2",
-    amenities: ["Bàn làm việc"],
-    image: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "room-4",
-    name: "Phòng P.102 (VIP)",
-    price: "4.5tr",
-    unit: "/tháng/phòng",
-    status: "CÒN TRỐNG",
-    statusColor: "text-emerald-700 bg-emerald-100",
-    gender: "NAM / NỮ",
-    capacity: "Phòng riêng",
-    floor: "Tầng 1",
-    amenities: ["Tủ lạnh", "WC Riêng"],
-    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80",
-  },
-];
+import RoomService from "../services/room.service";
 
 function RoomListPage() {
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadRooms() {
+      try {
+        const res = await RoomService.getRooms();
+        setRooms(res.data.data || []);
+      } catch (err) {
+        console.error("Lỗi khi lấy danh sách phòng:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadRooms();
+  }, []);
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
       
@@ -169,7 +132,7 @@ function RoomListPage() {
             {/* Top Toolbar */}
             <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                <div className="text-[14px] text-[#475569] font-medium text-center sm:text-left w-full sm:w-auto">
-                  Hiển thị <strong className="text-[#0F172A] font-extrabold">12</strong> phòng phù hợp
+                  Hiển thị <strong className="text-[#0F172A] font-extrabold">{rooms.length}</strong> phòng phù hợp
                </div>
                <div className="hidden sm:flex items-center gap-3">
                   <span className="text-[13px] font-bold text-[#64748B]">Sắp xếp:</span>
@@ -181,9 +144,12 @@ function RoomListPage() {
                </div>
             </div>
 
-            {/* Room Grid */}
             <div className="grid md:grid-cols-2 xl:grid-cols-2 gap-6">
-               {mockRooms.map((room) => (
+               {loading ? (
+                  <div className="col-span-full py-10 text-center text-[#64748B] font-bold">Đang tải danh sách phòng...</div>
+               ) : rooms.length === 0 ? (
+                  <div className="col-span-full py-10 text-center text-[#64748B] font-bold">Không tìm thấy phòng nào phù hợp!</div>
+               ) : rooms.map((room) => (
                   <div key={room.id} className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all group flex flex-col">
                      <div className="relative h-[200px] overflow-hidden">
                         <img src={room.image} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -206,18 +172,18 @@ function RoomListPage() {
                         </div>
 
                         <div className="flex items-center gap-4 text-[13px] font-semibold text-[#475569] mb-4">
-                           <div className="flex items-center gap-1.5 bg-[#F8F9FA] px-2.5 py-1.5 rounded-lg border border-slate-100">
+                           <div className="flex items-center gap-1.5 bg-[#F8F9FA] px-2.5 py-1.5 rounded-lg border border-slate-100 whitespace-nowrap">
                               <svg className="w-4 h-4 text-[#94A3B8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
                               {room.capacity}
                            </div>
-                           <div className="flex items-center gap-1.5 bg-[#F8F9FA] px-2.5 py-1.5 rounded-lg border border-slate-100">
+                           <div className="flex items-center gap-1.5 bg-[#F8F9FA] px-2.5 py-1.5 rounded-lg border border-slate-100 whitespace-nowrap">
                               <svg className="w-4 h-4 text-[#94A3B8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                               {room.floor}
                            </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2 mb-6 mt-auto">
-                           {room.amenities.map(amenity => (
+                           {room.amenities && room.amenities.map(amenity => (
                               <span key={amenity} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#F1F5F9] text-[#64748B] text-[11px] font-bold uppercase tracking-wide">
                                  <svg className="w-3.5 h-3.5 text-[#94A3B8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                  {amenity}
@@ -227,10 +193,10 @@ function RoomListPage() {
 
                         <div className="border-t border-slate-100 pt-4 flex gap-3">
                            <Link to={`/rooms/${room.id}`} className="flex-1">
-                              <button className="w-full bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-slate-50 text-[#0F172A] py-2.5 rounded-xl font-bold text-[14px] transition-all">Chi tiết</button>
+                              <button className="w-full bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-slate-50 text-[#0F172A] py-2.5 rounded-xl font-bold text-[14px] transition-all cursor-pointer">Chi tiết</button>
                            </Link>
                            <Link to={`/rooms/${room.id}`} className="flex-1">
-                              <button className="w-full bg-[#0A192F] hover:bg-[#112240] text-white py-2.5 rounded-xl font-bold text-[14px] transition-all shadow-sm">Đặt cọc ngay</button>
+                              <button className="w-full bg-[#0A192F] hover:bg-[#112240] text-white py-2.5 rounded-xl font-bold text-[14px] transition-all shadow-sm cursor-pointer">Đặt cọc ngay</button>
                            </Link>
                         </div>
                      </div>

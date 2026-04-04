@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 
 const env = require("./src/config/env");
+const { checkConnection } = require("./src/config/supabase");
 const routes = require("./src/routes");
 const { notFoundHandler, errorHandler } = require("./src/middlewares/error.middleware");
 
@@ -28,6 +29,7 @@ app.use("/api", routes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
+app.listen(env.PORT, async () => {
   console.log(`Backend is running at http://localhost:${env.PORT}`);
+  await checkConnection();
 });
