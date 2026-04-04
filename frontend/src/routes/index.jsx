@@ -19,6 +19,7 @@ import RoomListPage from "../pages/RoomListPage";
 
 import RentalRequestListPage from "../pages/RentalRequestListPage";
 import DashboardPage from "../pages/DashboardPage";
+import ProfilePage from "../pages/ProfilePage";
 
 const router = createBrowserRouter([
   {
@@ -52,7 +53,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: "/dashboard", element: <DashboardPage /> },
-          { path: "/profile", element: <DashboardPage /> }, // Tạm thời dùng chung Dashboard
+          { path: "/profile", element: <ProfilePage /> },
           { path: "/deposits", element: <RentalRequestListPage /> },
           { path: "/rental-requests/:id", element: <RequestDetailPage /> },
           { path: "/contracts", element: <ContractListPage /> },

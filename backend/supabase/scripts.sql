@@ -25,6 +25,18 @@ create table public.ho_so (
   ho_ten varchar(150),
   email varchar(255) unique,
   so_dien_thoai varchar(20),
+  dia_chi_thuong_tru text,
+  avatar_url text,
+  ngan_hang_ten varchar(100),
+  ngan_hang_so_tai_khoan varchar(50),
+  ngan_hang_chu_tai_khoan varchar(150),
+  so_cccd varchar(20),
+  ngay_cap_cccd date,
+  cccd_mat_truoc_url text,
+  cccd_mat_sau_url text,
+  lien_he_khan_cap_ho_ten varchar(150),
+  lien_he_khan_cap_sdt varchar(20),
+  lien_he_khan_cap_moi_quan_he varchar(50),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

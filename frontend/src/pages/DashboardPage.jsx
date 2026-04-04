@@ -39,7 +39,20 @@ function DashboardPage() {
 
   const latestRequest = requests.length > 0 ? requests[0] : null;
   const latestPayment = payments.length > 0 ? payments[0] : null;
-  const profileCompletion = profile ? 90 : 0;
+
+  const calculateCompletion = (prof) => {
+    if (!prof) return 0;
+    const fields = [
+      'ho_ten', 'email', 'so_dien_thoai', 'dia_chi_thuong_tru', 'avatar_url',
+      'ngan_hang_ten', 'ngan_hang_so_tai_khoan', 'ngan_hang_chu_tai_khoan',
+      'so_cccd', 'ngay_cap_cccd', 'cccd_mat_truoc_url', 'cccd_mat_sau_url',
+      'lien_he_khan_cap_ho_ten', 'lien_he_khan_cap_sdt', 'lien_he_khan_cap_moi_quan_he'
+    ];
+    const filledFields = fields.filter(f => prof[f] && prof[f] !== "").length;
+    return Math.round((filledFields / fields.length) * 100);
+  };
+
+  const profileCompletion = calculateCompletion(profile);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans pb-12">

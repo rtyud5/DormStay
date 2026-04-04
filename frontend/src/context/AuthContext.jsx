@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { setToken, clearToken } from "../lib/storage";
 
 const AuthContext = createContext({});
 
@@ -13,8 +14,10 @@ export const AuthProvider = ({ children }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        setToken(session.access_token);
         fetchProfile(session.user.id);
       } else {
+        clearToken();
         setLoading(false);
       }
     });
@@ -24,9 +27,11 @@ export const AuthProvider = ({ children }) => {
       (_event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
+          setToken(session.access_token);
           fetchProfile(session.user.id);
         } else {
           setProfile(null);
+          clearToken();
           setLoading(false);
         }
       }
@@ -38,10 +43,10 @@ export const AuthProvider = ({ children }) => {
   const fetchProfile = async (userId) => {
     try {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("ho_so")
         .select("*")
-        .eq("id", userId)
-        .single();
+        .eq("ma_nguoi_dung_xac_thuc", userId)
+        .maybeSingle();
 
       if (error) throw error;
       setProfile(data);
@@ -61,6 +66,7 @@ export const AuthProvider = ({ children }) => {
     profile,
     loading,
     logout,
+    fetchProfile: () => user && fetchProfile(user.id),
     isAuthenticated: !!user,
   };
 

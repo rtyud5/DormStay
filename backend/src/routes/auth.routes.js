@@ -8,5 +8,6 @@ const router = express.Router();
 router.post("/login", validate(["email", "password"]), AuthController.login);
 router.post("/register", validate(["fullName", "email", "phone", "password"]), AuthController.register);
 router.get("/me", authMiddleware, AuthController.me);
+router.put("/me", authMiddleware, AuthController.updateMe);
 
 module.exports = router;

@@ -29,10 +29,16 @@ const AuthService = {
     return {
       id: reqUser.id,
       email: reqUser.email,
-      fullName: reqUser.profile?.full_name || "Unknown",
+      fullName: reqUser.profile?.ho_ten || "Unknown",
       role: reqUser.role,
-      phone: reqUser.profile?.phone || "",
+      phone: reqUser.profile?.so_dien_thoai || "",
+      profile: reqUser.profile
     };
+  },
+
+  async updateMe(userId, payload) {
+    const updatedUser = await UserModel.update(userId, payload);
+    return updatedUser;
   },
 };
 
