@@ -1,3 +1,4 @@
+// frontend/src/lib/storage.js
 import { STORAGE_KEYS } from "./constants";
 
 export function getToken() {
