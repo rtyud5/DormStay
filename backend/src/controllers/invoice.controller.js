@@ -1,7 +1,6 @@
-// backend/src/controllers/invoice.controller.js
 const InvoiceService = require("../services/invoice.service");
 const asyncHandler = require("../utils/asyncHandler");
-const { successResponse } = require("../utils/apiResponse");
+const { sendSuccess } = require("../utils/apiResponse");
 const { AppError } = require("../utils/errors");
 
 const InvoiceController = {
@@ -24,7 +23,7 @@ const InvoiceController = {
       limit: Number(limit),
     });
 
-    return successResponse(res, result, "Lấy danh sách phiếu thu thành công");
+    return sendSuccess(res, result, "Lấy danh sách phiếu thu thành công");
   }),
 
   /**
@@ -33,7 +32,7 @@ const InvoiceController = {
   getInvoiceDetail: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const invoice = await InvoiceService.getInvoiceDetail(Number(id));
-    return successResponse(res, invoice, "Lấy chi tiết phiếu thu thành công");
+    return sendSuccess(res, invoice, "Lấy chi tiết phiếu thu thành công");
   }),
 };
 
