@@ -12,7 +12,7 @@ function GuestRoute() {
     const role = user?.vai_tro;
 
     if (role === ROLES.KE_TOAN || role === ROLES.QUAN_LY) {
-      return <Navigate to="/ke-toan/phieu-thu" replace />;
+      return <Navigate to="/ke-toan/dashboard" replace />;
     }
     if (role === ROLES.NHAN_VIEN) {
       return <Navigate to="/contracts" replace />;

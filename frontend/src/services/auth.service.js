@@ -1,13 +1,22 @@
 import { supabase } from "../lib/supabase";
+import api from "./api";
 
 const AuthService = {
+  /**
+   * Đăng nhập qua backend để nhận token + user có `vai_tro` từ bảng `ho_so`
+   * (đồng bộ với GuestRoute / chuyển hướng theo role).
+   */
   async login(payload) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: payload.email,
+    const { data: body } = await api.post("/auth/login", {
+      email: payload.email?.trim(),
       password: payload.password,
     });
-    if (error) throw error;
-    return data;
+    if (!body?.success) {
+      const err = new Error(body?.message || "Đăng nhập thất bại");
+      err.response = { data: body };
+      throw err;
+    }
+    return body.data;
   },
 
   async register(payload) {

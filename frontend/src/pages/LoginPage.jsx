@@ -4,6 +4,7 @@ import AuthService from "../services/auth.service";
 import { setToken, setUser } from "../lib/storage";
 import { useLocation } from "react-router-dom"; // thêm useLocation
 import { ROLES } from "../lib/constants"; // thêm ROLES
+import { supabase } from "../lib/supabase";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -24,11 +25,22 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await AuthService.login(form);
-      const { token, user } = response.data.data;
+      const sessionPayload = await AuthService.login(form);
+      const { token, refresh_token: refreshToken, user } = sessionPayload;
 
       setToken(token);
       setUser(user);
+
+      // Đồng bộ Supabase client (AuthContext, RLS) với session từ backend
+      if (refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: token,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) {
+          console.error("[login] setSession:", sessionError.message);
+        }
+      }
 
       // Redirect về trang bị chặn trước đó nếu có
       const from = location.state?.from?.pathname;
@@ -39,9 +51,9 @@ function LoginPage() {
 
       // Redirect theo vai trò
       if (user.vai_tro === ROLES.KE_TOAN || user.vai_tro === ROLES.QUAN_LY) {
-        navigate("/ke-toan/phieu-thu", { replace: true });
+        navigate("/ke-toan/dashboard", { replace: true });
       } else if (user.vai_tro === ROLES.NHAN_VIEN) {
-        navigate("/hop-dong", { replace: true });
+        navigate("/contracts", { replace: true });
       } else {
         navigate("/", { replace: true });
       }
