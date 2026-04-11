@@ -13,7 +13,8 @@ router.post("/register", validate(["fullName", "email", "phone", "password"]), A
 
 // Cần đăng nhập
 router.get("/me", authMiddleware, AuthController.me);
-router.put("/me", authMiddleware, AuthController.updateMe);
+// Temporarily comment put /me to fix crash (add back after controller fix)
+// router.put("/me", authMiddleware, AuthController.updateMe);
 
 // Chỉ QUAN_LY — tạo tài khoản nhân viên
 router.post(
