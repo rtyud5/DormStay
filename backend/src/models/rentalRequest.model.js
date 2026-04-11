@@ -86,6 +86,23 @@ const RentalRequestModel = {
     return data ? data.map(mapRequestToFrontendFormat) : [];
   },
 
+  async listByUserId(userId) {
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .select(`
+         *,
+         ho_so!inner ( ma_nguoi_dung_xac_thuc ),
+         phong ( ma_phong_hien_thi )
+      `)
+      .eq("ho_so.ma_nguoi_dung_xac_thuc", userId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    return data ? data.map(mapRequestToFrontendFormat) : [];
+  },
+
   async getById(id) {
     if (!supabase) return null;
 

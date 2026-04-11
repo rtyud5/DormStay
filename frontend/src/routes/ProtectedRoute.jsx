@@ -1,13 +1,17 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { getToken } from "../lib/storage";
+import { useAuth } from "../context/AuthContext";
 
 function ProtectedRoute() {
-  const token = getToken();
+  const { isAuthenticated, loading } = useAuth();
 
-  // Tạm thời tắt check login để bạn có thể xem trước giao diện
-  // if (!token) {
-  //   return <Navigate to="/login" replace />;
-  // }
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center font-bold text-[#0A192F]">Đang tải...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   return <Outlet />;
 }
 

@@ -25,6 +25,18 @@ create table public.ho_so (
   ho_ten varchar(150),
   email varchar(255) unique,
   so_dien_thoai varchar(20),
+  dia_chi_thuong_tru text,
+  avatar_url text,
+  ngan_hang_ten varchar(100),
+  ngan_hang_so_tai_khoan varchar(50),
+  ngan_hang_chu_tai_khoan varchar(150),
+  so_cccd varchar(20),
+  ngay_cap_cccd date,
+  cccd_mat_truoc_url text,
+  cccd_mat_sau_url text,
+  lien_he_khan_cap_ho_ten varchar(150),
+  lien_he_khan_cap_sdt varchar(20),
+  lien_he_khan_cap_moi_quan_he varchar(50),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -555,8 +567,21 @@ before update on public.phieu_hoan_coc
 for each row execute function public.set_updated_at();
 
 -- =========================================================
+-- =========================================================
 -- 8) SUPABASE AUTH -> AUTO CREATE PROFILE
 -- =========================================================
+
+-- Tao bảng profiles (phụ trợ)
+create table if not exists public.profiles (
+  id uuid references auth.users on delete cascade not null primary key,
+  updated_at timestamp with time zone default now(),
+  full_name text,
+  phone text,
+  avatar_url text,
+  role text default 'customer'
+);
+
+alter table public.profiles enable row level security;
 
 create or replace function public.handle_new_auth_user()
 returns trigger
@@ -565,19 +590,31 @@ security definer
 set search_path = public
 as $$
 begin
+  -- 1. Insert vào ho_so (Bảng chính của App)
   insert into public.ho_so (
     ma_nguoi_dung_xac_thuc,
     vai_tro,
     ho_ten,
-    email
+    email,
+    so_dien_thoai
   )
   values (
     new.id,
     'KHACH_HANG',
-    coalesce(new.raw_user_meta_data ->> 'ho_ten', split_part(coalesce(new.email, 'user'), '@', 1)),
-    new.email
+    coalesce(new.raw_user_meta_data ->> 'ho_ten', new.raw_user_meta_data ->> 'full_name', split_part(coalesce(new.email, 'user'), '@', 1)),
+    new.email,
+    new.raw_user_meta_data ->> 'phone'
   )
   on conflict (ma_nguoi_dung_xac_thuc) do nothing;
+
+  -- 2. Insert vào profiles (Bảng phụ trợ)
+  insert into public.profiles (id, full_name, phone)
+  values (
+    new.id, 
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'ho_ten'), 
+    new.raw_user_meta_data->>'phone'
+  )
+  on conflict (id) do nothing;
 
   return new;
 end;
@@ -588,5 +625,24 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_auth_user();
+
+-- =========================================================
+-- 9) STORAGE BUCKETS & POLICIES
+-- =========================================================
+
+-- 1. Tạo bucket 'profiles' nếu chưa có và bật chế độ công khai
+insert into storage.buckets (id, name, public)
+values ('profiles', 'profiles', true)
+on conflict (id) do nothing;
+
+-- 2. Cho phép mọi người xem ảnh trong bucket 'profiles'
+create policy "Public Access"
+on storage.objects for select
+using ( bucket_id = 'profiles' );
+
+-- 3. Cho phép người dùng đã đăng nhập tải ảnh lên
+create policy "Authenticated Upload"
+on storage.objects for insert
+with check ( bucket_id = 'profiles' and auth.role() = 'authenticated' );
 
 commit;

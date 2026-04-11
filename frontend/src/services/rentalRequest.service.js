@@ -10,6 +10,9 @@ const RentalRequestService = {
   getList() {
     return api.get("/rental-requests");
   },
+  getMyRequests() {
+    return api.get("/rental-requests/my");
+  },
 };
 
 export default RentalRequestService;

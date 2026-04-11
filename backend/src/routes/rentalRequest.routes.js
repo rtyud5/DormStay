@@ -6,7 +6,9 @@ const validate = require("../middlewares/validate.middleware");
 const router = express.Router();
 
 router.get("/", authMiddleware, RentalRequestController.getList);
+router.get("/my", authMiddleware, RentalRequestController.getMyRequests);
 router.get("/:id", authMiddleware, RentalRequestController.getDetail);
 router.post("/", authMiddleware, validate(["roomId", "stayType"]), RentalRequestController.create);
+
 
 module.exports = router;
