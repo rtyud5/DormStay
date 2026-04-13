@@ -10,6 +10,9 @@ const formatPrice = (price) => {
 // Data Mapper Adapter
 const mapRoomToFrontendFormat = (raw) => {
   const isDorm = raw.loai_phong === 'PHONG_CHUNG';
+  const bedList = raw.giuong || [];
+  const totalBeds = bedList.length;
+  const availableBeds = bedList.filter(bed => bed.trang_thai === 'CON_TRONG').length;
   
   // Status Mapping
   let status = "CÒN TRỐNG";
@@ -40,29 +43,92 @@ const mapRoomToFrontendFormat = (raw) => {
     unit: isDorm ? "/tháng/người" : "/tháng/phòng",
     status,
     statusColor,
-    gender: "NAM / NỮ", // Defaulting for now
-    capacity: isDorm ? `Còn trống chỗ` : "Phòng riêng",
+    gender: "NAM / NỮ",
+    capacity: isDorm ? `${availableBeds} / ${totalBeds} giường trống` : `${raw.suc_chua || 0} người`,
     floor: raw.tang?.ten_tang || "Tầng 1",
     amenities: raw.tai_san_phong?.map(t => t.ten_tai_san) || ["Điều hòa", "Wifi"],
     image,
     gallery,
-    building: raw.toa?.ten || "DormStay"
+    building: raw.toa?.ten || "DormStay",
+    bedCount: totalBeds,
+    availableBeds,
+    beds: bedList.map(bed => ({
+      id: bed.ma_giuong,
+      code: bed.ma_giuong_hien_thi,
+      label: bed.nhan_giuong,
+      price: formatPrice(bed.gia_thang),
+      rawPrice: bed.gia_thang,
+      status: bed.trang_thai
+    })),
+    type: raw.loai_phong
   };
 };
 
 const RoomModel = {
-  async list() {
+  async list(filters = {}) {
     if (!supabase) return [];
     
-    const { data, error } = await supabase
+    let query = supabase
       .from(TABLE_NAME)
       .select(`
         *,
         tang ( ten_tang ),
         toa ( ten ),
         hinh_anh_phong ( duong_dan_cong_khai, la_anh_bia ),
-        tai_san_phong ( ten_tai_san )
+        tai_san_phong ( ten_tai_san ),
+        giuong ( ma_giuong, ma_giuong_hien_thi, nhan_giuong, gia_thang, trang_thai )
       `);
+
+    // Apply filters
+    if (filters.search) {
+      const term = `%${filters.search}%`;
+      query = query.or(`ma_phong_hien_thi.ilike.${term},giuong.ma_giuong_hien_thi.ilike.${term}`);
+    }
+
+    if (filters.floor && filters.floor !== 'Tất cả các tầng') {
+      query = query.eq('tang.ten_tang', filters.floor);
+    }
+
+    if (filters.type) {
+      if (filters.type === 'PHONG_RIENG') {
+        query = query.eq('loai_phong', 'PHONG_RIENG');
+      } else if (filters.type === 'PHONG_CHUNG') {
+        query = query.eq('loai_phong', 'PHONG_CHUNG');
+      }
+    }
+
+    if (filters.minPrice) {
+      query = query.gte('gia_thang', parseInt(filters.minPrice));
+    }
+
+    if (filters.maxPrice) {
+      query = query.lte('gia_thang', parseInt(filters.maxPrice));
+    }
+
+    if (filters.status && Array.isArray(filters.status)) {
+      query = query.in('trang_thai', filters.status);
+    }
+
+    // Apply sorting
+    if (filters.sort) {
+      switch (filters.sort) {
+        case 'price_asc':
+          query = query.order('gia_thang', { ascending: true });
+          break;
+        case 'price_desc':
+          query = query.order('gia_thang', { ascending: false });
+          break;
+        case 'newest':
+          query = query.order('created_at', { ascending: false });
+          break;
+        default:
+          query = query.order('gia_thang', { ascending: true });
+      }
+    } else {
+      query = query.order('gia_thang', { ascending: true });
+    }
+      
+    const { data, error } = await query;
       
     if (error) throw error;
     
@@ -79,7 +145,8 @@ const RoomModel = {
         tang ( ten_tang ),
         toa ( ten, dia_chi ),
         hinh_anh_phong ( duong_dan_cong_khai, la_anh_bia ),
-        tai_san_phong ( ten_tai_san )
+        tai_san_phong ( ten_tai_san ),
+        giuong ( ma_giuong, ma_giuong_hien_thi, nhan_giuong, gia_thang, trang_thai )
       `)
       .eq("ma_phong", id)
       .maybeSingle();
@@ -91,6 +158,26 @@ const RoomModel = {
     mapped.address = data.toa?.dia_chi || "";
     mapped.type = data.loai_phong;
     return mapped;
+  },
+
+  async getBedsByRoomId(roomId) {
+    if (!supabase) return [];
+    
+    const { data, error } = await supabase
+      .from("giuong")
+      .select("*")
+      .eq("ma_phong", roomId);
+      
+    if (error) throw error;
+    
+    return data ? data.map(bed => ({
+      id: bed.ma_giuong,
+      code: bed.ma_giuong_hien_thi,
+      label: bed.nhan_giuong,
+      price: formatPrice(bed.gia_thang),
+      rawPrice: bed.gia_thang,
+      status: bed.trang_thai === 'CON_TRONG' ? 'Còn trống' : 'Đã thuê'
+    })) : [];
   },
 };
 

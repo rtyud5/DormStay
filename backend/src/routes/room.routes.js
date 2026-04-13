@@ -5,5 +5,6 @@ const router = express.Router();
 
 router.get("/", RoomController.getList);
 router.get("/:id", RoomController.getDetail);
+router.get("/:id/beds", RoomController.getRoomBeds);
 
 module.exports = router;

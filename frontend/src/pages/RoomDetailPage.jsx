@@ -5,7 +5,9 @@ import RoomService from "../services/room.service";
 function RoomDetailPage() {
   const { id } = useParams();
   const [room, setRoom] = useState(null);
+  const [beds, setBeds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bedsLoading, setBedsLoading] = useState(false);
 
   useEffect(() => {
     async function loadRoom() {
@@ -18,7 +20,21 @@ function RoomDetailPage() {
         setLoading(false);
       }
     }
+
+    async function loadBeds() {
+      setBedsLoading(true);
+      try {
+        const res = await RoomService.getRoomBeds(id);
+        setBeds(res.data.data || []);
+      } catch (err) {
+        console.error("Lỗi khi lấy danh sách giường:", err);
+      } finally {
+        setBedsLoading(false);
+      }
+    }
+
     loadRoom();
+    loadBeds();
   }, [id]);
 
   if (loading) {
@@ -96,6 +112,30 @@ function RoomDetailPage() {
                          </div>
                       ))}
                    </div>
+                </div>
+             )}
+
+             {beds && beds.length > 0 && (
+                <div className="mb-12">
+                   <h2 className="text-[24px] font-extrabold text-[#0F172A] mb-6">Danh sách giường</h2>
+                   {bedsLoading ? (
+                      <div className="text-center py-8 text-[#64748B]">Đang tải danh sách giường...</div>
+                   ) : (
+                      <div className="grid gap-4">
+                         {beds.map((bed) => (
+                            <div key={bed.id} className={`bg-[#F8F9FA] rounded-3xl p-6 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${bed.status === 'Đã thuê' ? 'opacity-90' : ''}`}>
+                               <div>
+                                  <div className={`text-[14px] font-bold mb-1 ${bed.status === 'Đã thuê' ? ' text-[#94A3B8]' : 'text-[#0F172A]'}`}>{bed.code}</div>
+                                  <div className={`text-[13px] ${bed.status === 'Đã thuê' ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>{bed.label || 'Giường tiêu chuẩn'}</div>
+                               </div>
+                               <div className="text-right">
+                                  <div className={`text-[16px] font-extrabold ${bed.status === 'Đã thuê' ? ' text-[#94A3B8]' : 'text-[#0052CC]'}`}>{bed.price}</div>
+                                  <div className={`text-[12px] uppercase tracking-wide ${bed.status === 'Đã thuê' ? 'text-[#94A3B8]' : 'text-[#475569]'}`}>{bed.status}</div>
+                               </div>
+                            </div>
+                         ))}
+                      </div>
+                   )}
                 </div>
              )}
 
