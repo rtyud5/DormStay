@@ -93,7 +93,7 @@ const RentalRequestModel = {
       .from(TABLE_NAME)
       .select(`
          *,
-         ho_so!inner ( ma_nguoi_dung_xac_thuc ),
+         ho_so!yeu_cau_thue_ma_ho_so_khach_hang_fkey!inner ( ma_nguoi_dung_xac_thuc ),
          phong ( ma_phong_hien_thi )
       `)
       .eq("ho_so.ma_nguoi_dung_xac_thuc", userId)

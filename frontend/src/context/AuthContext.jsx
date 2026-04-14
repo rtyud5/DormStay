@@ -10,6 +10,14 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // console.log("AuthContext user:", user);
+  }, [user]);
+
+  useEffect(() => {
+    console.log("AuthContext profile:", profile);
+  }, [profile]);
+
+  useEffect(() => {
     // 1. Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
