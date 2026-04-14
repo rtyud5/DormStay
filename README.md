@@ -1,4 +1,4 @@
-# DormiCare Starter
+# DormStay
 
 Monorepo toi gian gom 2 phan:
 - `frontend`: React + Vite + Tailwind CSS
