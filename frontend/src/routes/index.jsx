@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout";
 import DashboardLayout from "../layouts/DashboardLayout";
 import MainLayout from "../layouts/MainLayout";
@@ -20,6 +20,17 @@ import RoomListPage from "../pages/RoomListPage";
 import RentalRequestListPage from "../pages/RentalRequestListPage";
 import DashboardPage from "../pages/DashboardPage";
 import ProfilePage from "../pages/ProfilePage";
+
+// [ACCOUNTING] imports
+import AccountingLayout from "../components/accounting/AccountingLayout";
+import AccountingDashboardPage from "../pages/accounting/AccountingDashboardPage";
+import AccountingInvoiceListPage from "../pages/accounting/AccountingInvoiceListPage";
+import AccountingContractListPage from "../pages/accounting/AccountingContractListPage";
+import AccountingBillingPage from "../pages/accounting/AccountingBillingPage";
+import AccountingExtraInvoicePage from "../pages/accounting/AccountingExtraInvoicePage";
+import AccountingRefundPage from "../pages/accounting/AccountingRefundPage";
+import AccountingTransactionPage from "../pages/accounting/AccountingTransactionPage";
+import AccountingReconciliationPage from "../pages/accounting/AccountingReconciliationPage";
 
 const router = createBrowserRouter([
   {
@@ -62,6 +73,29 @@ const router = createBrowserRouter([
       },
     ],
   },
+
+  //Accounting
+  {
+    path: "/accounting",
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <AccountingLayout />,
+        children: [
+          { index: true, element: <Navigate to="dashboard" replace /> },
+          { path: "dashboard", element: <AccountingDashboardPage /> },
+          { path: "contracts", element: <AccountingContractListPage /> },
+          { path: "invoices", element: <AccountingInvoiceListPage /> },
+          { path: "billing", element: <AccountingBillingPage /> },
+          { path: "extra-invoices", element: <AccountingExtraInvoicePage /> },
+          { path: "refunds", element: <AccountingRefundPage /> },
+          { path: "transactions", element: <AccountingTransactionPage /> },
+          { path: "reconciliation", element: <AccountingReconciliationPage /> },
+        ],
+      },
+    ],
+  },
+
   {
     path: "*",
     element: <NotFoundPage />,
