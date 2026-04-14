@@ -6,6 +6,19 @@ function Sidebar() {
   const navigate = useNavigate();
   const { profile, logout } = useAuth();
 
+  const getRoleDisplayName = (role) => {
+    switch (role) {
+      case 'QUAN_LY':
+        return 'Quản Lý';
+      case 'KE_TOAN':
+        return 'Kế Toán';
+      case 'KHACH_HANG':
+        return 'Khách Hàng';
+      default:
+        return 'Người dùng';
+    }
+  };
+
   const links = [
     {
       name: "Hồ sơ",
@@ -44,8 +57,8 @@ function Sidebar() {
            className="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover" 
          />
          <div>
-            <h3 className="font-extrabold text-[15px] text-[#0A192F] tracking-tight">{profile?.full_name || "Cư dân"}</h3>
-            <p className="text-[12px] text-[#64748B] font-medium">Khách hàng thân thiết</p>
+            <h3 className="font-extrabold text-[15px] text-[#0A192F] tracking-tight">{getRoleDisplayName(profile?.vai_tro)}</h3>
+            <p className="text-[12px] text-[#64748B] font-medium">{profile?.ho_ten}</p>
          </div>
       </div>
 
@@ -71,7 +84,7 @@ function Sidebar() {
       </nav>
 
       {/* System Nav */}
-      <div className="space-y-1.5 border-t border-slate-200 pt-6 mt-8">
+      {/* <div className="space-y-1.5 border-t border-slate-200 pt-6 mt-8">
          <button className="w-full flex items-center justify-start gap-4 px-5 py-3.5 rounded-[16px] text-[14px] font-bold text-[#475569] hover:bg-white hover:text-[#0A192F] transition-all">
             <div className="text-[#94A3B8]">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -87,7 +100,7 @@ function Sidebar() {
             </div>
             Đăng xuất
          </button>
-      </div>
+      </div> */}
     </aside>
   );
 }
