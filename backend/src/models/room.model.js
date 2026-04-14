@@ -35,6 +35,15 @@ const mapRoomToFrontendFormat = (raw) => {
     gallery = raw.hinh_anh_phong.map(img => img.duong_dan_cong_khai);
   }
 
+  // Gender mapping from building name
+  // let gender = "Nam / Nữ";
+  // const buildingName = raw.toa?.ten || "";
+  // if (buildingName.includes("Nam")) {
+  //   gender = "NAM";
+  // } else if (buildingName.includes("Nữ")) {
+  //   gender = "NỮ";
+  // }
+
   return {
     id: raw.ma_phong,
     name: `Phòng ${raw.ma_phong_hien_thi}`,
@@ -43,7 +52,7 @@ const mapRoomToFrontendFormat = (raw) => {
     unit: isDorm ? "/tháng/người" : "/tháng/phòng",
     status,
     statusColor,
-    gender: "NAM / NỮ",
+    gender : raw.gioi_tinh,
     capacity: isDorm ? `${availableBeds} / ${totalBeds} giường trống` : `${raw.suc_chua || 0} người`,
     floor: raw.tang?.ten_tang || "Tầng 1",
     amenities: raw.tai_san_phong?.map(t => t.ten_tai_san) || ["Điều hòa", "Wifi"],
@@ -68,69 +77,70 @@ const RoomModel = {
   async list(filters = {}) {
     if (!supabase) return [];
     
-    let query = supabase
-      .from(TABLE_NAME)
-      .select(`
+    // 1. Khởi tạo query với !inner cho các bảng cần lọc bắt buộc
+    let selectString = `
         *,
-        tang ( ten_tang ),
+        tang!inner ( ten_tang ),
         toa ( ten ),
         hinh_anh_phong ( duong_dan_cong_khai, la_anh_bia ),
         tai_san_phong ( ten_tai_san ),
         giuong ( ma_giuong, ma_giuong_hien_thi, nhan_giuong, gia_thang, trang_thai )
-      `);
+      `;
 
-    // Apply filters
+    let query = supabase.from(TABLE_NAME).select(selectString);
+
+    // 2. Tìm kiếm (Chỉ nên lọc trên bảng chính phong)
     if (filters.search) {
-      const term = `%${filters.search}%`;
-      query = query.or(`ma_phong_hien_thi.ilike.${term},giuong.ma_giuong_hien_thi.ilike.${term}`);
+      query = query.ilike('ma_phong_hien_thi', `%${filters.search}%`);
     }
 
+    // 3. Lọc Tầng (Đã có !inner ở trên nên eq sẽ hoạt động như filter cứng)
     if (filters.floor && filters.floor !== 'Tất cả các tầng') {
       query = query.eq('tang.ten_tang', filters.floor);
     }
 
+    // 4. Loại phòng
     if (filters.type) {
-      if (filters.type === 'PHONG_RIENG') {
-        query = query.eq('loai_phong', 'PHONG_RIENG');
-      } else if (filters.type === 'PHONG_CHUNG') {
-        query = query.eq('loai_phong', 'PHONG_CHUNG');
-      }
+      query = query.eq('loai_phong', filters.type);
     }
 
+    // 5. Khoảng giá (Sử dụng đúng cột gia_thang trong SQL)
     if (filters.minPrice) {
-      query = query.gte('gia_thang', parseInt(filters.minPrice));
+      query = query.gte('gia_thang', parseFloat(filters.minPrice));
     }
-
     if (filters.maxPrice) {
-      query = query.lte('gia_thang', parseInt(filters.maxPrice));
+      query = query.lte('gia_thang', parseFloat(filters.maxPrice));
     }
 
-    if (filters.status && Array.isArray(filters.status)) {
-      query = query.in('trang_thai', filters.status);
+    // 6. Trạng thái (Lưu ý: Map lại giá trị từ Frontend sang DB)
+    if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
+      const dbStatus = filters.status.map(s => s === 'CON_TRONG' ? 'TRONG' : s);
+      query = query.in('trang_thai', dbStatus);
     }
 
-    // Apply sorting
-    if (filters.sort) {
-      switch (filters.sort) {
-        case 'price_asc':
-          query = query.order('gia_thang', { ascending: true });
-          break;
-        case 'price_desc':
-          query = query.order('gia_thang', { ascending: false });
-          break;
-        case 'newest':
-          query = query.order('created_at', { ascending: false });
-          break;
-        default:
-          query = query.order('gia_thang', { ascending: true });
-      }
+    // 7. Giới tính (Sửa đúng tên cột gioi_tinh)
+  if (filters.gender && filters.gender !== 'Tất cả') {
+  // Nếu chọn 'Nam' -> tìm ['Nam', 'Nam/Nữ']
+  // Nếu chọn 'Nữ' -> tìm ['Nữ', 'Nam/Nữ']
+  const genderOptions = [filters.gender, 'Nam/Nữ'];
+  
+  query = query.in('gioi_tinh', genderOptions);
+  }
+
+    // 8. Sắp xếp
+    if (filters.sort === 'price_desc') {
+      query = query.order('gia_thang', { ascending: false });
+    } else if (filters.sort === 'newest') {
+      query = query.order('created_at', { ascending: false });
     } else {
       query = query.order('gia_thang', { ascending: true });
     }
       
     const { data, error } = await query;
-      
-    if (error) throw error;
+    if (error) {
+        console.error("Supabase Error:", error);
+        throw error;
+    }
     
     return data ? data.map(mapRoomToFrontendFormat) : [];
   },
