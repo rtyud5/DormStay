@@ -1,4 +1,4 @@
-export const APP_NAME = "DormStay Starter";
+export const APP_NAME = "DormStay";
 
 export const ROUTES = {
   home: "/",
