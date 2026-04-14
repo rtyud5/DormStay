@@ -11,7 +11,7 @@ function HomePage() {
     async function fetchFeaturedRooms() {
       try {
         const res = await RoomService.getRooms();
-        setRooms(res.data.data || []);
+        setRooms(Array.isArray(res.data.data) ? res.data.data : []);
       } catch (error) {
         console.error("Failed to fetch rooms:", error);
       } finally {
