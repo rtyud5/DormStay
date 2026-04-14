@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
 import RentalRequestService from "../services/rentalRequest.service";
 import PaymentService from "../services/payment.service";
 
@@ -53,6 +55,125 @@ function DashboardPage() {
   };
 
   const profileCompletion = calculateCompletion(profile);
+  const isManager = profile?.vai_tro === "QUAN_LY";
+  const isAccountant = profile?.vai_tro === "KE_TOAN";
+  const showGeneralDashboard = !isManager && !isAccountant;
+
+  const managerActions = [
+    {
+      title: "Thanh Lý Hợp Đồng",
+      description: "Quản lý và xử lý các hợp đồng hết hạn hoặc cần thanh lý.",
+      to: "/manager/contract-liquidation",
+      icon: (
+        <svg className="w-8 h-8 text-[#0052CC]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      buttonClass: "bg-[#0052CC] hover:bg-[#003D99]",
+    },
+    {
+      title: "Quản Lý Trạng Thái Phòng & Giường",
+      description: "Cập nhật và giám sát trạng thái của các phòng và giường trong ký túc xá.",
+      to: "/manager/room-bed-management",
+      icon: (
+        <svg className="w-8 h-8 text-[#22A06B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      ),
+      buttonClass: "bg-[#22A06B] hover:bg-[#1A8F5A]",
+    },
+    {
+      title: "Lập Biên Bản Kiểm Tra Phòng",
+      description: "Tạo và lưu trữ biên bản kiểm tra định kỳ cho các phòng.",
+      to: "/manager/room-inspection",
+      icon: (
+        <svg className="w-8 h-8 text-[#F59E0B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      ),
+      buttonClass: "bg-[#F59E0B] hover:bg-[#D97706]",
+    },
+  ];
+
+  const accountantActions = [
+    {
+      title: "Hợp Đồng Chờ Lập Khoản Thu",
+      description: "Quản lý danh sách hợp đồng đang chờ tạo khoản thu.",
+      to: "/accounting/contract-pending-billing",
+      icon: (
+        <svg className="w-8 h-8 text-[#0F172A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2 2 4-4M12 5v6m0 0l3-3m-3 3l-3-3M4 19h16" />
+        </svg>
+      ),
+      buttonClass: "bg-[#0F172A] hover:bg-[#0A192F]",
+    },
+    {
+      title: "Lập Khoản Thu Nhận Phòng",
+      description: "Tạo khoản thu khi cư dân nhận phòng mới.",
+      to: "/accounting/room-admission-receipt",
+      icon: (
+        <svg className="w-8 h-8 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l2 2 4-4m4 1v6a2 2 0 01-2 2H7a2 2 0 01-2-2v-6m3-5h6" />
+        </svg>
+      ),
+      buttonClass: "bg-[#2563EB] hover:bg-[#1D4ED8]",
+    },
+    {
+      title: "Danh Sách Phiếu Thu",
+      description: "Giám sát và quản lý tất cả phiếu thu đang lưu.",
+      to: "/accounting/receipt-list",
+      icon: (
+        <svg className="w-8 h-8 text-[#059669]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m3 3H6a2 2 0 01-2-2V6a2 2 0 012-2h7l5 5v8a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      buttonClass: "bg-[#059669] hover:bg-[#047857]",
+    },
+    {
+      title: "Đối Soát Tài Chính",
+      description: "Lập bảng đối soát và kiểm tra số liệu thu chi.",
+      to: "/accounting/reconciliation",
+      icon: (
+        <svg className="w-8 h-8 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m-3 5a9 9 0 110-18 9 9 0 010 18z" />
+        </svg>
+      ),
+      buttonClass: "bg-[#D97706] hover:bg-[#B45309]",
+    },
+    {
+      title: "Phiếu Hoàn Cọc",
+      description: "Tạo phiếu hoàn cọc cho cư dân khi trả phòng.",
+      to: "/accounting/deposit-refund",
+      icon: (
+        <svg className="w-8 h-8 text-[#7C3AED]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v8m0 0l-3-3m3 3l3-3M6 18h12a2 2 0 002-2V8a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      ),
+      buttonClass: "bg-[#7C3AED] hover:bg-[#6D28D9]",
+    },
+    {
+      title: "Thanh Toán Phát Sinh",
+      description: "Lập phiếu cho các chi phí phát sinh ngoài hợp đồng.",
+      to: "/accounting/extra-payment",
+      icon: (
+        <svg className="w-8 h-8 text-[#E11D48]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M6.5 6.5l11 11" />
+        </svg>
+      ),
+      buttonClass: "bg-[#E11D48] hover:bg-[#BE123C]",
+    },
+    {
+      title: "Tra Soát Giao Dịch",
+      description: "Kiểm tra và đối soát các giao dịch thanh toán đã phát sinh.",
+      to: "/accounting/transaction-audit",
+      icon: (
+        <svg className="w-8 h-8 text-[#0EA5E9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m-3-8h.01M12 4v2m0 12v2m8-8h-2M6 12H4m12.364-5.364l-1.414 1.414M7.05 16.95l-1.414 1.414m0-11.314l1.414 1.414M16.95 16.95l1.414 1.414" />
+        </svg>
+      ),
+      buttonClass: "bg-[#0EA5E9] hover:bg-[#0284C7]",
+    },
+  ];
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans pb-12">
@@ -60,13 +181,17 @@ function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
           <h1 className="text-[32px] font-extrabold text-[#0F172A] tracking-tight">
-            Chào, {profile?.full_name?.split(' ').pop() || "bạn"}!
+            Chào, {profile?.ho_ten?.split(' ').pop() || "bạn"}!
           </h1>
-          <p className="text-[15px] text-[#64748B] font-medium leading-relaxed max-w-xl">
-            Chào mừng bạn trở lại. Đây là bản tóm tắt tình trạng cư trú và các giao dịch mới nhất của bạn.
-          </p>
+          {showGeneralDashboard && (
+            <p className="text-[15px] text-[#64748B] font-medium leading-relaxed max-w-xl">
+              Chào mừng bạn trở lại. Đây là bản tóm tắt tình trạng cư trú và các giao dịch mới nhất của bạn.
+            </p>
+          )}
         </div>
-        <div className="bg-white px-6 py-4 rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 flex items-center gap-6">
+        {
+          showGeneralDashboard && (
+                    <div className="bg-white px-6 py-4 rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 flex items-center gap-6">
            <div className="flex flex-col">
               <div className="flex items-center gap-2 mb-1.5">
                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -82,9 +207,62 @@ function DashboardPage() {
              </button>
            </Link>
         </div>
-      </div>
+           )
+        }
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-8">
+      </div>
+      {isManager && (
+        <div className="grid gap-8 mt-8 md:grid-cols-2 lg:grid-cols-3">
+          {managerActions.map((action) => (
+            <Card key={action.to} className="p-6 hover:shadow-xl transition-shadow duration-300 h-full flex flex-col">
+              <div className="flex flex-col items-center text-center h-full">
+                <div className="mb-4">{action.icon}</div>
+                <h3 className="text-xl font-semibold text-[#1E293B] mb-2">{action.title}</h3>
+                <p className="text-[#64748B] text-sm mb-6 leading-relaxed">{action.description}</p>
+                <div className="mt-auto w-full">
+                  <Link to={action.to} className="block w-full">
+                    <Button className={`${action.buttonClass} w-full text-white font-semibold rounded-lg shadow-lg transition-colors`}>
+                      Truy Cập
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {isAccountant && (
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-[24px] font-extrabold text-[#0F172A] tracking-tight uppercase">Nghiệp vụ Kế Toán</h2>
+              <p className="text-[#64748B] text-[14px] font-medium mt-1">Quản lý các nghiệp vụ thu, đối soát và tra soát giao dịch.</p>
+            </div>
+          </div>
+          <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+            {accountantActions.map((action) => (
+              <Card key={action.to} className="p-6 hover:shadow-xl transition-shadow duration-300 h-full flex flex-col">
+                <div className="flex flex-col items-center text-center h-full">
+                  <div className="mb-4">{action.icon}</div>
+                  <h3 className="text-xl font-semibold text-[#1E293B] mb-2">{action.title}</h3>
+                  <p className="text-[#64748B] text-sm mb-6 leading-relaxed">{action.description}</p>
+                  <div className="mt-auto w-full">
+                    <Link to={action.to} className="block w-full">
+                      <Button className={`${action.buttonClass} w-full text-white font-semibold rounded-lg shadow-lg transition-colors`}>
+                        Truy Cập
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showGeneralDashboard && (
+        <div className="grid lg:grid-cols-[1fr_340px] gap-8">
         {/* Main Content Area */}
         <div className="space-y-8">
           {/* Latest Request Card */}
@@ -218,6 +396,7 @@ function DashboardPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

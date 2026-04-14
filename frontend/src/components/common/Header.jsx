@@ -68,7 +68,7 @@ function Header() {
                 className="flex items-center gap-3 px-3 py-2 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer group"
               >
                 <span className="text-[14px] font-bold text-[#0F172A] group-hover:text-[#0052CC] transition-colors whitespace-nowrap">
-                  {profile?.full_name || "Cư dân"}
+                  {profile?.ho_ten|| "Cư dân"}
                 </span>
                 <div className="relative">
                   <img 
