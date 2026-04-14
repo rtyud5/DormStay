@@ -75,7 +75,12 @@ const mapRoomToFrontendFormat = (raw) => {
 
 const RoomModel = {
   async list(filters = {}) {
-    if (!supabase) return [];
+    if (!supabase) return { data: [], total: 0, page: 1, limit: 10 };
+    
+    // Phân trang
+    const page = parseInt(filters.page) || 1;
+    const limit = parseInt(filters.limit) || 10;
+    const offset = (page - 1) * limit;
     
     // 1. Khởi tạo query với !inner cho các bảng cần lọc bắt buộc
     let selectString = `
@@ -87,7 +92,7 @@ const RoomModel = {
         giuong ( ma_giuong, ma_giuong_hien_thi, nhan_giuong, gia_thang, trang_thai )
       `;
 
-    let query = supabase.from(TABLE_NAME).select(selectString);
+    let query = supabase.from(TABLE_NAME).select(selectString, { count: 'exact' });
 
     // 2. Tìm kiếm (Chỉ nên lọc trên bảng chính phong)
     if (filters.search) {
@@ -135,14 +140,22 @@ const RoomModel = {
     } else {
       query = query.order('gia_thang', { ascending: true });
     }
+    
+    // Áp dụng range cho phân trang
+    query = query.range(offset, offset + limit - 1);
       
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) {
         console.error("Supabase Error:", error);
         throw error;
     }
     
-    return data ? data.map(mapRoomToFrontendFormat) : [];
+    return {
+      data: Array.isArray(data) ? data.map(mapRoomToFrontendFormat) : [],
+      total: count || 0,
+      page,
+      limit
+    };
   },
 
   async getById(id) {
