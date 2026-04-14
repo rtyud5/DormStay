@@ -5,6 +5,9 @@ import RoomService from "../services/room.service";
 function RoomListPage() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(6);
   const [filters, setFilters] = useState({
     search: '',
     floor: 'Tất cả các tầng',
@@ -20,7 +23,10 @@ function RoomListPage() {
   const loadRooms = async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage
+      };
       if (filters.search) params.search = filters.search;
       if (filters.floor !== 'Tất cả các tầng') params.floor = filters.floor;
       if (filters.type) params.type = filters.type;
@@ -33,7 +39,10 @@ function RoomListPage() {
       if (filters.sort) params.sort = filters.sort;
 
       const res = await RoomService.getRooms(params);
-      setRooms(res.data.data || []);
+      console.log('API Response:', res.data); // Debug log
+      const roomData = res.data.data; // Đây là object chứa { data, total, page, limit }
+      setRooms(Array.isArray(roomData.data) ? roomData.data : []);
+      setTotal(roomData.total || 0);
     } catch (err) {
       console.error("Lỗi khi lấy danh sách phòng:", err);
     } finally {
@@ -54,7 +63,36 @@ const handleSliderChange = (e, type) => {
 
   useEffect(() => {
     loadRooms();
+  }, [currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    loadRooms();
   }, [filters]);
+
+  const totalPages = Math.ceil(total / itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
       
@@ -385,18 +423,43 @@ const handleSliderChange = (e, type) => {
             </div>
 
             {/* Pagination Component */}
-            <div className="mt-12 mb-4 flex justify-center items-center gap-2">
-               <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F8F9FA] transition-colors disabled:opacity-50" disabled>
+            {totalPages > 1 && (
+              <div className="mt-12 mb-4 flex justify-center items-center gap-2">
+                <button 
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F8F9FA] transition-colors disabled:opacity-50" 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-               </button>
-               <button className="w-10 h-10 flex items-center justify-center rounded-full bg-[#0F172A] text-white font-bold text-[14px] shadow-sm">1</button>
-               <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-[#475569] font-bold text-[14px] hover:text-[#0F172A] hover:bg-[#F8F9FA] transition-colors">2</button>
-               <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-[#475569] font-bold text-[14px] hover:text-[#0F172A] hover:bg-[#F8F9FA] transition-colors">3</button>
-               <span className="w-10 h-10 flex items-center justify-center text-[#94A3B8] font-bold tracking-widest">...</span>
-               <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-[#475569] hover:text-[#0F172A] hover:bg-[#F8F9FA] transition-colors">
+                </button>
+                
+                {pageNumbers.map((page, index) => (
+                  page === '...' ? (
+                    <span key={index} className="w-10 h-10 flex items-center justify-center text-[#94A3B8] font-bold tracking-widest">...</span>
+                  ) : (
+                    <button 
+                      key={index}
+                      className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-[14px] shadow-sm transition-colors ${
+                        page === currentPage 
+                          ? 'bg-[#0F172A] text-white' 
+                          : 'bg-white border border-slate-200 text-[#475569] hover:text-[#0F172A] hover:bg-[#F8F9FA]'
+                      }`}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+                
+                <button 
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-200 text-[#475569] hover:text-[#0F172A] hover:bg-[#F8F9FA] transition-colors disabled:opacity-50"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-               </button>
-            </div>
+                </button>
+              </div>
+            )}
          </div>
       </div>
     </div>
