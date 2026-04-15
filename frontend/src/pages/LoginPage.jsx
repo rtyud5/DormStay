@@ -99,7 +99,7 @@ function LoginPage() {
                       <div className="w-[18px] h-[18px] rounded-full border border-[#CBD5E1] bg-[#F1F5F9] flex items-center justify-center"></div>
                       Ghi nhớ đăng nhập
                    </label>
-                   <Link to="#" className="text-[#0052CC] hover:underline">Quên mật khẩu?</Link>
+                   <Link to="/forgot-password" className="text-[#0052CC] hover:underline">Quên mật khẩu?</Link>
                 </div>
 
                 <div className="pt-2">

@@ -21,6 +21,7 @@ import RentalRequestListPage from "../pages/RentalRequestListPage";
 import DashboardPage from "../pages/DashboardPage";
 import ProfilePage from "../pages/ProfilePage";
 import BookingPage from "../pages/BookingPage";
+import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 
 const router = createBrowserRouter([
   {
@@ -44,6 +45,12 @@ const router = createBrowserRouter([
           { path: "/verify-otp", element: <VerifyOtpPage /> },
         ],
       },
+    ],
+  },
+  {
+    element: <AuthLayout />,
+    children: [
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
     ],
   },
   {
