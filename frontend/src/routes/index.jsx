@@ -77,7 +77,7 @@ const router = createBrowserRouter([
   //Accounting
   {
     path: "/accounting",
-    element: <ProtectedRoute />,
+    element: <ProtectedRoute requireAccounting={true} />,
     children: [
       {
         element: <AccountingLayout />,
