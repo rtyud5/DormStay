@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Footer from "../components/common/Footer";
 import AuthService from "../services/auth.service";
 
 function LoginPage() {
@@ -29,7 +30,8 @@ function LoginPage() {
   }
 
   return (
-    <div className="w-full flex min-h-[calc(100vh-80px)]">
+    <div className="flex flex-col w-full min-h-[calc(100vh-80px)]">
+       <div className="w-full flex flex-1">
        {/* Left Side */}
        <div className="hidden lg:flex lg:w-1/2 relative bg-[#1E293B] overflow-hidden flex-col justify-between p-12 lg:p-16">
           <div className="absolute inset-0 z-0">
@@ -137,7 +139,8 @@ function LoginPage() {
              </button>
           </div>
        </div>
-
+      </div>
+      <Footer />
     </div>
   );
 }

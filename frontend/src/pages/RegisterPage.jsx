@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Footer from "../components/common/Footer";
 import AuthService from "../services/auth.service";
 
 function RegisterPage() {
@@ -177,19 +178,7 @@ function RegisterPage() {
           </div>
        </div>
 
-       {/* Footer */}
-       <footer className="bg-[#F8F9FA] py-10 w-full flex flex-col items-center border-t border-slate-200">
-          <div className="text-[24px] font-extrabold tracking-tight mb-4">
-              <span className="text-[#0052CC]">Dorm</span><span className="text-[#0F172A]">Stay</span>
-          </div>
-          <div className="flex items-center gap-6 text-[13px] text-[#64748B] font-medium mb-3">
-             <Link to="#" className="hover:text-[#0052CC] transition-colors">Điều khoản</Link>
-             <Link to="#" className="hover:text-[#0052CC] transition-colors">Bảo mật</Link>
-             <Link to="#" className="hover:text-[#0052CC] transition-colors">Liên hệ</Link>
-             <Link to="#" className="hover:text-[#0052CC] transition-colors">Sitemap</Link>
-          </div>
-          <p className="text-[12px] text-[#94A3B8] italic">© 2026 DormStay. Nền tảng quản lý lưu trú cao cấp.</p>
-       </footer>
+       <Footer />
 
     </div>
   );

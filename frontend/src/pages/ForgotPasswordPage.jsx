@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Footer from "../components/common/Footer";
 import AuthService from "../services/auth.service";
 
 function ForgotPasswordPage() {
@@ -124,7 +125,7 @@ function ForgotPasswordPage() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-[#F8F9FA] pb-12 overflow-hidden">
+    <div className="w-full flex-1 flex flex-col bg-[#F8F9FA] overflow-hidden">
       <div className="max-w-6xl mx-auto w-full px-6 py-12 lg:py-20 flex flex-col lg:flex-row items-center justify-between gap-16 grow">
         
         {/* Left Side */}
@@ -180,7 +181,7 @@ function ForgotPasswordPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
             <div className="absolute bottom-6 left-6 right-6">
               <p className="text-white font-medium text-[15px] leading-relaxed">
-                Bảo mật thông tin là ưu tiên hàng đầu tại <span className="font-bold">DormiCare</span>.
+                Bảo mật thông tin là ưu tiên hàng đầu tại <span className="font-bold">DormStay</span>.
               </p>
             </div>
           </div>
@@ -340,19 +341,7 @@ function ForgotPasswordPage() {
         </div>
       </div>
       
-      {/* Footer from design */}
-      <footer className="text-center pb-8 pt-4">
-          <div className="text-[20px] font-extrabold tracking-tight mb-3">
-             <span className="text-[#0052CC]">Dormi</span><span className="text-[#0F172A]">Care</span>
-          </div>
-          <div className="flex items-center justify-center gap-6 mb-3 text-[13px] font-medium text-[#64748B]">
-            <Link to="#" className="hover:text-[#0F172A]">Điều khoản</Link>
-            <Link to="#" className="hover:text-[#0F172A]">Bảo mật</Link>
-            <Link to="#" className="hover:text-[#0F172A]">Liên hệ</Link>
-            <Link to="#" className="hover:text-[#0F172A]">Sitemap</Link>
-          </div>
-          <p className="text-[12px] text-[#94A3B8]">© 2024 DormiCare. Nền tảng quản lý lưu trú cao cấp.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }
