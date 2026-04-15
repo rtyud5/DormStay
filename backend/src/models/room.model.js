@@ -129,22 +129,29 @@ const RoomModel = {
     }
 
     // 6. Trạng thái (Hỗ trợ alias cho các trạng thái trong DB)
-    if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
-      let statusValues = [];
-      filters.status.forEach(s => {
-        if (s === 'CON_TRONG' || s === 'TRONG') {
-          statusValues.push('TRONG', 'CON_TRONG');
-        } else if (s === 'SAP_DAY') {
-          statusValues.push('SAP_DAY');
-        } else if (s === 'DA_DAY' || s === 'DA_THUE_HET' || s === 'DAY') {
-          statusValues.push('DA_DAY', 'DA_THUE_HET', 'DAY');
-        } else {
-          statusValues.push(s);
-        }
-      });
-      // Loại bỏ các giá trị trùng lặp
-      statusValues = [...new Set(statusValues)];
-      query = query.in('trang_thai', statusValues);
+    let rawStatusFilters = filters.status || filters['status[]'];
+    if (rawStatusFilters) {
+      if (!Array.isArray(rawStatusFilters)) {
+        rawStatusFilters = [rawStatusFilters];
+      }
+      
+      if (rawStatusFilters.length > 0) {
+        let statusValues = [];
+        rawStatusFilters.forEach(s => {
+          if (s === 'CON_TRONG' || s === 'TRONG') {
+            statusValues.push('TRONG', 'CON_TRONG');
+          } else if (s === 'SAP_DAY') {
+            statusValues.push('SAP_DAY');
+          } else if (s === 'DA_DAY' || s === 'DA_THUE_HET' || s === 'DAY') {
+            statusValues.push('DA_DAY', 'DA_THUE_HET', 'DAY');
+          } else {
+            statusValues.push(s);
+          }
+        });
+        // Loại bỏ các giá trị trùng lặp
+        statusValues = [...new Set(statusValues)];
+        query = query.in('trang_thai', statusValues);
+      }
     }
 
     // 7. Giới tính (Lọc chính xác: Nam chỉ Nam, Nữ chỉ Nữ)
