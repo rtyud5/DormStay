@@ -18,7 +18,52 @@ import {
 } from "../mockdata/accounting.mockdata";
 
 // Mock flag
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = import.meta.env.VITE_USE_ACCOUNTING_MOCK === "true";
+
+const unwrapPayload = (response) => response?.data?.data ?? null;
+const unwrapSuccess = (response) => response?.data?.success ?? false;
+const unwrapMessage = (response) => response?.data?.message ?? "";
+
+const mapListResponse = (response) => {
+  const payload = unwrapPayload(response) || {};
+
+  return {
+    success: unwrapSuccess(response),
+    data: payload.items || [],
+    total: payload.total || 0,
+    page: payload.page || 1,
+    limit: payload.limit || 10,
+    message: unwrapMessage(response),
+  };
+};
+
+const mapDetailResponse = (response) => ({
+  success: unwrapSuccess(response),
+  data: unwrapPayload(response),
+  message: unwrapMessage(response),
+});
+
+const getInitials = (fullName = "") =>
+  fullName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() || "")
+    .join("");
+
+const mapInvoiceUiFields = (invoice) => ({
+  ...invoice,
+  avatarInitials: invoice.avatarInitials || getInitials(invoice.customerName),
+  method: invoice.method || invoice.paymentMethod || "—",
+  paidDate: invoice.paidDate || invoice.paymentDate || "—",
+  statusText: invoice.statusText || invoice.status,
+  isOverdue: invoice.status === "OVERDUE",
+});
+
+const mapContractUiFields = (contract) => ({
+  ...contract,
+  avatarInitials: contract.avatarInitials || getInitials(contract.customerName),
+});
 
 // ==================== CONTRACTS ====================
 
@@ -55,7 +100,13 @@ export const getContracts = async (filters = {}) => {
     };
   }
 
-  return api.get("/accounting/contracts", { params: filters });
+  const response = await api.get("/accounting/contracts", { params: filters });
+  const normalized = mapListResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data.map(mapContractUiFields),
+  };
 };
 
 /**
@@ -71,7 +122,27 @@ export const getContractDetail = async (contractId) => {
     };
   }
 
-  return api.get(`/accounting/contracts/${contractId}`);
+  const response = await api.get(`/accounting/contracts/${contractId}`);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapContractUiFields(normalized.data) : null,
+  };
+};
+
+export const getBillingPreview = async (contractId) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    return {
+      success: true,
+      data: null,
+    };
+  }
+
+  const response = await api.get(`/accounting/contracts/${contractId}/billing-preview`);
+  return mapDetailResponse(response);
 };
 
 // ==================== INVOICES ====================
@@ -112,7 +183,13 @@ export const getInvoices = async (filters = {}) => {
     };
   }
 
-  return api.get("/accounting/invoices", { params: filters });
+  const response = await api.get("/accounting/invoices", { params: filters });
+  const normalized = mapListResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data.map(mapInvoiceUiFields),
+  };
 };
 
 /**
@@ -133,7 +210,13 @@ export const getInvoiceDetail = async (invoiceId) => {
     };
   }
 
-  return api.get(`/accounting/invoices/${invoiceId}`);
+  const response = await api.get(`/accounting/invoices/${invoiceId}`);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapInvoiceUiFields(normalized.data) : null,
+  };
 };
 
 /**
@@ -156,7 +239,8 @@ export const createInvoice = async (invoiceData) => {
     };
   }
 
-  return api.post("/accounting/invoices", invoiceData);
+  const response = await api.post("/accounting/invoices", invoiceData);
+  return mapDetailResponse(response);
 };
 
 /**
@@ -181,7 +265,8 @@ export const createExtraInvoice = async (invoiceData) => {
     };
   }
 
-  return api.post("/accounting/invoices/extra", invoiceData);
+  const response = await api.post("/accounting/invoices/extra", invoiceData);
+  return mapDetailResponse(response);
 };
 
 /**
@@ -201,7 +286,8 @@ export const updateInvoice = async (invoiceId, updateData) => {
     };
   }
 
-  return api.put(`/accounting/invoices/${invoiceId}`, updateData);
+  const response = await api.put(`/accounting/invoices/${invoiceId}`, updateData);
+  return mapDetailResponse(response);
 };
 
 // ==================== PAYMENTS ====================
@@ -230,7 +316,8 @@ export const getPayments = async (filters = {}) => {
     };
   }
 
-  return api.get("/accounting/payments", { params: filters });
+  const response = await api.get("/accounting/payments", { params: filters });
+  return mapListResponse(response);
 };
 
 /**
@@ -260,7 +347,8 @@ export const recordPayment = async (paymentData) => {
     };
   }
 
-  return api.post("/accounting/payments", paymentData);
+  const response = await api.post("/accounting/payments", paymentData);
+  return mapDetailResponse(response);
 };
 
 /**
@@ -282,7 +370,8 @@ export const confirmPayment = async (paymentId) => {
     };
   }
 
-  return api.post(`/accounting/payments/${paymentId}/confirm`);
+  const response = await api.post(`/accounting/payments/${paymentId}/confirm`);
+  return mapDetailResponse(response);
 };
 
 // ==================== REFUNDS ====================
@@ -317,7 +406,22 @@ export const getRefunds = async (filters = {}) => {
     };
   }
 
-  return api.get("/accounting/refunds", { params: filters });
+  const response = await api.get("/accounting/refunds", { params: filters });
+  return mapListResponse(response);
+};
+
+export const getRefundDetail = async (refundId) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const refund = mockRefunds.find((item) => item.id === refundId);
+    return {
+      success: !!refund,
+      data: refund || null,
+    };
+  }
+
+  const response = await api.get(`/accounting/refunds/${refundId}`);
+  return mapDetailResponse(response);
 };
 
 /**
@@ -340,7 +444,8 @@ export const createRefund = async (refundData) => {
     };
   }
 
-  return api.post("/accounting/refunds", refundData);
+  const response = await api.post("/accounting/refunds", refundData);
+  return mapDetailResponse(response);
 };
 
 /**
@@ -364,7 +469,8 @@ export const processRefund = async (refundId, status = "PROCESSING") => {
     };
   }
 
-  return api.put(`/accounting/refunds/${refundId}`, { status });
+  const response = await api.put(`/accounting/refunds/${refundId}`, { status });
+  return mapDetailResponse(response);
 };
 
 // ==================== TRANSACTIONS ====================
@@ -406,7 +512,18 @@ export const getTransactions = async (filters = {}) => {
     };
   }
 
-  return api.get("/accounting/transactions", { params: filters });
+  const response = await api.get("/accounting/transactions", { params: filters });
+  const normalized = mapListResponse(response);
+
+  return {
+    ...normalized,
+    stats: {
+      success: normalized.data.filter((item) => item.matchStatus === "MATCHED").length,
+      failed: normalized.data.filter((item) => item.status === "FAILED").length,
+      pending: normalized.data.filter((item) => item.status === "PENDING").length,
+      mismatch: normalized.data.filter((item) => item.matchStatus === "MISMATCH").length,
+    },
+  };
 };
 
 /**
@@ -429,7 +546,8 @@ export const resolveTransaction = async (transactionId, resolution) => {
     };
   }
 
-  return api.post(`/accounting/transactions/${transactionId}/resolve`, resolution);
+  const response = await api.post(`/accounting/transactions/${transactionId}/resolve`, resolution);
+  return mapDetailResponse(response);
 };
 
 // ==================== RECONCILIATION ====================
@@ -454,19 +572,20 @@ export const getReconciliations = async (filters = {}) => {
     };
   }
 
-  return api.get("/accounting/reconciliation", { params: filters });
+  const response = await api.get("/accounting/reconciliation", { params: filters });
+  return mapListResponse(response);
 };
 
 /**
  * Get reconciliation for a specific period
  */
-export const getReconciliation = async (period) => {
+export const getReconciliationDetail = async (reconciliationId) => {
   if (USE_MOCK_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     // Generate mock reconciliation data for the period
     const data = {
-      period,
+      period: reconciliationId,
       status: "OPEN",
       revenue: {
         roomRent: 45000000,
@@ -498,10 +617,14 @@ export const getReconciliation = async (period) => {
       },
     };
 
-    return data;
+    return {
+      success: true,
+      data,
+    };
   }
 
-  return api.get(`/accounting/reconciliation/${period}`);
+  const response = await api.get(`/accounting/reconciliation/${reconciliationId}`);
+  return mapDetailResponse(response);
 };
 
 /**
@@ -518,7 +641,8 @@ export const performReconciliation = async (reconciliationData) => {
     };
   }
 
-  return api.post("/accounting/reconciliation", reconciliationData);
+  const response = await api.post("/accounting/reconciliation", reconciliationData);
+  return mapDetailResponse(response);
 };
 
 // ==================== FINANCIAL STATEMENT ====================
@@ -536,7 +660,8 @@ export const getDashboardKPI = async () => {
     };
   }
 
-  return api.get("/accounting/dashboard");
+  const response = await api.get("/accounting/dashboard");
+  return mapDetailResponse(response);
 };
 
 /**
@@ -555,7 +680,8 @@ export const getFinancialStatement = async (period) => {
     };
   }
 
-  return api.get(`/accounting/statement?period=${period}`);
+  const response = await api.get(`/accounting/statement?period=${period}`);
+  return mapDetailResponse(response);
 };
 
 /**
@@ -576,10 +702,12 @@ export const generateReport = async (reportType, params = {}) => {
     };
   }
 
-  return api.post("/accounting/reports", {
+  const response = await api.post("/accounting/reports", {
     reportType,
     ...params,
   });
+
+  return mapDetailResponse(response);
 };
 
 // ==================== BATCH OPERATIONS ====================
@@ -587,9 +715,11 @@ export const generateReport = async (reportType, params = {}) => {
 /**
  * Generate initial billing for contracts
  */
-export const generateInitialBilling = async (contractIds) => {
+export const generateInitialBilling = async (payload) => {
   if (USE_MOCK_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const contractIds = Array.isArray(payload) ? payload : [payload?.contractId].filter(Boolean);
 
     return {
       success: true,
@@ -604,9 +734,8 @@ export const generateInitialBilling = async (contractIds) => {
     };
   }
 
-  return api.post("/accounting/billing/generate-initial", {
-    contractIds,
-  });
+  const response = await api.post("/accounting/billing/generate-initial", payload);
+  return mapDetailResponse(response);
 };
 
 /**
@@ -625,14 +754,17 @@ export const sendPaymentReminders = async (invoiceIds) => {
     };
   }
 
-  return api.post("/accounting/invoices/send-reminders", {
+  const response = await api.post("/accounting/invoices/send-reminders", {
     invoiceIds,
   });
+
+  return mapDetailResponse(response);
 };
 
 export default {
   getContracts,
   getContractDetail,
+  getBillingPreview,
   getInvoices,
   getInvoiceDetail,
   createInvoice,
@@ -642,12 +774,13 @@ export default {
   recordPayment,
   confirmPayment,
   getRefunds,
+  getRefundDetail,
   createRefund,
   processRefund,
   getTransactions,
   resolveTransaction,
   getReconciliations,
-  getReconciliation,
+  getReconciliationDetail,
   performReconciliation,
   getDashboardKPI,
   getFinancialStatement,

@@ -429,9 +429,17 @@ const AccountingModel = {
     const contractContext = await loadContractContext(contracts);
     const mappedContracts = contracts.map((contract) => mapContractRow(contract, contractContext));
 
-    const totalRevenue = payments
+    // Revenue on dashboard should reflect money actually collected.
+    // The invoice table is the most stable source because confirmPayment keeps
+    // so_tien_da_thanh_toan in sync even if payment status values vary.
+    const totalRevenueFromInvoices = invoices.reduce(
+      (sum, invoice) => sum + toNumber(invoice.so_tien_da_thanh_toan),
+      0,
+    );
+    const totalRevenueFromConfirmedPayments = payments
       .filter((payment) => normalizePaymentStatus(payment) === "CONFIRMED")
       .reduce((sum, payment) => sum + toNumber(payment.so_tien), 0);
+    const totalRevenue = Math.max(totalRevenueFromInvoices, totalRevenueFromConfirmedPayments);
 
     const invoiceStats = mappedInvoices.reduce(
       (accumulator, invoice) => {
