@@ -20,6 +20,7 @@ import RoomListPage from "../pages/RoomListPage";
 import RentalRequestListPage from "../pages/RentalRequestListPage";
 import DashboardPage from "../pages/DashboardPage";
 import ProfilePage from "../pages/ProfilePage";
+import BookingPage from "../pages/BookingPage";
 
 const router = createBrowserRouter([
   {
@@ -58,6 +59,12 @@ const router = createBrowserRouter([
           { path: "/rental-requests/:id", element: <RequestDetailPage /> },
           { path: "/contracts", element: <ContractListPage /> },
           { path: "/contracts/:id", element: <ContractDetailPage /> },
+        ],
+      },
+      {
+        element: <MainLayout />,
+        children: [
+          { path: "/booking/:id", element: <BookingPage /> },
         ],
       },
     ],
