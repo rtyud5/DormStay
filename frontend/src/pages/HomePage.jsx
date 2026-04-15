@@ -6,20 +6,64 @@ import RoomService from "../services/room.service";
 function HomePage() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [buildings, setBuildings] = useState([]);
+  const [homeFilters, setHomeFilters] = useState({
+    type: '',
+    building: '',
+    floor: '',
+    minPrice: '',
+    gender: '',
+    status: '',
+  });
 
+  // Fetch buildings on mount
   useEffect(() => {
-    async function fetchFeaturedRooms() {
+    async function fetchBuildings() {
       try {
-        const res = await RoomService.getRooms();
-        setRooms(Array.isArray(res.data.data) ? res.data.data : []);
-      } catch (error) {
-        console.error("Failed to fetch rooms:", error);
-      } finally {
-        setLoading(false);
+        const res = await RoomService.getBuildings();
+        setBuildings(Array.isArray(res.data.data) ? res.data.data : []);
+      } catch (err) {
+        console.error("Failed to fetch buildings:", err);
       }
     }
-    fetchFeaturedRooms();
+    fetchBuildings();
   }, []);
+
+  const loadRooms = async (filterParams = {}) => {
+    setLoading(true);
+    try {
+      const params = { limit: 6 };
+      if (filterParams.type) params.type = filterParams.type;
+      if (filterParams.building) params.building = filterParams.building;
+      if (filterParams.floor) params.floor = filterParams.floor;
+      if (filterParams.minPrice) params.minPrice = filterParams.minPrice;
+      if (filterParams.gender && filterParams.gender !== 'Nam & Nữ') params.gender = filterParams.gender;
+      if (filterParams.status) {
+        params.status = filterParams.status === 'CON_TRONG' ? ['CON_TRONG'] : ['DA_THUE_HET', 'DAY'];
+      }
+
+      const res = await RoomService.getRooms(params);
+      const roomData = res.data.data;
+      // Handle both paginated {data, total} and flat array responses
+      if (roomData && roomData.data) {
+        setRooms(Array.isArray(roomData.data) ? roomData.data : []);
+      } else {
+        setRooms(Array.isArray(roomData) ? roomData : []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch rooms:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRooms();
+  }, []);
+
+  const handleSearch = () => {
+    loadRooms(homeFilters);
+  };
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA] font-sans pb-16">
       
@@ -71,9 +115,10 @@ function HomePage() {
           <div className="flex-1 min-w-0 border-r border-slate-100 px-3">
             <label className="block text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1">Loại thuê</label>
             <div className="relative">
-              <select className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
-                <option>Phòng riêng</option>
-                <option>Dorm</option>
+              <select value={homeFilters.type} onChange={(e) => setHomeFilters({...homeFilters, type: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
+                <option value="">Tất cả</option>
+                <option value="PHONG_RIENG">Phòng riêng</option>
+                <option value="PHONG_CHUNG">Dorm</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-slate-400">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
@@ -84,10 +129,11 @@ function HomePage() {
           <div className="flex-1 min-w-0 border-r border-slate-100 px-3">
             <label className="block text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1">Tòa</label>
             <div className="relative">
-              <select className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
-                <option>Tất cả</option>
-                <option>Tòa A</option>
-                <option>Tòa B</option>
+              <select value={homeFilters.building} onChange={(e) => setHomeFilters({...homeFilters, building: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
+                <option value="">Tất cả</option>
+                {buildings.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-slate-400">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
@@ -98,10 +144,12 @@ function HomePage() {
           <div className="flex-1 min-w-0 border-r border-slate-100 px-3">
             <label className="block text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1">Tầng</label>
             <div className="relative">
-              <select className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
-                <option>Tất cả</option>
-                <option>1</option>
-                <option>2</option>
+              <select value={homeFilters.floor} onChange={(e) => setHomeFilters({...homeFilters, floor: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
+                <option value="">Tất cả</option>
+                <option value="Tầng 1">Tầng 1</option>
+                <option value="Tầng 2">Tầng 2</option>
+                <option value="Tầng 3">Tầng 3</option>
+                <option value="Tầng 4">Tầng 4</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-slate-400">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
@@ -111,16 +159,16 @@ function HomePage() {
 
           <div className="flex-1 min-w-0 border-r border-slate-100 px-3">
             <label className="block text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1">Giá từ</label>
-            <input type="text" placeholder="VNĐ" className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] placeholder-slate-300" />
+            <input type="number" placeholder="VNĐ" value={homeFilters.minPrice} onChange={(e) => setHomeFilters({...homeFilters, minPrice: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] placeholder-slate-300" />
           </div>
 
           <div className="flex-1 min-w-0 border-r border-slate-100 px-3">
             <label className="block text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1">Giới tính</label>
             <div className="relative">
-              <select className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
-                <option>Nam & Nữ</option>
-                <option>Nam</option>
-                <option>Nữ</option>
+              <select value={homeFilters.gender} onChange={(e) => setHomeFilters({...homeFilters, gender: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
+                <option value="">Tất cả</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-slate-400">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
@@ -131,9 +179,10 @@ function HomePage() {
           <div className="flex-1 min-w-0 px-3">
             <label className="block text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-1">Trạng thái</label>
             <div className="relative">
-              <select className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
-                <option>Còn chỗ</option>
-                <option>Đã đầy</option>
+              <select value={homeFilters.status} onChange={(e) => setHomeFilters({...homeFilters, status: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
+                <option value="">Tất cả</option>
+                <option value="CON_TRONG">Còn chỗ</option>
+                <option value="DA_DAY">Đã đầy</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-slate-400">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
@@ -142,7 +191,7 @@ function HomePage() {
           </div>
 
           <div className="ml-2">
-            <button className="flex items-center justify-center px-6 py-3.5 shadow-lg bg-[#0052CC] hover:bg-[#0043A6] text-white font-semibold rounded-full transition-colors whitespace-nowrap">
+            <button onClick={handleSearch} className="flex items-center justify-center px-6 py-3.5 shadow-lg bg-[#0052CC] hover:bg-[#0043A6] text-white font-semibold rounded-full transition-colors whitespace-nowrap">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               Tìm kiếm
             </button>

@@ -12,6 +12,10 @@ const RoomService = {
   async getRoomBeds(roomId) {
     return RoomModel.getBedsByRoomId(roomId);
   },
+
+  async getBuildings() {
+    return RoomModel.getBuildings();
+  },
 };
 
 module.exports = RoomService;

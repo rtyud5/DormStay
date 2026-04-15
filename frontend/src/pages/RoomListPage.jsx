@@ -8,8 +8,10 @@ function RoomListPage() {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(6);
+  const [buildings, setBuildings] = useState([]);
   const [filters, setFilters] = useState({
     search: '',
+    building: '',
     floor: 'Tất cả các tầng',
     type: '',
     minPrice: 1000000,
@@ -20,6 +22,19 @@ function RoomListPage() {
     isPriceFilterTouched: false
   });
 
+  // Fetch buildings on mount
+  useEffect(() => {
+    async function fetchBuildings() {
+      try {
+        const res = await RoomService.getBuildings();
+        setBuildings(Array.isArray(res.data.data) ? res.data.data : []);
+      } catch (err) {
+        console.error("Failed to fetch buildings:", err);
+      }
+    }
+    fetchBuildings();
+  }, []);
+
   const loadRooms = async () => {
     setLoading(true);
     try {
@@ -28,6 +43,7 @@ function RoomListPage() {
         limit: itemsPerPage
       };
       if (filters.search) params.search = filters.search;
+      if (filters.building) params.building = filters.building;
       if (filters.floor !== 'Tất cả các tầng') params.floor = filters.floor;
       if (filters.type) params.type = filters.type;
       if (filters.isPriceFilterTouched) {
@@ -39,8 +55,8 @@ function RoomListPage() {
       if (filters.sort) params.sort = filters.sort;
 
       const res = await RoomService.getRooms(params);
-      console.log('API Response:', res.data); // Debug log
-      const roomData = res.data.data; // Đây là object chứa { data, total, page, limit }
+      console.log('API Response:', res.data);
+      const roomData = res.data.data;
       setRooms(Array.isArray(roomData.data) ? roomData.data : []);
       setTotal(roomData.total || 0);
     } catch (err) {
@@ -51,9 +67,9 @@ function RoomListPage() {
   };
   // Hàm xử lý kéo thanh trượt
 const handleSliderChange = (e, type) => {
-  const value = parseFloat(e.target.value) * 1000000; // Dùng parseFloat thay vì parseInt
+  const value = parseFloat(e.target.value) * 1000000;
   if (type === 'min') {
-    const newMin = Math.min(value, filters.maxPrice - 100000); // Khoảng cách tối thiểu 100k
+    const newMin = Math.min(value, filters.maxPrice - 100000);
     setFilters({ ...filters, minPrice: newMin, isPriceFilterTouched: true });
   } else {
     const newMax = Math.max(value, filters.minPrice + 100000);
@@ -122,6 +138,7 @@ const handleSliderChange = (e, type) => {
                   className="text-[12px] font-bold text-[#64748B] hover:text-[#0052CC] transition-colors"
                   onClick={() => setFilters({
                      search: '',
+                     building: '',
                      floor: 'Tất cả các tầng',
                      type: '',
                      minPrice: 1000000,
@@ -152,6 +169,21 @@ const handleSliderChange = (e, type) => {
                         className="w-full bg-[#F1F5F9] text-[#0F172A] text-[13px] font-medium pl-10 pr-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-[#0052CC]/20 border border-transparent focus:border-[#0052CC]/20 transition-all placeholder:font-medium placeholder:text-[#94A3B8]" 
                      />
                   </div>
+               </div>
+
+               {/* Tòa nhà */}
+               <div>
+                  <h3 className="text-[12px] font-extrabold text-[#64748B] uppercase tracking-wider mb-3">TÒA NHÀ</h3>
+                  <select 
+                     value={filters.building}
+                     onChange={(e) => setFilters({...filters, building: e.target.value})}
+                     className="w-full bg-[#F1F5F9] text-[#0F172A] text-[13px] font-medium px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-[#0052CC]/20 border border-transparent focus:border-[#0052CC]/20 transition-all appearance-none cursor-pointer"
+                  >
+                     <option value="">Tất cả tòa</option>
+                     {buildings.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                     ))}
+                  </select>
                </div>
 
                {/* Tầng */}

@@ -86,7 +86,7 @@ const RoomModel = {
     let selectString = `
         *,
         tang ( ten_tang ),
-        toa ( ten ),
+        toa ( ma_toa, ten ),
         hinh_anh_phong ( duong_dan_cong_khai, la_anh_bia ),
         tai_san_phong ( ten_tai_san ),
         giuong ( ma_giuong, ma_giuong_hien_thi, nhan_giuong, gia_thang, trang_thai )
@@ -99,7 +99,12 @@ const RoomModel = {
       query = query.ilike('ma_phong_hien_thi', `%${filters.search}%`);
     }
 
-    // 3. Lọc Tầng (Dùng eq như bản cũ, sẽ lọc trên kết quả trả về)
+    // 3. Lọc Tòa nhà
+    if (filters.building) {
+      query = query.eq('ma_toa', parseInt(filters.building));
+    }
+
+    // 4. Lọc Tầng
     if (filters.floor && filters.floor !== 'Tất cả các tầng') {
       query = query.eq('tang.ten_tang', filters.floor);
     }
@@ -122,14 +127,10 @@ const RoomModel = {
       query = query.in('trang_thai', filters.status);
     }
 
-    // 7. Giới tính (Sửa đúng tên cột gioi_tinh)
-  if (filters.gender && filters.gender !== 'Tất cả') {
-  // Nếu chọn 'Nam' -> tìm ['Nam', 'Nam/Nữ']
-  // Nếu chọn 'Nữ' -> tìm ['Nữ', 'Nam/Nữ']
-  const genderOptions = [filters.gender, 'Nam/Nữ'];
-  
-  query = query.in('gioi_tinh', genderOptions);
-  }
+    // 7. Giới tính (Lọc chính xác: Nam chỉ Nam, Nữ chỉ Nữ)
+    if (filters.gender && filters.gender !== 'Tất cả') {
+      query = query.eq('gioi_tinh', filters.gender);
+    }
 
     // 8. Sắp xếp
     if (filters.sort === 'price_desc') {
@@ -199,6 +200,23 @@ const RoomModel = {
       price: formatPrice(bed.gia_thang),
       rawPrice: bed.gia_thang,
       status: bed.trang_thai === 'CON_TRONG' ? 'Còn trống' : 'Đã thuê'
+    })) : [];
+  },
+
+  async getBuildings() {
+    if (!supabase) return [];
+    
+    const { data, error } = await supabase
+      .from('toa')
+      .select('ma_toa, ten, dia_chi')
+      .order('ten', { ascending: true });
+      
+    if (error) throw error;
+    
+    return data ? data.map(b => ({
+      id: b.ma_toa,
+      name: b.ten,
+      address: b.dia_chi || ''
     })) : [];
   },
 };
