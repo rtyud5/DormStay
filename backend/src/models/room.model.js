@@ -109,9 +109,15 @@ const RoomModel = {
       query = query.eq('tang.ten_tang', filters.floor);
     }
 
-    // 4. Loại phòng
+    // 4. Loại phòng (Hỗ trợ nhiều alias và gộp loại tương đương)
     if (filters.type) {
-      query = query.eq('loai_phong', filters.type);
+      if (filters.type === 'PHONG_RIENG') {
+        query = query.in('loai_phong', ['PHONG_RIENG', 'PHONG_STUDIO', 'STUDIO']);
+      } else if (filters.type === 'PHONG_CHUNG') {
+        query = query.in('loai_phong', ['PHONG_CHUNG', 'PHONG_CHUNG\n', 'DORM']);
+      } else {
+        query = query.eq('loai_phong', filters.type);
+      }
     }
 
     // 5. Khoảng giá (Sử dụng đúng cột gia_thang trong SQL)
@@ -122,9 +128,23 @@ const RoomModel = {
       query = query.lte('gia_thang', parseFloat(filters.maxPrice));
     }
 
-    // 6. Trạng thái (Dùng logic từ bản cũ: không map sang 'TRONG' mà giữ nguyên 'CON_TRONG')
+    // 6. Trạng thái (Hỗ trợ alias cho các trạng thái trong DB)
     if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
-      query = query.in('trang_thai', filters.status);
+      let statusValues = [];
+      filters.status.forEach(s => {
+        if (s === 'CON_TRONG' || s === 'TRONG') {
+          statusValues.push('TRONG', 'CON_TRONG');
+        } else if (s === 'SAP_DAY') {
+          statusValues.push('SAP_DAY');
+        } else if (s === 'DA_DAY' || s === 'DA_THUE_HET' || s === 'DAY') {
+          statusValues.push('DA_DAY', 'DA_THUE_HET', 'DAY');
+        } else {
+          statusValues.push(s);
+        }
+      });
+      // Loại bỏ các giá trị trùng lặp
+      statusValues = [...new Set(statusValues)];
+      query = query.in('trang_thai', statusValues);
     }
 
     // 7. Giới tính (Lọc chính xác: Nam chỉ Nam, Nữ chỉ Nữ)

@@ -206,17 +206,17 @@ const handleSliderChange = (e, type) => {
                <div>
                   <h3 className="text-[12px] font-extrabold text-[#64748B] uppercase tracking-wider mb-3">LOẠI HÌNH</h3>
                   <div className="space-y-3">
-                     <label className="flex items-center gap-3 cursor-pointer group">
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => setFilters({...filters, type: filters.type === 'PHONG_RIENG' ? '' : 'PHONG_RIENG'})}>
                         <div className={`w-5 h-5 rounded-full border-2 border-[#0052CC] bg-white flex items-center justify-center p-0.5 ${filters.type === 'PHONG_RIENG' ? '' : 'border-[#CBD5E1]'}`}>
                            <div className={`w-full h-full bg-[#0052CC] rounded-full ${filters.type === 'PHONG_RIENG' ? '' : 'bg-transparent'}`}></div>
                         </div>
-                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0052CC] transition-colors" onClick={() => setFilters({...filters, type: filters.type === 'PHONG_RIENG' ? '' : 'PHONG_RIENG'})}>Phòng trọn gói</span>
+                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0052CC] transition-colors">Phòng trọn gói / Studio</span>
                      </label>
-                     <label className="flex items-center gap-3 cursor-pointer group">
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => setFilters({...filters, type: filters.type === 'PHONG_CHUNG' ? '' : 'PHONG_CHUNG'})}>
                         <div className={`w-5 h-5 rounded-full border-2 border-[#0052CC] bg-white flex items-center justify-center p-0.5 ${filters.type === 'PHONG_CHUNG' ? '' : 'border-[#CBD5E1]'}`}>
                            <div className={`w-full h-full bg-[#0052CC] rounded-full ${filters.type === 'PHONG_CHUNG' ? '' : 'bg-transparent'}`}></div>
                         </div>
-                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0052CC] transition-colors" onClick={() => setFilters({...filters, type: filters.type === 'PHONG_CHUNG' ? '' : 'PHONG_CHUNG'})}>Giường đơn (Dorm)</span>
+                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0052CC] transition-colors">Giường đơn (Dorm)</span>
                      </label>
                   </div>
                </div>
@@ -338,27 +338,40 @@ const handleSliderChange = (e, type) => {
                <div>
                   <h3 className="text-[12px] font-extrabold text-[#64748B] uppercase tracking-wider mb-3">TRẠNG THÁI</h3>
                   <div className="space-y-3">
-                     <label className="flex items-center gap-3 cursor-pointer group">
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
+                        const newStatus = filters.status.includes('CON_TRONG') 
+                           ? filters.status.filter(s => s !== 'CON_TRONG')
+                           : [...filters.status, 'CON_TRONG'];
+                        setFilters({...filters, status: newStatus});
+                     }}>
                         <div className={`w-5 h-5 rounded-full border-2 border-[#0F172A] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('CON_TRONG') ? '' : 'border-[#CBD5E1]'}`}>
                            <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('CON_TRONG') ? '' : 'bg-transparent'}`}></div>
                         </div>
-                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0F172A] transition-colors" onClick={() => {
-                           const newStatus = filters.status.includes('CON_TRONG') 
-                              ? filters.status.filter(s => s !== 'CON_TRONG')
-                              : [...filters.status, 'CON_TRONG'];
-                           setFilters({...filters, status: newStatus});
-                        }}>Còn trống</span>
+                        <span className="text-[14px] font-medium text-[#0F172A] transition-colors">Còn trống</span>
                      </label>
-                     <label className="flex items-center gap-3 cursor-pointer group">
-                        <div className={`w-5 h-5 rounded-full border-2 border-[#CBD5E1] bg-white flex items-center justify-center ${filters.status.includes('SAP_DAY') ? 'border-[#0F172A]' : ''}`}>
+
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
+                        const newStatus = filters.status.includes('SAP_DAY') 
+                           ? filters.status.filter(s => s !== 'SAP_DAY')
+                           : [...filters.status, 'SAP_DAY'];
+                        setFilters({...filters, status: newStatus});
+                     }}>
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#CBD5E1] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('SAP_DAY') ? 'border-[#0F172A]' : ''}`}>
                            <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('SAP_DAY') ? '' : 'bg-transparent'}`}></div>
                         </div>
-                        <span className="text-[14px] font-medium text-[#475569] group-hover:text-[#0F172A] transition-colors" onClick={() => {
-                           const newStatus = filters.status.includes('SAP_DAY') 
-                              ? filters.status.filter(s => s !== 'SAP_DAY')
-                              : [...filters.status, 'SAP_DAY'];
-                           setFilters({...filters, status: newStatus});
-                        }}>Sắp đầy</span>
+                        <span className="text-[14px] font-medium text-[#475569] group-hover:text-[#0F172A] transition-colors">Sắp đầy</span>
+                     </label>
+
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
+                        const newStatus = filters.status.includes('DA_DAY') 
+                           ? filters.status.filter(s => s !== 'DA_DAY')
+                           : [...filters.status, 'DA_DAY'];
+                        setFilters({...filters, status: newStatus});
+                     }}>
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#CBD5E1] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('DA_DAY') ? 'border-[#0F172A]' : ''}`}>
+                           <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('DA_DAY') ? '' : 'bg-transparent'}`}></div>
+                        </div>
+                        <span className="text-[14px] font-medium text-[#475569] group-hover:text-[#0F172A] transition-colors">Đã đầy</span>
                      </label>
                   </div>
                </div>

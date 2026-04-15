@@ -39,7 +39,7 @@ function HomePage() {
       if (filterParams.minPrice) params.minPrice = filterParams.minPrice;
       if (filterParams.gender && filterParams.gender !== 'Nam & Nữ') params.gender = filterParams.gender;
       if (filterParams.status) {
-        params.status = filterParams.status === 'CON_TRONG' ? ['CON_TRONG'] : ['DA_THUE_HET', 'DAY'];
+        params.status = [filterParams.status];
       }
 
       const res = await RoomService.getRooms(params);
@@ -181,7 +181,8 @@ function HomePage() {
             <div className="relative">
               <select value={homeFilters.status} onChange={(e) => setHomeFilters({...homeFilters, status: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
                 <option value="">Tất cả</option>
-                <option value="CON_TRONG">Còn chỗ</option>
+                <option value="CON_TRONG">Còn trống</option>
+                <option value="SAP_DAY">Sắp đầy</option>
                 <option value="DA_DAY">Đã đầy</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-slate-400">
