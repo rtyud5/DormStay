@@ -82,10 +82,10 @@ const RoomModel = {
     const limit = parseInt(filters.limit) || 10;
     const offset = (page - 1) * limit;
     
-    // 1. Khởi tạo query với !inner cho các bảng cần lọc bắt buộc
+    // 1. Khởi tạo query chuẩn (sử dụng join thường để tránh bị lọc mất phòng nếu thiếu thông tin tầng/tòa từ file cũ)
     let selectString = `
         *,
-        tang!inner ( ten_tang ),
+        tang ( ten_tang ),
         toa ( ten ),
         hinh_anh_phong ( duong_dan_cong_khai, la_anh_bia ),
         tai_san_phong ( ten_tai_san ),
@@ -99,7 +99,7 @@ const RoomModel = {
       query = query.ilike('ma_phong_hien_thi', `%${filters.search}%`);
     }
 
-    // 3. Lọc Tầng (Đã có !inner ở trên nên eq sẽ hoạt động như filter cứng)
+    // 3. Lọc Tầng (Dùng eq như bản cũ, sẽ lọc trên kết quả trả về)
     if (filters.floor && filters.floor !== 'Tất cả các tầng') {
       query = query.eq('tang.ten_tang', filters.floor);
     }
@@ -117,10 +117,9 @@ const RoomModel = {
       query = query.lte('gia_thang', parseFloat(filters.maxPrice));
     }
 
-    // 6. Trạng thái (Lưu ý: Map lại giá trị từ Frontend sang DB)
+    // 6. Trạng thái (Dùng logic từ bản cũ: không map sang 'TRONG' mà giữ nguyên 'CON_TRONG')
     if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
-      const dbStatus = filters.status.map(s => s === 'CON_TRONG' ? 'TRONG' : s);
-      query = query.in('trang_thai', dbStatus);
+      query = query.in('trang_thai', filters.status);
     }
 
     // 7. Giới tính (Sửa đúng tên cột gioi_tinh)
