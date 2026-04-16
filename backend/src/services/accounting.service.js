@@ -1,4 +1,4 @@
-const AccountingModel = require("../models/accounting.model");
+const AccountingModel = require("../models/accounting");
 
 const AccountingService = {
   /**
