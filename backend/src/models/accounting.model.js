@@ -110,6 +110,47 @@ function normalizeReconciliationStatus(rawStatus) {
   return "PENDING";
 }
 
+function mapInvoiceStatusToDb(status, paidAmount, totalAmount) {
+  const normalizedStatus = String(status || "").toUpperCase();
+
+  if (normalizedStatus === "CANCELLED") return "DA_HUY";
+  if (normalizedStatus === "OVERDUE") return "QUA_HAN";
+  if (normalizedStatus === "COMPLETED") return "DA_THANH_TOAN";
+  if (normalizedStatus === "PENDING") return "CHO_THANH_TOAN";
+
+  if (toNumber(paidAmount) >= toNumber(totalAmount) && toNumber(totalAmount) > 0) {
+    return "DA_THANH_TOAN";
+  }
+
+  return "CHO_THANH_TOAN";
+}
+
+function mapPaymentStatusToDb(status) {
+  const normalizedStatus = String(status || "").toUpperCase();
+
+  if (normalizedStatus === "CONFIRMED") return "DA_XAC_NHAN";
+  if (normalizedStatus === "FAILED") return "THAT_BAI";
+  if (normalizedStatus === "CANCELLED") return "DA_HUY";
+  return "CHO_XAC_NHAN";
+}
+
+function mapRefundStatusToDb(status) {
+  const normalizedStatus = String(status || "").toUpperCase();
+
+  if (normalizedStatus === "COMPLETED") return "DA_HOAN";
+  if (normalizedStatus === "PROCESSING") return "DANG_XU_LY";
+  if (normalizedStatus === "FAILED") return "THAT_BAI";
+  return "CHO_HOAN";
+}
+
+function mapReconciliationStatusToDb(status) {
+  const normalizedStatus = String(status || "").toUpperCase();
+
+  if (normalizedStatus === "MATCHED") return "DA_CHOT";
+  if (normalizedStatus === "MISMATCH") return "LECH_SO_LIEU";
+  return "CHO_CHOT";
+}
+
 function buildPagination(page = 1, limit = 20) {
   const currentPage = Math.max(Number(page) || 1, 1);
   const currentLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
@@ -374,6 +415,65 @@ function mapReconciliationRow(reconciliation, context) {
     lineItems,
     contract: mappedContract,
     raw: reconciliation,
+  };
+}
+
+function buildChargePayloads(contractId, invoiceId, lineItems, phase) {
+  return lineItems.map((item) => ({
+    ma_hop_dong: contractId,
+    giai_doan_phat_sinh: phase,
+    danh_muc: item.category || "KHAC",
+    mo_ta: item.description || item.category || "Khoản thu hợp đồng",
+    so_tien:
+      item.amount !== undefined
+        ? toNumber(item.amount)
+        : roundMoney(toNumber(item.quantity || 1) * toNumber(item.unitPrice || 0)),
+    trang_thai_lap_hoa_don: "DA_LAP",
+    ma_hoa_don_da_lap: invoiceId,
+  }));
+}
+
+function buildInvoiceItemPayloads(invoiceId, lineItems, insertedCharges = []) {
+  return lineItems.map((item, index) => ({
+    ma_hoa_don: invoiceId,
+    ma_khoan_thu: insertedCharges?.[index]?.ma_khoan_thu || null,
+    danh_muc: item.category || "KHAC",
+    mo_ta: item.description || item.category || "Khoản thu hợp đồng",
+    so_luong: toNumber(item.quantity || 1),
+    don_gia: item.unitPrice !== undefined ? toNumber(item.unitPrice) : toNumber(item.amount || 0),
+    thanh_tien:
+      item.amount !== undefined
+        ? toNumber(item.amount)
+        : roundMoney(toNumber(item.quantity || 1) * toNumber(item.unitPrice || 0)),
+  }));
+}
+
+function mapTransactionRow(payment, invoice) {
+  const systemAmount = toNumber(invoice?.amount);
+  const actualAmount = toNumber(payment.amount);
+  let matchStatus = "MATCHED";
+
+  if (payment.status === "PENDING") {
+    matchStatus = "PENDING";
+  } else if (systemAmount !== actualAmount) {
+    matchStatus = "MISMATCH";
+  }
+
+  return {
+    id: payment.id,
+    refNumber: payment.transactionCode || `PAY-${payment.id}`,
+    invoiceId: payment.invoiceId,
+    contractId: payment.contractId,
+    amount: actualAmount,
+    status: payment.status,
+    matchStatus,
+    variance: roundMoney(actualAmount - systemAmount),
+    issueDate: invoice?.issueDate || null,
+    transactionDate: payment.paidAt,
+    systemAmount,
+    actualAmount,
+    notes: matchStatus === "MISMATCH" ? "Số tiền thanh toán lệch với số tiền hệ thống" : null,
+    invoice,
   };
 }
 
@@ -770,18 +870,12 @@ const AccountingModel = {
 
     if (invoiceError) throw invoiceError;
 
-    const chargePayloads = lineItems.map((item) => ({
-      ma_hop_dong: payload.contractId,
-      giai_doan_phat_sinh: mode === "EXTRA" ? "PHAT_SINH" : "DAU_KY",
-      danh_muc: item.category || "KHAC",
-      mo_ta: item.description || item.category || "Khoản thu hợp đồng",
-      so_tien:
-        item.amount !== undefined
-          ? toNumber(item.amount)
-          : roundMoney(toNumber(item.quantity || 1) * toNumber(item.unitPrice || 0)),
-      trang_thai_lap_hoa_don: "DA_LAP",
-      ma_hoa_don_da_lap: insertedInvoice.ma_hoa_don,
-    }));
+    const chargePayloads = buildChargePayloads(
+      payload.contractId,
+      insertedInvoice.ma_hoa_don,
+      lineItems,
+      mode === "EXTRA" ? "PHAT_SINH" : "DAU_KY",
+    );
 
     const { data: insertedCharges, error: chargeError } = await supabase
       .from(TABLES.contractCharges)
@@ -790,24 +884,91 @@ const AccountingModel = {
 
     if (chargeError) throw chargeError;
 
-    const invoiceItemPayloads = lineItems.map((item, index) => ({
-      ma_hoa_don: insertedInvoice.ma_hoa_don,
-      ma_khoan_thu: insertedCharges?.[index]?.ma_khoan_thu || null,
-      danh_muc: item.category || "KHAC",
-      mo_ta: item.description || item.category || "Khoản thu hợp đồng",
-      so_luong: toNumber(item.quantity || 1),
-      don_gia: item.unitPrice !== undefined ? toNumber(item.unitPrice) : toNumber(item.amount || 0),
-      thanh_tien:
-        item.amount !== undefined
-          ? toNumber(item.amount)
-          : roundMoney(toNumber(item.quantity || 1) * toNumber(item.unitPrice || 0)),
-    }));
+    const invoiceItemPayloads = buildInvoiceItemPayloads(insertedInvoice.ma_hoa_don, lineItems, insertedCharges);
 
     const { error: itemError } = await supabase.from(TABLES.invoiceItems).insert(invoiceItemPayloads);
 
     if (itemError) throw itemError;
 
     return this.getInvoiceDetail(insertedInvoice.ma_hoa_don);
+  },
+
+  async updateInvoice(invoiceId, payload = {}) {
+    ensureClient();
+
+    const invoice = await fetchOne(TABLES.invoices, "ma_hoa_don", invoiceId);
+    if (!invoice) {
+      throw new AppError("Invoice not found", 404);
+    }
+
+    const nextLineItems = Array.isArray(payload.lineItems) ? payload.lineItems : null;
+    const nextTotalAmount = nextLineItems
+      ? roundMoney(
+          nextLineItems.reduce((sum, item) => {
+            const amount =
+              item.amount !== undefined
+                ? toNumber(item.amount)
+                : toNumber(item.quantity || 1) * toNumber(item.unitPrice || 0);
+
+            return sum + amount;
+          }, 0),
+        )
+      : payload.amount !== undefined
+        ? roundMoney(payload.amount)
+        : toNumber(invoice.tong_so_tien);
+    const nextPaidAmount = Math.min(
+      Math.max(
+        payload.paidAmount !== undefined ? toNumber(payload.paidAmount) : toNumber(invoice.so_tien_da_thanh_toan),
+        0,
+      ),
+      nextTotalAmount,
+    );
+
+    const updatePayload = {
+      loai_hoa_don: payload.invoiceType || invoice.loai_hoa_don,
+      trang_thai: mapInvoiceStatusToDb(payload.status, nextPaidAmount, nextTotalAmount),
+      tong_so_tien: nextTotalAmount,
+      so_tien_da_thanh_toan: nextPaidAmount,
+      ngay_lap: payload.issueDate || invoice.ngay_lap,
+      ngay_den_han: payload.dueDate !== undefined ? payload.dueDate : invoice.ngay_den_han,
+      ma_tai_khoan_ngan_hang:
+        payload.bankAccountCode !== undefined ? payload.bankAccountCode : invoice.ma_tai_khoan_ngan_hang,
+      ma_tham_chieu_qr: payload.qrReference !== undefined ? payload.qrReference : invoice.ma_tham_chieu_qr,
+    };
+
+    const { error: invoiceError } = await supabase
+      .from(TABLES.invoices)
+      .update(updatePayload)
+      .eq("ma_hoa_don", invoiceId);
+    if (invoiceError) throw invoiceError;
+
+    if (nextLineItems) {
+      await supabase.from(TABLES.invoiceItems).delete().eq("ma_hoa_don", invoiceId);
+      await supabase.from(TABLES.contractCharges).delete().eq("ma_hoa_don_da_lap", invoiceId);
+
+      if (nextLineItems.length) {
+        const chargePayloads = buildChargePayloads(
+          invoice.ma_hop_dong,
+          invoiceId,
+          nextLineItems,
+          normalizeInvoiceType(updatePayload.loai_hoa_don) === "EXTRA" ? "PHAT_SINH" : "DAU_KY",
+        );
+
+        const { data: insertedCharges, error: chargeError } = await supabase
+          .from(TABLES.contractCharges)
+          .insert(chargePayloads)
+          .select("*");
+
+        if (chargeError) throw chargeError;
+
+        const invoiceItemPayloads = buildInvoiceItemPayloads(invoiceId, nextLineItems, insertedCharges);
+        const { error: itemError } = await supabase.from(TABLES.invoiceItems).insert(invoiceItemPayloads);
+
+        if (itemError) throw itemError;
+      }
+    }
+
+    return this.getInvoiceDetail(invoiceId);
   },
 
   async listPayments(filters = {}) {
@@ -903,6 +1064,35 @@ const AccountingModel = {
     };
   },
 
+  async getPaymentDetail(paymentId) {
+    const payment = await fetchOne(TABLES.payments, "ma_thanh_toan", paymentId);
+    if (!payment) {
+      throw new AppError("Payment not found", 404);
+    }
+
+    const invoices = payment.ma_hoa_don ? await fetchByIds(TABLES.invoices, "ma_hoa_don", [payment.ma_hoa_don]) : [];
+    const invoice = invoices[0] || null;
+    const invoiceContext = await loadInvoiceContext(invoices, [], [payment]);
+    const mappedInvoice = invoice ? mapInvoiceRow(invoice, { ...invoiceContext, invoiceItemGroup: {} }) : null;
+
+    return {
+      id: payment.ma_thanh_toan,
+      invoiceId: payment.ma_hoa_don,
+      contractId: mappedInvoice?.contractId || null,
+      customerName: mappedInvoice?.customerName || "Khách thuê chưa cập nhật",
+      amount: toNumber(payment.so_tien),
+      method: payment.phuong_thuc,
+      status: normalizePaymentStatus(payment),
+      rawStatus: payment.trang_thai,
+      transactionCode: payment.ma_giao_dich,
+      payerName: payment.ten_nguoi_thanh_toan,
+      paidAt: payment.thoi_gian_thanh_toan,
+      confirmedAt: payment.thoi_gian_xac_nhan,
+      invoice: mappedInvoice,
+      raw: payment,
+    };
+  },
+
   async confirmPayment(paymentId, actorProfileId) {
     ensureClient();
 
@@ -968,38 +1158,68 @@ const AccountingModel = {
 
   async listTransactions(filters = {}) {
     const paymentResult = await this.listPayments(filters);
-    const items = paymentResult.items.map((payment) => {
-      const systemAmount = toNumber(payment.invoice?.amount);
-      const actualAmount = toNumber(payment.amount);
-      let matchStatus = "MATCHED";
-
-      if (payment.status === "PENDING") {
-        matchStatus = "PENDING";
-      } else if (systemAmount !== actualAmount) {
-        matchStatus = "MISMATCH";
-      }
-
-      return {
-        id: payment.id,
-        refNumber: payment.transactionCode || `PAY-${payment.id}`,
-        invoiceId: payment.invoiceId,
-        contractId: payment.contractId,
-        amount: actualAmount,
-        status: payment.status,
-        matchStatus,
-        variance: roundMoney(actualAmount - systemAmount),
-        issueDate: payment.invoice?.issueDate || null,
-        transactionDate: payment.paidAt,
-        systemAmount,
-        actualAmount,
-        notes: matchStatus === "MISMATCH" ? "Số tiền thanh toán lệch với số tiền hệ thống" : null,
-      };
-    });
+    const items = paymentResult.items.map((payment) => mapTransactionRow(payment, payment.invoice));
 
     return {
       ...paymentResult,
       items,
     };
+  },
+
+  async getTransactionDetail(transactionId) {
+    const payment = await this.getPaymentDetail(transactionId);
+    return mapTransactionRow(payment, payment.invoice);
+  },
+
+  async resolveTransaction(transactionId, payload = {}) {
+    ensureClient();
+
+    const payment = await fetchOne(TABLES.payments, "ma_thanh_toan", transactionId);
+    if (!payment) {
+      throw new AppError("Transaction not found", 404);
+    }
+
+    const currentStatus = normalizePaymentStatus(payment);
+    const nextStatus = String(payload.status || currentStatus).toUpperCase();
+
+    if (currentStatus === "CONFIRMED" && nextStatus !== "CONFIRMED") {
+      throw new AppError("Confirmed transaction cannot be changed to another status", 400);
+    }
+
+    const baseUpdatePayload = {
+      phuong_thuc: payload.method !== undefined ? payload.method : payment.phuong_thuc,
+      so_tien: payload.amount !== undefined ? toNumber(payload.amount) : toNumber(payment.so_tien),
+      ma_giao_dich: payload.transactionCode !== undefined ? payload.transactionCode : payment.ma_giao_dich,
+      ten_nguoi_thanh_toan: payload.payerName !== undefined ? payload.payerName : payment.ten_nguoi_thanh_toan,
+      thoi_gian_thanh_toan: payload.paidAt !== undefined ? payload.paidAt : payment.thoi_gian_thanh_toan,
+    };
+
+    if (nextStatus === "CONFIRMED" && currentStatus !== "CONFIRMED") {
+      const { error: preUpdateError } = await supabase
+        .from(TABLES.payments)
+        .update(baseUpdatePayload)
+        .eq("ma_thanh_toan", transactionId);
+
+      if (preUpdateError) throw preUpdateError;
+
+      return this.getTransactionDetail(transactionId).then(async () => {
+        await this.confirmPayment(transactionId, null);
+        return this.getTransactionDetail(transactionId);
+      });
+    }
+
+    const updatePayload = {
+      ...baseUpdatePayload,
+      trang_thai: mapPaymentStatusToDb(nextStatus),
+    };
+
+    const { error: paymentError } = await supabase
+      .from(TABLES.payments)
+      .update(updatePayload)
+      .eq("ma_thanh_toan", transactionId);
+    if (paymentError) throw paymentError;
+
+    return this.getTransactionDetail(transactionId);
   },
 
   async listReconciliations(filters = {}) {
@@ -1106,6 +1326,54 @@ const AccountingModel = {
     }
 
     return this.getReconciliationDetail(insertedReconciliation.ma_doi_soat);
+  },
+
+  async updateReconciliation(reconciliationId, payload = {}) {
+    ensureClient();
+
+    const reconciliation = await fetchOne(TABLES.reconciliations, "ma_doi_soat", reconciliationId);
+    if (!reconciliation) {
+      throw new AppError("Reconciliation not found", 404);
+    }
+
+    const updatePayload = {
+      trang_thai:
+        payload.status !== undefined ? mapReconciliationStatusToDb(payload.status) : reconciliation.trang_thai,
+      so_tien_hoan_lai:
+        payload.refundAmount !== undefined ? toNumber(payload.refundAmount) : reconciliation.so_tien_hoan_lai,
+      so_tien_can_thanh_toan_them:
+        payload.additionalPaymentAmount !== undefined
+          ? toNumber(payload.additionalPaymentAmount)
+          : reconciliation.so_tien_can_thanh_toan_them,
+    };
+
+    const { error: reconciliationError } = await supabase
+      .from(TABLES.reconciliations)
+      .update(updatePayload)
+      .eq("ma_doi_soat", reconciliationId);
+
+    if (reconciliationError) throw reconciliationError;
+
+    if (Array.isArray(payload.lineItems)) {
+      await supabase.from(TABLES.reconciliationItems).delete().eq("ma_doi_soat", reconciliationId);
+
+      if (payload.lineItems.length) {
+        const detailPayloads = payload.lineItems.map((item) => ({
+          ma_doi_soat: reconciliationId,
+          danh_muc: item.category || "KHAC",
+          huong_giao_dich: String(item.direction || "THU").toUpperCase(),
+          loai_nguon: item.sourceType || null,
+          ma_nguon: item.sourceId || null,
+          so_tien: toNumber(item.amount),
+          mo_ta: item.description || null,
+        }));
+
+        const { error: detailError } = await supabase.from(TABLES.reconciliationItems).insert(detailPayloads);
+        if (detailError) throw detailError;
+      }
+    }
+
+    return this.getReconciliationDetail(reconciliationId);
   },
 
   async listRefunds(filters = {}) {
@@ -1245,6 +1513,31 @@ const AccountingModel = {
     if (error) throw error;
 
     return this.getRefundDetail(insertedRefund.ma_phieu_hoan_coc);
+  },
+
+  async updateRefund(refundId, payload = {}) {
+    ensureClient();
+
+    const refund = await fetchOne(TABLES.refunds, "ma_phieu_hoan_coc", refundId);
+    if (!refund) {
+      throw new AppError("Refund voucher not found", 404);
+    }
+
+    const updatePayload = {
+      so_tien_hoan: payload.refundAmount !== undefined ? toNumber(payload.refundAmount) : refund.so_tien_hoan,
+      ten_nguoi_nhan:
+        payload.beneficiaryName !== undefined
+          ? payload.beneficiaryName
+          : payload.receiverName !== undefined
+            ? payload.receiverName
+            : refund.ten_nguoi_nhan,
+      trang_thai: payload.status !== undefined ? mapRefundStatusToDb(payload.status) : refund.trang_thai,
+    };
+
+    const { error } = await supabase.from(TABLES.refunds).update(updatePayload).eq("ma_phieu_hoan_coc", refundId);
+    if (error) throw error;
+
+    return this.getRefundDetail(refundId);
   },
 };
 

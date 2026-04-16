@@ -53,6 +53,10 @@ const AccountingService = {
     return AccountingModel.getInvoiceDetail(invoiceId);
   },
 
+  async updateInvoice(invoiceId, payload) {
+    return AccountingModel.updateInvoice(invoiceId, payload);
+  },
+
   /**
    * Feature: Tạo phiếu thu thường.
    * Dùng cho kế toán phát hành hóa đơn có line item trên bảng hóa đơn và chi tiết hóa đơn hiện tại.
@@ -93,6 +97,14 @@ const AccountingService = {
     return AccountingModel.listTransactions(filters);
   },
 
+  async getTransactionDetail(transactionId) {
+    return AccountingModel.getTransactionDetail(transactionId);
+  },
+
+  async resolveTransaction(transactionId, payload) {
+    return AccountingModel.resolveTransaction(transactionId, payload);
+  },
+
   /**
    * Feature: Đối soát tài chính cuối hợp đồng.
    * Tạo bảng đối soát có thể dùng làm chứng từ nghiệp vụ trước khi sinh phiếu hoàn cọc hoặc phiếu thanh toán phát sinh.
@@ -109,6 +121,10 @@ const AccountingService = {
     return AccountingModel.createReconciliation(payload);
   },
 
+  async updateReconciliation(reconciliationId, payload) {
+    return AccountingModel.updateReconciliation(reconciliationId, payload);
+  },
+
   /**
    * Feature: Phiếu hoàn cọc.
    * Phiếu hoàn cọc chỉ được tạo từ dữ liệu đối soát đã có, giữ đúng vai trò chứng từ sau bước đối soát.
@@ -123,6 +139,10 @@ const AccountingService = {
 
   async createRefund(payload) {
     return AccountingModel.createRefund(payload);
+  },
+
+  async updateRefund(refundId, payload) {
+    return AccountingModel.updateRefund(refundId, payload);
   },
 };
 

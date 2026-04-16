@@ -42,6 +42,11 @@ const createInvoice = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Create accounting invoice successful", 201);
 });
 
+const updateInvoice = asyncHandler(async (req, res) => {
+  const result = await AccountingService.updateInvoice(req.params.id, req.body);
+  return sendSuccess(res, result, "Update accounting invoice successful");
+});
+
 const createExtraInvoice = asyncHandler(async (req, res) => {
   const result = await AccountingService.createExtraInvoice(req.body);
   return sendSuccess(res, result, "Create extra invoice successful", 201);
@@ -67,6 +72,16 @@ const getTransactions = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch accounting transactions successful");
 });
 
+const getTransactionDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getTransactionDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch accounting transaction detail successful");
+});
+
+const resolveTransaction = asyncHandler(async (req, res) => {
+  const result = await AccountingService.resolveTransaction(req.params.id, req.body);
+  return sendSuccess(res, result, "Resolve accounting transaction successful");
+});
+
 const getReconciliations = asyncHandler(async (req, res) => {
   const result = await AccountingService.getReconciliations(req.query);
   return sendSuccess(res, result, "Fetch reconciliations successful");
@@ -80,6 +95,11 @@ const getReconciliationDetail = asyncHandler(async (req, res) => {
 const createReconciliation = asyncHandler(async (req, res) => {
   const result = await AccountingService.createReconciliation(req.body);
   return sendSuccess(res, result, "Create reconciliation successful", 201);
+});
+
+const updateReconciliation = asyncHandler(async (req, res) => {
+  const result = await AccountingService.updateReconciliation(req.params.id, req.body);
+  return sendSuccess(res, result, "Update reconciliation successful");
 });
 
 const getRefunds = asyncHandler(async (req, res) => {
@@ -97,6 +117,11 @@ const createRefund = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Create refund voucher successful", 201);
 });
 
+const updateRefund = asyncHandler(async (req, res) => {
+  const result = await AccountingService.updateRefund(req.params.id, req.body);
+  return sendSuccess(res, result, "Update refund voucher successful");
+});
+
 module.exports = {
   getDashboard,
   getContracts,
@@ -106,15 +131,20 @@ module.exports = {
   getInvoices,
   getInvoiceDetail,
   createInvoice,
+  updateInvoice,
   createExtraInvoice,
   getPayments,
   recordPayment,
   confirmPayment,
   getTransactions,
+  getTransactionDetail,
+  resolveTransaction,
   getReconciliations,
   getReconciliationDetail,
   createReconciliation,
+  updateReconciliation,
   getRefunds,
   getRefundDetail,
   createRefund,
+  updateRefund,
 };

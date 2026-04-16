@@ -65,6 +65,25 @@ const mapContractUiFields = (contract) => ({
   avatarInitials: contract.avatarInitials || getInitials(contract.customerName),
 });
 
+const mapRefundUiFields = (refund) => ({
+  ...refund,
+  avatarInitials: refund.avatarInitials || getInitials(refund.customerName),
+  statusText: refund.statusText || refund.status,
+});
+
+const mapTransactionUiFields = (transaction) => ({
+  ...transaction,
+  statusText: transaction.statusText || transaction.status,
+  matchStatusText: transaction.matchStatusText || transaction.matchStatus,
+});
+
+const mapReconciliationUiFields = (reconciliation) => ({
+  ...reconciliation,
+  avatarInitials: reconciliation.avatarInitials || getInitials(reconciliation.customerName),
+  statusText: reconciliation.statusText || reconciliation.status,
+  lineItems: Array.isArray(reconciliation.lineItems) ? reconciliation.lineItems : [],
+});
+
 // ==================== CONTRACTS ====================
 
 /**
@@ -271,6 +290,7 @@ export const createExtraInvoice = async (invoiceData) => {
 
 /**
  * Update invoice
+ * Chức năng: cập nhật nhanh thông tin phiếu thu, trạng thái và line item của hóa đơn kế toán.
  */
 export const updateInvoice = async (invoiceId, updateData) => {
   if (USE_MOCK_DATA) {
@@ -294,6 +314,7 @@ export const updateInvoice = async (invoiceId, updateData) => {
 
 /**
  * Get payments with filters
+ * Chức năng: lấy danh sách các lần thanh toán đã ghi nhận để kế toán đối chiếu với hóa đơn.
  */
 export const getPayments = async (filters = {}) => {
   if (USE_MOCK_DATA) {
@@ -322,6 +343,7 @@ export const getPayments = async (filters = {}) => {
 
 /**
  * Record payment
+ * Chức năng: ghi nhận một lần thanh toán vào bảng thanh_toan trước khi kế toán xác nhận.
  */
 export const recordPayment = async (paymentData) => {
   if (USE_MOCK_DATA) {
@@ -353,6 +375,7 @@ export const recordPayment = async (paymentData) => {
 
 /**
  * Confirm payment
+ * Chức năng: xác nhận thanh toán để cộng tiền vào hóa đơn và sinh biên lai nội bộ.
  */
 export const confirmPayment = async (paymentId) => {
   if (USE_MOCK_DATA) {
@@ -410,6 +433,10 @@ export const getRefunds = async (filters = {}) => {
   return mapListResponse(response);
 };
 
+/**
+ * Get refund detail
+ * Chức năng: lấy chi tiết phiếu hoàn cọc để kế toán kiểm tra người nhận và số tiền hoàn.
+ */
 export const getRefundDetail = async (refundId) => {
   if (USE_MOCK_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -421,11 +448,17 @@ export const getRefundDetail = async (refundId) => {
   }
 
   const response = await api.get(`/accounting/refunds/${refundId}`);
-  return mapDetailResponse(response);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapRefundUiFields(normalized.data) : null,
+  };
 };
 
 /**
  * Create refund record
+ * Chức năng: tạo phiếu hoàn cọc từ kết quả đối soát của hợp đồng.
  */
 export const createRefund = async (refundData) => {
   if (USE_MOCK_DATA) {
@@ -449,7 +482,37 @@ export const createRefund = async (refundData) => {
 };
 
 /**
+ * Update refund
+ * Chức năng: cập nhật trạng thái hoặc thông tin thụ hưởng của phiếu hoàn cọc.
+ */
+export const updateRefund = async (refundId, refundData = {}) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const refund = mockRefunds.find((item) => item.id === refundId);
+
+    if (refund) {
+      Object.assign(refund, refundData);
+    }
+
+    return {
+      success: !!refund,
+      data: refund || null,
+      message: "Cập nhật phiếu hoàn cọc thành công",
+    };
+  }
+
+  const response = await api.put(`/accounting/refunds/${refundId}`, refundData);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapRefundUiFields(normalized.data) : null,
+  };
+};
+
+/**
  * Process refund
+ * Chức năng: wrapper nhanh để đổi trạng thái xử lý của phiếu hoàn cọc.
  */
 export const processRefund = async (refundId, status = "PROCESSING") => {
   if (USE_MOCK_DATA) {
@@ -469,14 +532,14 @@ export const processRefund = async (refundId, status = "PROCESSING") => {
     };
   }
 
-  const response = await api.put(`/accounting/refunds/${refundId}`, { status });
-  return mapDetailResponse(response);
+  return updateRefund(refundId, { status });
 };
 
 // ==================== TRANSACTIONS ====================
 
 /**
  * Get transaction log with filters
+ * Chức năng: lấy danh sách giao dịch để kế toán theo dõi khớp lệnh và các giao dịch lệch.
  */
 export const getTransactions = async (filters = {}) => {
   if (USE_MOCK_DATA) {
@@ -517,6 +580,7 @@ export const getTransactions = async (filters = {}) => {
 
   return {
     ...normalized,
+    data: normalized.data.map(mapTransactionUiFields),
     stats: {
       success: normalized.data.filter((item) => item.matchStatus === "MATCHED").length,
       failed: normalized.data.filter((item) => item.status === "FAILED").length,
@@ -527,7 +591,32 @@ export const getTransactions = async (filters = {}) => {
 };
 
 /**
+ * Get transaction detail
+ * Chức năng: lấy chi tiết một giao dịch để hiển thị thông tin đối chiếu thủ công.
+ */
+export const getTransactionDetail = async (transactionId) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const transaction = mockTransactionLog.find((item) => item.id === transactionId);
+
+    return {
+      success: !!transaction,
+      data: transaction ? mapTransactionUiFields(transaction) : null,
+    };
+  }
+
+  const response = await api.get(`/accounting/transactions/${transactionId}`);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapTransactionUiFields(normalized.data) : null,
+  };
+};
+
+/**
  * Resolve transaction mismatch
+ * Chức năng: xử lý thủ công giao dịch bị lệch hoặc đang chờ xác nhận ở màn tra soát.
  */
 export const resolveTransaction = async (transactionId, resolution) => {
   if (USE_MOCK_DATA) {
@@ -547,13 +636,19 @@ export const resolveTransaction = async (transactionId, resolution) => {
   }
 
   const response = await api.post(`/accounting/transactions/${transactionId}/resolve`, resolution);
-  return mapDetailResponse(response);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapTransactionUiFields(normalized.data) : null,
+  };
 };
 
 // ==================== RECONCILIATION ====================
 
 /**
  * Get reconciliation records
+ * Chức năng: lấy danh sách bảng đối soát tài chính để kế toán mở và kiểm tra từng hồ sơ.
  */
 export const getReconciliations = async (filters = {}) => {
   if (USE_MOCK_DATA) {
@@ -573,11 +668,17 @@ export const getReconciliations = async (filters = {}) => {
   }
 
   const response = await api.get("/accounting/reconciliation", { params: filters });
-  return mapListResponse(response);
+  const normalized = mapListResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data.map(mapReconciliationUiFields),
+  };
 };
 
 /**
  * Get reconciliation for a specific period
+ * Chức năng: lấy chi tiết bảng đối soát để kiểm tra line item khấu trừ và số tiền hoàn/thu thêm.
  */
 export const getReconciliationDetail = async (reconciliationId) => {
   if (USE_MOCK_DATA) {
@@ -624,11 +725,17 @@ export const getReconciliationDetail = async (reconciliationId) => {
   }
 
   const response = await api.get(`/accounting/reconciliation/${reconciliationId}`);
-  return mapDetailResponse(response);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapReconciliationUiFields(normalized.data) : null,
+  };
 };
 
 /**
  * Perform reconciliation
+ * Chức năng: tạo mới bảng đối soát tài chính cho hợp đồng đang chuẩn bị thanh lý.
  */
 export const performReconciliation = async (reconciliationData) => {
   if (USE_MOCK_DATA) {
@@ -645,10 +752,40 @@ export const performReconciliation = async (reconciliationData) => {
   return mapDetailResponse(response);
 };
 
+/**
+ * Update reconciliation
+ * Chức năng: cập nhật trạng thái và chi tiết line item của bảng đối soát hiện có.
+ */
+export const updateReconciliation = async (reconciliationId, reconciliationData = {}) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const reconciliation = mockReconciliations.find((item) => item.id === reconciliationId);
+
+    if (reconciliation) {
+      Object.assign(reconciliation, reconciliationData);
+    }
+
+    return {
+      success: !!reconciliation,
+      data: reconciliation ? mapReconciliationUiFields(reconciliation) : null,
+      message: "Cập nhật đối soát thành công",
+    };
+  }
+
+  const response = await api.put(`/accounting/reconciliation/${reconciliationId}`, reconciliationData);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapReconciliationUiFields(normalized.data) : null,
+  };
+};
+
 // ==================== FINANCIAL STATEMENT ====================
 
 /**
  * Get dashboard KPI
+ * Chức năng: lấy KPI tổng hợp cho trang dashboard kế toán.
  */
 export const getDashboardKPI = async () => {
   if (USE_MOCK_DATA) {
@@ -666,6 +803,7 @@ export const getDashboardKPI = async () => {
 
 /**
  * Get financial statement
+ * Chức năng: lấy báo cáo tài chính tổng hợp theo kỳ khi backend hỗ trợ.
  */
 export const getFinancialStatement = async (period) => {
   if (USE_MOCK_DATA) {
@@ -686,6 +824,7 @@ export const getFinancialStatement = async (period) => {
 
 /**
  * Generate report
+ * Chức năng: yêu cầu backend sinh báo cáo chuyên biệt khi service reports được bổ sung.
  */
 export const generateReport = async (reportType, params = {}) => {
   if (USE_MOCK_DATA) {
@@ -714,6 +853,7 @@ export const generateReport = async (reportType, params = {}) => {
 
 /**
  * Generate initial billing for contracts
+ * Chức năng: tạo phiếu đầu kỳ từ hợp đồng đã chọn ở màn lập khoản thu nhận phòng.
  */
 export const generateInitialBilling = async (payload) => {
   if (USE_MOCK_DATA) {
@@ -740,6 +880,7 @@ export const generateInitialBilling = async (payload) => {
 
 /**
  * Send payment reminders
+ * Chức năng: gửi nhắc thanh toán cho danh sách hóa đơn khi backend notification sẵn sàng.
  */
 export const sendPaymentReminders = async (invoiceIds) => {
   if (USE_MOCK_DATA) {
@@ -776,12 +917,15 @@ export default {
   getRefunds,
   getRefundDetail,
   createRefund,
+  updateRefund,
   processRefund,
   getTransactions,
+  getTransactionDetail,
   resolveTransaction,
   getReconciliations,
   getReconciliationDetail,
   performReconciliation,
+  updateReconciliation,
   getDashboardKPI,
   getFinancialStatement,
   generateReport,
