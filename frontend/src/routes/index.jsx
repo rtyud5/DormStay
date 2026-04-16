@@ -20,6 +20,8 @@ import RoomListPage from "../pages/RoomListPage";
 import RentalRequestListPage from "../pages/RentalRequestListPage";
 import DashboardPage from "../pages/DashboardPage";
 import ProfilePage from "../pages/ProfilePage";
+import BookingPage from "../pages/BookingPage";
+import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 
 // [ACCOUNTING] imports
 import AccountingLayout from "../components/accounting/AccountingLayout";
@@ -57,6 +59,12 @@ const router = createBrowserRouter([
     ],
   },
   {
+    element: <AuthLayout />,
+    children: [
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+    ],
+  },
+  {
     element: <ProtectedRoute />,
     children: [
       {
@@ -69,6 +77,12 @@ const router = createBrowserRouter([
           { path: "/rental-requests/:id", element: <RequestDetailPage /> },
           { path: "/contracts", element: <ContractListPage /> },
           { path: "/contracts/:id", element: <ContractDetailPage /> },
+        ],
+      },
+      {
+        element: <MainLayout />,
+        children: [
+          { path: "/booking/:id", element: <BookingPage /> },
         ],
       },
     ],
