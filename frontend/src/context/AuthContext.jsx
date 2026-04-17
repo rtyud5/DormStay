@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        setLoading(true);
         setToken(session.access_token);
         fetchProfile(session.user.id);
       } else {
@@ -31,19 +32,20 @@ export const AuthProvider = ({ children }) => {
     });
 
     // 2. Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setToken(session.access_token);
-          fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
-          clearToken();
-          setLoading(false);
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        setLoading(true);
+        setToken(session.access_token);
+        fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+        clearToken();
+        setLoading(false);
       }
-    );
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -78,11 +80,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);

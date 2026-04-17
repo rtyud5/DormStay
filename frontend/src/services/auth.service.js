@@ -37,6 +37,30 @@ const AuthService = {
     return data;
   },
 
+  async resetPasswordForEmail(email) {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+    return data;
+  },
+
+  async verifyRecoveryOtp(email, token) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "recovery",
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async updatePassword(newPassword) {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async logout() {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;

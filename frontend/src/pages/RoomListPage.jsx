@@ -8,8 +8,10 @@ function RoomListPage() {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(6);
+  const [buildings, setBuildings] = useState([]);
   const [filters, setFilters] = useState({
     search: '',
+    building: '',
     floor: 'Tất cả các tầng',
     type: '',
     minPrice: 1000000,
@@ -20,6 +22,19 @@ function RoomListPage() {
     isPriceFilterTouched: false
   });
 
+  // Fetch buildings on mount
+  useEffect(() => {
+    async function fetchBuildings() {
+      try {
+        const res = await RoomService.getBuildings();
+        setBuildings(Array.isArray(res.data.data) ? res.data.data : []);
+      } catch (err) {
+        console.error("Failed to fetch buildings:", err);
+      }
+    }
+    fetchBuildings();
+  }, []);
+
   const loadRooms = async () => {
     setLoading(true);
     try {
@@ -28,6 +43,7 @@ function RoomListPage() {
         limit: itemsPerPage
       };
       if (filters.search) params.search = filters.search;
+      if (filters.building) params.building = filters.building;
       if (filters.floor !== 'Tất cả các tầng') params.floor = filters.floor;
       if (filters.type) params.type = filters.type;
       if (filters.isPriceFilterTouched) {
@@ -39,8 +55,8 @@ function RoomListPage() {
       if (filters.sort) params.sort = filters.sort;
 
       const res = await RoomService.getRooms(params);
-      console.log('API Response:', res.data); // Debug log
-      const roomData = res.data.data; // Đây là object chứa { data, total, page, limit }
+      console.log('API Response:', res.data);
+      const roomData = res.data.data;
       setRooms(Array.isArray(roomData.data) ? roomData.data : []);
       setTotal(roomData.total || 0);
     } catch (err) {
@@ -51,9 +67,9 @@ function RoomListPage() {
   };
   // Hàm xử lý kéo thanh trượt
 const handleSliderChange = (e, type) => {
-  const value = parseFloat(e.target.value) * 1000000; // Dùng parseFloat thay vì parseInt
+  const value = parseFloat(e.target.value) * 1000000;
   if (type === 'min') {
-    const newMin = Math.min(value, filters.maxPrice - 100000); // Khoảng cách tối thiểu 100k
+    const newMin = Math.min(value, filters.maxPrice - 100000);
     setFilters({ ...filters, minPrice: newMin, isPriceFilterTouched: true });
   } else {
     const newMax = Math.max(value, filters.minPrice + 100000);
@@ -122,6 +138,7 @@ const handleSliderChange = (e, type) => {
                   className="text-[12px] font-bold text-[#64748B] hover:text-[#0052CC] transition-colors"
                   onClick={() => setFilters({
                      search: '',
+                     building: '',
                      floor: 'Tất cả các tầng',
                      type: '',
                      minPrice: 1000000,
@@ -154,6 +171,21 @@ const handleSliderChange = (e, type) => {
                   </div>
                </div>
 
+               {/* Tòa nhà */}
+               <div>
+                  <h3 className="text-[12px] font-extrabold text-[#64748B] uppercase tracking-wider mb-3">TÒA NHÀ</h3>
+                  <select 
+                     value={filters.building}
+                     onChange={(e) => setFilters({...filters, building: e.target.value})}
+                     className="w-full bg-[#F1F5F9] text-[#0F172A] text-[13px] font-medium px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-[#0052CC]/20 border border-transparent focus:border-[#0052CC]/20 transition-all appearance-none cursor-pointer"
+                  >
+                     <option value="">Tất cả tòa</option>
+                     {buildings.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                     ))}
+                  </select>
+               </div>
+
                {/* Tầng */}
                <div>
                   <h3 className="text-[12px] font-extrabold text-[#64748B] uppercase tracking-wider mb-3">TẦNG</h3>
@@ -174,17 +206,17 @@ const handleSliderChange = (e, type) => {
                <div>
                   <h3 className="text-[12px] font-extrabold text-[#64748B] uppercase tracking-wider mb-3">LOẠI HÌNH</h3>
                   <div className="space-y-3">
-                     <label className="flex items-center gap-3 cursor-pointer group">
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => setFilters({...filters, type: filters.type === 'PHONG_RIENG' ? '' : 'PHONG_RIENG'})}>
                         <div className={`w-5 h-5 rounded-full border-2 border-[#0052CC] bg-white flex items-center justify-center p-0.5 ${filters.type === 'PHONG_RIENG' ? '' : 'border-[#CBD5E1]'}`}>
                            <div className={`w-full h-full bg-[#0052CC] rounded-full ${filters.type === 'PHONG_RIENG' ? '' : 'bg-transparent'}`}></div>
                         </div>
-                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0052CC] transition-colors" onClick={() => setFilters({...filters, type: filters.type === 'PHONG_RIENG' ? '' : 'PHONG_RIENG'})}>Phòng trọn gói</span>
+                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0052CC] transition-colors">Phòng trọn gói / Studio</span>
                      </label>
-                     <label className="flex items-center gap-3 cursor-pointer group">
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => setFilters({...filters, type: filters.type === 'PHONG_CHUNG' ? '' : 'PHONG_CHUNG'})}>
                         <div className={`w-5 h-5 rounded-full border-2 border-[#0052CC] bg-white flex items-center justify-center p-0.5 ${filters.type === 'PHONG_CHUNG' ? '' : 'border-[#CBD5E1]'}`}>
                            <div className={`w-full h-full bg-[#0052CC] rounded-full ${filters.type === 'PHONG_CHUNG' ? '' : 'bg-transparent'}`}></div>
                         </div>
-                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0052CC] transition-colors" onClick={() => setFilters({...filters, type: filters.type === 'PHONG_CHUNG' ? '' : 'PHONG_CHUNG'})}>Giường đơn (Dorm)</span>
+                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0052CC] transition-colors">Giường đơn (Dorm)</span>
                      </label>
                   </div>
                </div>
@@ -306,27 +338,40 @@ const handleSliderChange = (e, type) => {
                <div>
                   <h3 className="text-[12px] font-extrabold text-[#64748B] uppercase tracking-wider mb-3">TRẠNG THÁI</h3>
                   <div className="space-y-3">
-                     <label className="flex items-center gap-3 cursor-pointer group">
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
+                        const newStatus = filters.status.includes('CON_TRONG') 
+                           ? filters.status.filter(s => s !== 'CON_TRONG')
+                           : [...filters.status, 'CON_TRONG'];
+                        setFilters({...filters, status: newStatus});
+                     }}>
                         <div className={`w-5 h-5 rounded-full border-2 border-[#0F172A] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('CON_TRONG') ? '' : 'border-[#CBD5E1]'}`}>
                            <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('CON_TRONG') ? '' : 'bg-transparent'}`}></div>
                         </div>
-                        <span className="text-[14px] font-medium text-[#0F172A] group-hover:text-[#0F172A] transition-colors" onClick={() => {
-                           const newStatus = filters.status.includes('CON_TRONG') 
-                              ? filters.status.filter(s => s !== 'CON_TRONG')
-                              : [...filters.status, 'CON_TRONG'];
-                           setFilters({...filters, status: newStatus});
-                        }}>Còn trống</span>
+                        <span className="text-[14px] font-medium text-[#0F172A] transition-colors">Còn trống</span>
                      </label>
-                     <label className="flex items-center gap-3 cursor-pointer group">
-                        <div className={`w-5 h-5 rounded-full border-2 border-[#CBD5E1] bg-white flex items-center justify-center ${filters.status.includes('SAP_DAY') ? 'border-[#0F172A]' : ''}`}>
+
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
+                        const newStatus = filters.status.includes('SAP_DAY') 
+                           ? filters.status.filter(s => s !== 'SAP_DAY')
+                           : [...filters.status, 'SAP_DAY'];
+                        setFilters({...filters, status: newStatus});
+                     }}>
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#CBD5E1] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('SAP_DAY') ? 'border-[#0F172A]' : ''}`}>
                            <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('SAP_DAY') ? '' : 'bg-transparent'}`}></div>
                         </div>
-                        <span className="text-[14px] font-medium text-[#475569] group-hover:text-[#0F172A] transition-colors" onClick={() => {
-                           const newStatus = filters.status.includes('SAP_DAY') 
-                              ? filters.status.filter(s => s !== 'SAP_DAY')
-                              : [...filters.status, 'SAP_DAY'];
-                           setFilters({...filters, status: newStatus});
-                        }}>Sắp đầy</span>
+                        <span className="text-[14px] font-medium text-[#475569] group-hover:text-[#0F172A] transition-colors">Sắp đầy</span>
+                     </label>
+
+                     <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
+                        const newStatus = filters.status.includes('DA_DAY') 
+                           ? filters.status.filter(s => s !== 'DA_DAY')
+                           : [...filters.status, 'DA_DAY'];
+                        setFilters({...filters, status: newStatus});
+                     }}>
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#CBD5E1] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('DA_DAY') ? 'border-[#0F172A]' : ''}`}>
+                           <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('DA_DAY') ? '' : 'bg-transparent'}`}></div>
+                        </div>
+                        <span className="text-[14px] font-medium text-[#475569] group-hover:text-[#0F172A] transition-colors">Đã đầy</span>
                      </label>
                   </div>
                </div>
@@ -413,7 +458,7 @@ const handleSliderChange = (e, type) => {
                            <Link to={`/rooms/${room.id}`} className="flex-1">
                               <button className="w-full bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-slate-50 text-[#0F172A] py-2.5 rounded-xl font-bold text-[14px] transition-all cursor-pointer">Chi tiết</button>
                            </Link>
-                           <Link to={`/rooms/${room.id}`} className="flex-1">
+                           <Link to={`/booking/${room.id}`} className="flex-1">
                               <button className="w-full bg-[#0A192F] hover:bg-[#112240] text-white py-2.5 rounded-xl font-bold text-[14px] transition-all shadow-sm cursor-pointer">Đặt cọc ngay</button>
                            </Link>
                         </div>

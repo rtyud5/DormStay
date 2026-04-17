@@ -10,25 +10,34 @@ const app = express();
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Check if we are in development mode
     const isDevelopment = env.NODE_ENV === "development";
 
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) {
       return callback(null, true);
     }
 
-    // In development, allow any localhost port
-    if (isDevelopment && /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+    // Normalize origin by removing trailing slash
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    const normalizedFrontendUrl = env.FRONTEND_URL ? env.FRONTEND_URL.replace(/\/$/, "") : "";
+
+    // List of allowed origins - including working versions from old files
+    const allowedOrigins = [
+      normalizedFrontendUrl,
+      "https://dorm-stay.vercel.app",
+      "https://dormstay.vercel.app"
+    ];
+
+    // Check development localhost
+    if (isDevelopment && /^http:\/\/localhost(:\d+)?$/.test(normalizedOrigin)) {
       return callback(null, true);
     }
 
-    // In production, follow the FRONTEND_URL from .env
-    if (origin === env.FRONTEND_URL) {
+    // Check against allowed list
+    if (allowedOrigins.includes(normalizedOrigin)) {
       return callback(null, true);
     }
 
-    // Otherwise, deny the request
+    console.warn(`CORS blocked for origin: ${origin}`);
     callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
@@ -46,7 +55,10 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Dual-route support: handle both /api/* and /* for maximum compatibility
 app.use("/api", routes);
+app.use("/", routes); 
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 

@@ -1,11 +1,16 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { getToken } from "../lib/storage";
+import { useAuth } from "../context/AuthContext";
+import { getDefaultRouteByRole } from "../lib/authRedirect";
 
 function GuestRoute() {
-  const token = getToken();
+  const { isAuthenticated, loading, profile } = useAuth();
 
-  if (token) {
-    return <Navigate to="/" replace />;
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center font-bold text-[#0A192F]">Đang tải...</div>;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to={getDefaultRouteByRole(profile?.vai_tro)} replace />;
   }
 
   return <Outlet />;
