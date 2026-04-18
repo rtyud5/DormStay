@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@payos/payos-checkout": "^1.0.8",
     "@supabase/supabase-js": "^2.101.1",
     "axios": "^1.14.0",
     "lucide-react": "^1.8.0",
