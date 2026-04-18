@@ -216,6 +216,18 @@ const RoomModel = {
       status: bed.trang_thai === 'CON_TRONG' ? 'Còn trống' : 'Đã thuê'
     })) : [];
   },
+
+  async getBuildings() {
+    if (!supabase) return [];
+    
+    const { data, error } = await supabase
+      .from("toa")
+      .select("ma_toa, ten, dia_chi");
+      
+    if (error) throw error;
+    
+    return data || [];
+  },
 };
 
 module.exports = RoomModel;

@@ -19,8 +19,14 @@ const getRoomBeds = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch room beds successful");
 });
 
+const getBuildings = asyncHandler(async (req, res) => {
+  const result = await RoomService.getBuildings();
+  return sendSuccess(res, result, "Fetch buildings successful");
+});
+
 module.exports = {
   getList,
   getDetail,
   getRoomBeds,
+  getBuildings,
 };

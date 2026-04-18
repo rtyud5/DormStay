@@ -6,6 +6,7 @@ const rentalRequestRoutes = require("./rentalRequest.routes");
 const contractRoutes = require("./contract.routes");
 const paymentRoutes = require("./payment.routes");
 const accountingRoutes = require("./accounting.routes");
+const managerRoutes = require("./manager.routes");
 
 const router = express.Router();
 
@@ -15,5 +16,6 @@ router.use("/rental-requests", rentalRequestRoutes);
 router.use("/contracts", contractRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/accounting", accountingRoutes);
+router.use("/manager", managerRoutes);
 
 module.exports = router;
