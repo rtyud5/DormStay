@@ -22,9 +22,14 @@ const getBuildings = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch buildings successful");
 });
 
+const createDeposit = asyncHandler(async (req, res) => {
+  const result = await RoomService.createDeposit(req.body);
+  return sendSuccess(res, result, "Create deposit successful");
+});
 module.exports = {
   getList,
   getDetail,
   getRoomBeds,
   getBuildings,
+  createDeposit
 };

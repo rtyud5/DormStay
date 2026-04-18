@@ -13,6 +13,9 @@ const RoomService = {
   getBuildings() {
     return api.get("/rooms/buildings");
   },
+  createDeposit(payload) {
+    return api.post("/rooms/deposit", payload);
+  }
 };
 
 export default RoomService;

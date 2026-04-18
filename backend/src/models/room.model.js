@@ -246,6 +246,56 @@ const RoomModel = {
       address: b.dia_chi || ''
     })) : [];
   },
+
+  async createDeposit(payload) {
+      if (!supabase) return null;
+
+      const { 
+        ma_yeu_cau_thue, 
+        loai_muc_tieu, 
+        ma_phong, 
+        ma_giuong, 
+        trang_thai = 'DANG_GIU',
+        minutesExpiry = 60*24 // Mặc định giữ 24h
+      } = payload;
+
+      // 1. Validate dữ liệu đầu vào theo ràng buộc của table
+      if (loai_muc_tieu === 'PHONG' && !ma_phong) {
+        throw new Error("ma_phong là bắt buộc khi loai_muc_tieu là PHONG");
+      }
+      if (loai_muc_tieu === 'GIUONG' && !ma_giuong) {
+        throw new Error("ma_giuong là bắt buộc khi loai_muc_tieu là GIUONG");
+      }
+
+      // 2. Tính toán thời gian hết hạn (ISO String cho timestamptz)
+      const expiryDate = new Date();
+      expiryDate.setMinutes(expiryDate.getMinutes() + minutesExpiry);
+
+      // 3. Chuẩn bị dữ liệu để insert
+      const insertData = {
+        ma_yeu_cau_thue,
+        loai_muc_tieu,
+        trang_thai,
+        thoi_gian_het_han: expiryDate.toISOString(),
+        // Đảm bảo chỉ insert ID tương ứng với loại mục tiêu
+        ma_phong: loai_muc_tieu === 'PHONG' ? ma_phong : null,
+        ma_giuong: loai_muc_tieu === 'GIUONG' ? ma_giuong : null,
+      };
+
+      // 4. Thực hiện Insert vào bảng giu_cho_tam
+      const { data, error } = await supabase
+        .from('giu_cho_tam')
+        .insert([insertData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Lỗi khi insert giu_cho_tam:", error.message);
+        throw error;
+      }
+
+      return data;
+    }
 };
 
 module.exports = RoomModel;
