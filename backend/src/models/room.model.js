@@ -77,16 +77,30 @@ const RoomModel = {
   async list(filters = {}) {
     if (!supabase) return { data: [], total: 0, page: 1, limit: 10 };
     
+    // Normalise incoming filter types to avoid issues with different
+    // client serializers (array, csv string, or status[] parsing).
+    if (filters.status && !Array.isArray(filters.status)) {
+      if (typeof filters.status === 'string') {
+        // "CON_TRONG,SAP_DAY" or single "CON_TRONG"
+        filters.status = filters.status.split(',').map(s => s.trim()).filter(Boolean);
+      } else if (typeof filters.status === 'object') {
+        // status[] may be parsed into an object like { '0': 'CON_TRONG', '1': 'SAP_DAY' }
+        filters.status = Object.values(filters.status).flat().map(s => (typeof s === 'string' ? s.trim() : s)).filter(Boolean);
+      } else {
+        filters.status = [filters.status];
+      }
+    }
+    
     // Phân trang
     const page = parseInt(filters.page) || 1;
     const limit = parseInt(filters.limit) || 10;
     const offset = (page - 1) * limit;
     
-    // 1. Khởi tạo query chuẩn (sử dụng join thường để tránh bị lọc mất phòng nếu thiếu thông tin tầng/tòa từ file cũ)
+    // 1. Khởi tạo query với !inner cho các bảng cần lọc bắt buộc
     let selectString = `
         *,
-        tang ( ten_tang ),
-        toa ( ma_toa, ten ),
+        tang!inner ( ten_tang ),
+        toa ( ten ),
         hinh_anh_phong ( duong_dan_cong_khai, la_anh_bia ),
         tai_san_phong ( ten_tai_san ),
         giuong ( ma_giuong, ma_giuong_hien_thi, nhan_giuong, gia_thang, trang_thai )
@@ -96,34 +110,17 @@ const RoomModel = {
 
     // 2. Tìm kiếm (Chỉ nên lọc trên bảng chính phong)
     if (filters.search) {
-      const cleanSearch = filters.search
-        .toLowerCase()
-        .replace(/phòng|phong/g, '') 
-        .trim();                  
-      if (cleanSearch) {
-            query = query.ilike('ma_phong_hien_thi', `%${cleanSearch}%`);
-      }
+      query = query.ilike('ma_phong_hien_thi', `%${filters.search}%`);
     }
 
-    // 3. Lọc Tòa nhà
-    if (filters.building) {
-      query = query.eq('ma_toa', parseInt(filters.building));
-    }
-
-    // 4. Lọc Tầng
+    // 3. Lọc Tầng (Đã có !inner ở trên nên eq sẽ hoạt động như filter cứng)
     if (filters.floor && filters.floor !== 'Tất cả các tầng') {
       query = query.eq('tang.ten_tang', filters.floor);
     }
 
-    // 4. Loại phòng (Hỗ trợ nhiều alias và gộp loại tương đương)
+    // 4. Loại phòng
     if (filters.type) {
-      if (filters.type === 'PHONG_RIENG') {
-        query = query.in('loai_phong', ['PHONG_RIENG', 'PHONG_STUDIO', 'STUDIO']);
-      } else if (filters.type === 'PHONG_CHUNG') {
-        query = query.in('loai_phong', ['PHONG_CHUNG', 'PHONG_CHUNG\n', 'DORM']);
-      } else {
-        query = query.eq('loai_phong', filters.type);
-      }
+      query = query.eq('loai_phong', filters.type);
     }
 
     // 5. Khoảng giá (Sử dụng đúng cột gia_thang trong SQL)
@@ -134,36 +131,20 @@ const RoomModel = {
       query = query.lte('gia_thang', parseFloat(filters.maxPrice));
     }
 
-    // 6. Trạng thái (Hỗ trợ alias cho các trạng thái trong DB)
-    let rawStatusFilters = filters.status || filters['status[]'];
-    if (rawStatusFilters) {
-      if (!Array.isArray(rawStatusFilters)) {
-        rawStatusFilters = [rawStatusFilters];
-      }
-      
-      if (rawStatusFilters.length > 0) {
-        let statusValues = [];
-        rawStatusFilters.forEach(s => {
-          if (s === 'CON_TRONG' || s === 'TRONG') {
-            statusValues.push('TRONG', 'CON_TRONG');
-          } else if (s === 'SAP_DAY') {
-            statusValues.push('SAP_DAY');
-          } else if (s === 'DA_DAY' || s === 'DA_THUE_HET' || s === 'DAY') {
-            statusValues.push('DA_DAY', 'DA_THUE_HET', 'DAY');
-          } else {
-            statusValues.push(s);
-          }
-        });
-        // Loại bỏ các giá trị trùng lặp
-        statusValues = [...new Set(statusValues)];
-        query = query.in('trang_thai', statusValues);
-      }
+    // 6. Trạng thái (Lưu ý: Map lại giá trị từ Frontend sang DB)
+    if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
+      const dbStatus = filters.status.map(s => s === 'CON_TRONG' ? 'TRONG' : s);
+      query = query.in('trang_thai', dbStatus);
     }
 
-    // 7. Giới tính (Lọc chính xác: Nam chỉ Nam, Nữ chỉ Nữ)
-    if (filters.gender && filters.gender !== 'Tất cả') {
-      query = query.eq('gioi_tinh', filters.gender);
-    }
+    // 7. Giới tính (Sửa đúng tên cột gioi_tinh)
+  if (filters.gender && filters.gender !== 'Tất cả') {
+  // Nếu chọn 'Nam' -> tìm ['Nam', 'Nam/Nữ']
+  // Nếu chọn 'Nữ' -> tìm ['Nữ', 'Nam/Nữ']
+  const genderOptions = [filters.gender, 'Nam/Nữ'];
+  
+  query = query.in('gioi_tinh', genderOptions);
+  }
 
     // 8. Sắp xếp
     if (filters.sort === 'price_desc') {
@@ -233,23 +214,6 @@ const RoomModel = {
       price: formatPrice(bed.gia_thang),
       rawPrice: bed.gia_thang,
       status: bed.trang_thai === 'CON_TRONG' ? 'Còn trống' : 'Đã thuê'
-    })) : [];
-  },
-
-  async getBuildings() {
-    if (!supabase) return [];
-    
-    const { data, error } = await supabase
-      .from('toa')
-      .select('ma_toa, ten, dia_chi')
-      .order('ten', { ascending: true });
-      
-    if (error) throw error;
-    
-    return data ? data.map(b => ({
-      id: b.ma_toa,
-      name: b.ten,
-      address: b.dia_chi || ''
     })) : [];
   },
 };

@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import RoomService from "../services/room.service";
 import { formatCurrency } from "../utils/accounting.utils";
-import PayOS from "./PayOS";
+// import PayOS from "./PayOS";
+const PayOS = () => <div className="p-8 bg-yellow-50 border border-yellow-200 rounded-2xl text-yellow-700 italic text-sm">Cổng thanh toán PayOS tạm thời bảo trì.</div>;
+
 
 function BookingPage() {
   const { id } = useParams();

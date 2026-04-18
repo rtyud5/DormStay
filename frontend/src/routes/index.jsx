@@ -34,6 +34,15 @@ import AccountingRefundPage from "../pages/accounting/AccountingRefundPage";
 import AccountingTransactionPage from "../pages/accounting/AccountingTransactionPage";
 import AccountingReconciliationPage from "../pages/accounting/AccountingReconciliationPage";
 
+// [MANAGER] imports
+import ManagerLayout from "../components/manager/ManagerLayout";
+import ManagerDashboardPage from "../pages/manager/ManagerDashboardPage";
+import ManagerResidentListPage from "../pages/manager/ManagerResidentListPage";
+import ManagerInspectionPage from "../pages/manager/ManagerInspectionPage";
+import ManagerLiquidationPage from "../pages/manager/ManagerLiquidationPage";
+import ManagerRoomPage from "../pages/manager/ManagerRoomPage";
+
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -105,6 +114,25 @@ const router = createBrowserRouter([
           { path: "refunds", element: <AccountingRefundPage /> },
           { path: "transactions", element: <AccountingTransactionPage /> },
           { path: "reconciliation", element: <AccountingReconciliationPage /> },
+        ],
+      },
+    ],
+  },
+
+  // Manager
+  {
+    path: "/manager",
+    element: <ProtectedRoute requireManager={true} />,
+    children: [
+      {
+        element: <ManagerLayout />,
+        children: [
+          { index: true, element: <Navigate to="dashboard" replace /> },
+          { path: "dashboard", element: <ManagerDashboardPage /> },
+          { path: "residents", element: <ManagerResidentListPage /> },
+          { path: "inspections", element: <ManagerInspectionPage /> },
+          { path: "liquidations", element: <ManagerLiquidationPage /> },
+          { path: "rooms", element: <ManagerRoomPage /> },
         ],
       },
     ],
