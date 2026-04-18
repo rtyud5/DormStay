@@ -96,7 +96,13 @@ const RoomModel = {
 
     // 2. Tìm kiếm (Chỉ nên lọc trên bảng chính phong)
     if (filters.search) {
-      query = query.ilike('ma_phong_hien_thi', `%${filters.search}%`);
+      const cleanSearch = filters.search
+        .toLowerCase()
+        .replace(/phòng|phong/g, '') 
+        .trim();                  
+      if (cleanSearch) {
+            query = query.ilike('ma_phong_hien_thi', `%${cleanSearch}%`);
+      }
     }
 
     // 3. Lọc Tòa nhà
