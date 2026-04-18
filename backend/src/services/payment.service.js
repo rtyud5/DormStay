@@ -13,6 +13,10 @@ const PaymentService = {
   async create(payload) {
     return PaymentModel.create(payload);
   },
+
+  async createPayOSPayment({ amount, description, returnUrl, cancelUrl }) {
+    return PaymentModel.createPayOSPayment({ amount, description, returnUrl, cancelUrl });
+  },
 };
 
 module.exports = PaymentService;

@@ -1,14 +1,17 @@
 import api from "./api";
 
 const PaymentService = {
-  getInvoices() {
+  getInvoices: () => {
     return api.get("/payments/invoices");
   },
-  createPayment(payload) {
+  createPayment: (payload) => {
     return api.post("/payments", payload);
   },
-  getHistory() {
+  getHistory: () => {
     return api.get("/payments/history");
+  },
+  createPayOSPayment: (payload) => {
+    return api.post("/payments/payos", payload);
   },
 };
 
