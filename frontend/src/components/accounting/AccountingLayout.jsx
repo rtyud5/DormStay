@@ -2,24 +2,27 @@
  * Accounting Layout - Wrapper layout chứa sidebar
  */
 
-import React from "react";
-import { Outlet } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import AccountingSidebar from "./AccountingSidebar";
 import AccountingTopbar from "./AccountingTopbar";
 
 export default function AccountingLayout() {
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <AccountingSidebar />
+    <div className="flex min-h-screen bg-gray-50 overflow-hidden">
+      <AccountingSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main Content */}
-      <div className="flex-1 ml-64 flex flex-col">
-        {/* Topbar */}
-        <AccountingTopbar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <AccountingTopbar onOpenSidebar={() => setSidebarOpen(true)} />
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
           <Outlet />
         </main>
       </div>
