@@ -222,7 +222,8 @@ const RoomModel = {
     
     const { data, error } = await supabase
       .from("toa")
-      .select("ma_toa, ten, dia_chi");
+      .select("*")
+      .order("ten", { ascending: true });
       
     if (error) throw error;
     

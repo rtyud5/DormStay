@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import RoomService from "../services/room.service";
+import RentalRequestService from "../services/rentalRequest.service";
 import { formatCurrency } from "../utils/accounting.utils";
-// import PayOS from "./PayOS";
-const PayOS = () => <div className="p-8 bg-yellow-50 border border-yellow-200 rounded-2xl text-yellow-700 italic text-sm">Cổng thanh toán PayOS tạm thời bảo trì.</div>;
 
 
 function BookingPage() {
@@ -93,8 +92,34 @@ function BookingPage() {
       return;
     }
 
-    // Bắt đầu hiển thị thanh toán ở cột phải
     setPaymentInitiated(true);
+    
+    try {
+      const payload = {
+        fullName: formData.fullName,
+        phone: formData.phone,
+        email: formData.email,
+        idCard: formData.idCard,
+        loai_muc_tieu: selectedBeds.length === beds.length ? 'PHONG' : 'GIUONG',
+        ma_phong: room.id,
+        ma_giuong: selectedBeds.length > 0 ? selectedBeds[0] : null,
+        ngay_du_kien_vao_o: formData.expectedDate,
+        gia_thue_thang: parseInt(room.price.replace(/[^\d]/g, "")),
+        so_tien_dat_coc: depositAmount,
+        trang_thai: 'DANG_XU_LY',
+        ghi_chu_khach_hang: formData.note || "",
+      };
+      
+      const res = await RentalRequestService.create(payload);
+      const newRequest = res.data.data;
+      
+      // Redirect to rental request detail page
+      navigate(`/rental-requests/${newRequest.ma_yeu_cau_thue}`);
+    } catch (err) {
+      console.error("Lỗi tạo yêu cầu:", err);
+      alert("Có lỗi xảy ra khi tạo yêu cầu thuê. Vui lòng thử lại.");
+      setPaymentInitiated(false);
+    }
   };
 
   // Tính số tiền đặt cọc dựa trên giường đã chọn
@@ -471,45 +496,20 @@ function BookingPage() {
             </form>
           </div>
 
-          {/* Right Column Summary Card / Payment QR */}
+          {/* Right Column Summary Card */}
           <div className="w-full lg:w-[400px]">
-            {!paymentInitiated ? (
-              // Hiển thị card tóm tắt thông thường
-              <div className="bg-white rounded-[32px] border border-[#E2E8F0] overflow-hidden shadow-xl shadow-slate-100/50 sticky top-24">
-                <div className="relative h-48 w-full">
-                  <img
-                    src={room.image}
-                    alt="Room"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                  <div className="absolute bottom-4 left-4">
-                    <div className="bg-[#E4F2ED] text-[#22A06B] px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border border-[#22A06B]/20">
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2.5}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      Sẵn sàng dọn vào
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-7">
-                  <h3 className="text-[22px] font-extrabold text-[#0F172A] mb-2 leading-tight">
-                    {room.name}
-                  </h3>
-                  <p className="text-[#64748B] text-[13px] font-medium flex items-center gap-1.5 mb-6">
+            <div className="bg-white rounded-[32px] border border-[#E2E8F0] overflow-hidden shadow-xl shadow-slate-100/50 sticky top-24">
+              <div className="relative h-48 w-full">
+                <img
+                  src={room.image}
+                  alt="Room"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                <div className="absolute bottom-4 left-4">
+                  <div className="bg-[#E4F2ED] text-[#22A06B] px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border border-[#22A06B]/20">
                     <svg
-                      className="w-4 h-4 text-[#94A3B8]"
+                      className="w-3.5 h-3.5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -517,98 +517,102 @@ function BookingPage() {
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11l-3 3m0 0l-3-3m3 3V8"
+                        strokeWidth={2.5}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    {room.building}
-                  </p>
-
-                  <div className="space-y-4 mb-6 text-[14px]">
-                    <div className="flex justify-between items-center border-b border-slate-50 pb-4">
-                      <span className="text-[#64748B] font-medium">
-                        Giá thuê / giường
-                      </span>
-                      <span className="font-extrabold text-[#0F172A]">
-                        {room.price}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2">
-                      <span className="text-[#64748B] font-medium">
-                        Đặt cọc (1 tháng)
-                      </span>
-                      <span className="font-extrabold text-[#0052CC]">
-                        {room.price}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                      <span className="text-[#0F172A] font-bold">Tổng đặt cọc</span>
-                      <span className="font-extrabold text-[#0052CC] text-lg">
-                        {formatCurrency(
-                          parseInt(room.price.replace(/[^\d]/g, "")) *
-                            selectedBeds.length
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-slate-100">
-                    <span className="block text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest mb-4">
-                      TIỆN ÍCH NỔI BẬT
-                    </span>
-                    <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-                      {room.amenities?.slice(0, 4).map((am, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-2 text-[#475569] text-[13px] font-medium"
-                        >
-                          <div className="text-[#0052CC]">
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          </div>
-                          {am}
-                        </div>
-                      ))}
-                    </div>
+                    Sẵn sàng dọn vào
                   </div>
                 </div>
               </div>
-            ) : (
-              // Hiển thị component thanh toán PayOS (mã QR) ngay tại cột phải
-              <div className="sticky top-24">
-                <PayOS
-                  amount={depositAmount}
-                  description={`Dat coc ${room.name}`}
-                  onSuccess={(event) => {
-                    console.log("Đặt cọc thành công:", event);
-                    alert("Đặt cọc thành công! Phòng đã được giữ cho bạn.");
-                    navigate("/rooms");
-                  }}
-                  onCancel={(event) => {
-                    console.log("Đặt cọc bị hủy:", event);
-                    alert("Đặt cọc đã bị hủy. Bạn có thể thử lại sau.");
-                    setPaymentInitiated(false); // Cho phép chỉnh sửa lại form
-                  }}
-                />
+
+              <div className="p-7">
+                <h3 className="text-[22px] font-extrabold text-[#0F172A] mb-2 leading-tight">
+                  {room.name}
+                </h3>
+                <p className="text-[#64748B] text-[13px] font-medium flex items-center gap-1.5 mb-6">
+                  <svg
+                    className="w-4 h-4 text-[#94A3B8]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11l-3 3m0 0l-3-3m3 3V8"
+                    />
+                  </svg>
+                  {room.building}
+                </p>
+
+                <div className="space-y-4 mb-6 text-[14px]">
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+                    <span className="text-[#64748B] font-medium">
+                      Giá thuê / giường
+                    </span>
+                    <span className="font-extrabold text-[#0F172A]">
+                      {room.price}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2">
+                    <span className="text-[#64748B] font-medium">
+                      Đặt cọc (1 tháng)
+                    </span>
+                    <span className="font-extrabold text-[#0052CC]">
+                      {room.price}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                    <span className="text-[#0F172A] font-bold">Tổng đặt cọc</span>
+                    <span className="font-extrabold text-[#0052CC] text-lg">
+                      {formatCurrency(
+                        parseInt(room.price.replace(/[^\d]/g, "")) *
+                          selectedBeds.length
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-100">
+                  <span className="block text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest mb-4">
+                    TIỆN ÍCH NỔI BẬT
+                  </span>
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                    {room.amenities?.slice(0, 4).map((am, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 text-[#475569] text-[13px] font-medium"
+                      >
+                        <div className="text-[#0052CC]">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                        {am}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
 
             <div className="mt-4 bg-[#F8FAFC] border border-[#E2E8F0] p-5 rounded-[24px] flex gap-4 items-start shadow-sm">
               <div className="bg-white p-2 rounded-full shadow-sm text-[#0F172A]">

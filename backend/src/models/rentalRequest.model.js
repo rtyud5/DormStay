@@ -54,6 +54,7 @@ const mapRequestToFrontendFormat = (raw) => {
   const date = new Date(raw.created_at).toLocaleDateString('vi-VN');
 
   return {
+    ...raw,
     id: `#REQ-${raw.ma_yeu_cau_thue.toString().padStart(4, '0')}`,
     rawId: raw.ma_yeu_cau_thue,
     statusText,

@@ -10,7 +10,7 @@ function RentalRequestListPage() {
   useEffect(() => {
     async function fetchRequests() {
       try {
-        const res = await RentalRequestService.getList();
+        const res = await RentalRequestService.getMyRequests();
         setRequests(res.data.data || []);
       } catch (err) {
         console.error("Lỗi khi lấy danh sách yêu cầu thuê:", err);
@@ -113,7 +113,7 @@ function RentalRequestListPage() {
                     </div>
                   </div>
 
-                  <Link to={`/deposits/${req.ma_yeu_cau_thue}`} className="block w-full">
+                  <Link to={`/rental-requests/${req.ma_yeu_cau_thue}`} className="block w-full">
                     <button className="w-full py-4 rounded-2xl font-black text-[14px] flex items-center justify-center gap-2 transition-all bg-[#0A192F] hover:bg-[#0052CC] text-white shadow-lg active:scale-95 uppercase tracking-wide">
                       Xem chi tiết hồ sơ
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
