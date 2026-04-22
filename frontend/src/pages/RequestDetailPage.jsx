@@ -68,10 +68,20 @@ function RequestDetailPage() {
     }
   };
 
-  const handlePaymentSuccess = () => {
-    alert("Thanh toán thành công! Hồ sơ của bạn sẽ được duyệt trong thời gian sớm nhất.");
-    setShowPayment(false);
-    window.location.reload();
+  const handlePaymentSuccess = async () => {
+    try {
+      // Confirm payment on backend (updates request + hold statuses)
+      await RentalRequestService.confirmPayment(id);
+      // Refetch detail to get updated data
+      const res = await RentalRequestService.getDetail(id);
+      setRequest(res.data.data);
+      setShowPayment(false);
+      alert("Thanh toán thành công! Hồ sơ của bạn sẽ được duyệt trong thời gian sớm nhất.");
+    } catch (err) {
+      console.error("Lỗi xác nhận thanh toán:", err);
+      alert("Thanh toán đã ghi nhận. Trang sẽ tải lại để cập nhật.");
+      window.location.reload();
+    }
   };
 
   const handlePaymentCancel = () => {
@@ -144,7 +154,11 @@ function RequestDetailPage() {
               <div className="w-full md:w-48 h-48 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 relative">
                 <img src={request.phong?.image || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80"} alt="Room" className="w-full h-full object-cover" />
                 <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur text-white text-[10px] font-extrabold uppercase tracking-widest px-2 py-1 rounded">
-                  {request.loai_muc_tieu === 'PHONG' ? 'Nguyên phòng' : 'Giường đơn'}
+                  {request.loai_muc_tieu === 'PHONG'
+                    ? 'Nguyên phòng'
+                    : request.so_luong_giuong_dat > 1
+                      ? `${request.so_luong_giuong_dat} giường`
+                      : 'Giường đơn'}
                 </div>
               </div>
               <div className="flex-1 flex flex-col justify-center">
@@ -172,6 +186,39 @@ function RequestDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Selected Beds Section */}
+            {request.selectedBeds && request.selectedBeds.length > 0 && (
+              <div className="bg-white p-8 rounded-[32px] border border-[#E2E8F0] shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <svg className="w-5 h-5 text-[#0F172A]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 10h16" /></svg>
+                  <h3 className="text-[18px] font-extrabold text-[#0F172A]">
+                    Giường đã giữ ({request.selectedBeds.length})
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {request.selectedBeds.map((bed, idx) => (
+                    <div
+                      key={bed.ma_giuong || idx}
+                      className={`px-4 py-2.5 rounded-xl text-[13px] font-bold border flex items-center gap-2 ${
+                        bed.trang_thai_hold === 'DA_XAC_NHAN_COC'
+                          ? 'bg-[#E4F2ED] border-[#22A06B]/20 text-[#22A06B]'
+                          : bed.trang_thai_hold === 'HET_HAN'
+                            ? 'bg-[#FEE2E2] border-[#DC2626]/20 text-[#DC2626]'
+                            : 'bg-[#E6F0FF] border-[#0052CC]/20 text-[#0052CC]'
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 10h16" /></svg>
+                      {bed.ma_giuong_hien_thi || `Giường #${bed.ma_giuong}`}
+                      {bed.trang_thai_hold === 'DA_XAC_NHAN_COC' && (
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      )}
+                      {bed.trang_thai_hold === 'HET_HAN' && ' (Hết hạn)'}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="bg-white p-8 rounded-[32px] border border-[#E2E8F0] shadow-sm">
               <div className="flex items-center gap-3 mb-6">

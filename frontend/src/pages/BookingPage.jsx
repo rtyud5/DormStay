@@ -48,10 +48,7 @@ function BookingPage() {
 
   const allBedsEmpty =
     beds.length > 0 &&
-    beds.every(
-      (b) =>
-        b.status === "CON_TRONG" || b.status === "TRONG" || b.status === "Còn trống"
-    );
+    beds.every((b) => b.status === "CON_TRONG");
 
   const handleInputChange = (e) => {
     if (paymentInitiated) return; // Không cho sửa khi đang thanh toán
@@ -60,9 +57,8 @@ function BookingPage() {
   };
 
   const toggleBed = (bedId, bedStatus) => {
-    if (paymentInitiated) return; // Không cho chọn lại khi đang thanh toán
-    if (bedStatus !== "CON_TRONG" && bedStatus !== "Còn trống" && bedStatus !== "TRONG")
-      return;
+    if (paymentInitiated) return;
+    if (bedStatus !== "CON_TRONG") return;
 
     setSelectedBeds((prev) => {
       if (prev.includes(bedId)) return prev.filter((id) => id !== bedId);
@@ -102,7 +98,7 @@ function BookingPage() {
         idCard: formData.idCard,
         loai_muc_tieu: selectedBeds.length === beds.length ? 'PHONG' : 'GIUONG',
         ma_phong: room.id,
-        ma_giuong: selectedBeds.length > 0 ? selectedBeds[0] : null,
+        selectedBeds,
         ngay_du_kien_vao_o: formData.expectedDate,
         gia_thue_thang: parseInt(room.price.replace(/[^\d]/g, "")),
         so_tien_dat_coc: depositAmount,
@@ -113,11 +109,13 @@ function BookingPage() {
       const res = await RentalRequestService.create(payload);
       const newRequest = res.data.data;
       
-      // Redirect to rental request detail page
-      navigate(`/rental-requests/${newRequest.ma_yeu_cau_thue}`);
+      // RPC returns jsonb — ma_yeu_cau_thue is inside
+      const requestId = newRequest?.ma_yeu_cau_thue || newRequest?.rawId;
+      navigate(`/rental-requests/${requestId}`);
     } catch (err) {
       console.error("Lỗi tạo yêu cầu:", err);
-      alert("Có lỗi xảy ra khi tạo yêu cầu thuê. Vui lòng thử lại.");
+      const errMsg = err?.response?.data?.message || "Có lỗi xảy ra khi tạo yêu cầu thuê. Vui lòng thử lại.";
+      alert(errMsg);
       setPaymentInitiated(false);
     }
   };
@@ -330,10 +328,8 @@ function BookingPage() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {beds.map((bed) => {
-                        const isAvailable =
-                          bed.status === "CON_TRONG" ||
-                          bed.status === "Còn trống" ||
-                          bed.status === "TRONG";
+                        const isAvailable = bed.status === "CON_TRONG";
+                        const isHeld = bed.status === "DANG_GIU";
                         const isSelected = selectedBeds.includes(bed.id);
 
                         return (
@@ -401,7 +397,7 @@ function BookingPage() {
                               {bed.code}
                             </span>
                             <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">
-                              {isAvailable ? "SẴN SÀNG" : "ĐÃ THUÊ"}
+                              {isAvailable ? "SẴN SÀNG" : isHeld ? "ĐANG GIỮ" : "ĐÃ THUÊ"}
                             </span>
                           </div>
                         );
@@ -562,21 +558,41 @@ function BookingPage() {
                       {room.price}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center pb-2">
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-4">
                     <span className="text-[#64748B] font-medium">
-                      Đặt cọc (1 tháng)
+                      Loại đặt cọc
+                    </span>
+                    <span className="font-extrabold text-[#0F172A]">
+                      {selectedBeds.length === beds.length && beds.length > 0
+                        ? "Nguyên phòng"
+                        : `${selectedBeds.length} giường`}
+                    </span>
+                  </div>
+                  {selectedBeds.length > 0 && selectedBeds.length < beds.length && (
+                    <div className="flex justify-between items-start border-b border-slate-50 pb-4">
+                      <span className="text-[#64748B] font-medium">
+                        Giường đã chọn
+                      </span>
+                      <span className="font-bold text-[#0F172A] text-right">
+                        {beds
+                          .filter((b) => selectedBeds.includes(b.id))
+                          .map((b) => b.code)
+                          .join(", ")}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+                    <span className="text-[#64748B] font-medium">
+                      Đặt cọc (1 tháng × {selectedBeds.length} giường)
                     </span>
                     <span className="font-extrabold text-[#0052CC]">
-                      {room.price}
+                      {formatCurrency(depositAmount)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                     <span className="text-[#0F172A] font-bold">Tổng đặt cọc</span>
                     <span className="font-extrabold text-[#0052CC] text-lg">
-                      {formatCurrency(
-                        parseInt(room.price.replace(/[^\d]/g, "")) *
-                          selectedBeds.length
-                      )}
+                      {formatCurrency(depositAmount)}
                     </span>
                   </div>
                 </div>

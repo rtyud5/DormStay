@@ -19,6 +19,9 @@ const RentalRequestService = {
       ...payOSData
     });
   },
+  confirmPayment(id) {
+    return api.post(`/rental-requests/${id}/confirm-payment`);
+  },
 };
 
 export default RentalRequestService;

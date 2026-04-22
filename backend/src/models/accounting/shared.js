@@ -210,7 +210,11 @@ function mapReconciliationStatusToDb(status) {
 function calculateDepositFormula(contract, room) {
   const monthlyRent = toNumber(contract.gia_thue_co_ban_thang || room?.gia_thang);
   const roomCapacity = Math.max(toNumber(room?.suc_chua), 1);
-  const bedCount = contract.loai_muc_tieu === "PHONG" ? roomCapacity : 1;
+  // TODO: For full multi-bed accounting, bedCount should come from phan_bo_hop_dong rows
+  // For now, use so_luong_giuong_dat if available, else fallback to legacy logic
+  const bedCount = contract.loai_muc_tieu === "PHONG"
+    ? roomCapacity
+    : Math.max(toNumber(contract.so_luong_giuong_dat), 1);
   const monthlyRentPerBed = contract.loai_muc_tieu === "PHONG" ? roundMoney(monthlyRent / roomCapacity) : monthlyRent;
 
   return {
@@ -243,6 +247,12 @@ function mapContractRow(contract, context) {
   const building = room?.ma_toa ? context.buildingMap[room.ma_toa] : null;
   const deposit = calculateDepositFormula(contract, room);
 
+  // TODO: Full multi-bed accounting — bedNumber should list all allocated beds
+  const allocations = context.allocationGroup?.[contract.ma_hop_dong] || [];
+  const allocationBedNumbers = allocations.length > 0
+    ? allocations.map(a => a.ma_giuong).filter(Boolean)
+    : [];
+
   return {
     id: contract.ma_hop_dong,
     customerId: customer?.ma_ho_so || null,
@@ -255,6 +265,7 @@ function mapContractRow(contract, context) {
     baseRent: toNumber(contract.gia_thue_co_ban_thang),
     securityDeposit: deposit.totalDeposit,
     bedCount: deposit.bedCount,
+    allocations: allocations,
     buildingName: building?.ten || "",
     floorName: floor?.ten_tang || floor?.so_tang || "",
     status: normalizeContractStatus(contract),
@@ -308,6 +319,7 @@ async function loadContractContext(contracts) {
   const profileIds = [...new Set(contracts.map((item) => item.ma_ho_so_khach_hang).filter(Boolean))];
   const bedIds = [...new Set(contracts.map((item) => item.ma_giuong).filter(Boolean))];
   const directRoomIds = [...new Set(contracts.map((item) => item.ma_phong).filter(Boolean))];
+  const contractIds = contracts.map((item) => item.ma_hop_dong).filter(Boolean);
 
   const profiles = await fetchByIds(TABLES.profiles, "ma_ho_so", profileIds);
   const beds = await fetchByIds(TABLES.beds, "ma_giuong", bedIds);
@@ -318,12 +330,20 @@ async function loadContractContext(contracts) {
   const floors = await fetchByIds(TABLES.floors, "ma_tang", floorIds);
   const buildings = await fetchByIds(TABLES.buildings, "ma_toa", buildingIds);
 
+  // Fetch allocations for multi-bed contract support
+  let allocationGroup = {};
+  if (contractIds.length > 0) {
+    const allocations = await fetchByIds("phan_bo_hop_dong", "ma_hop_dong", contractIds);
+    allocationGroup = groupBy(allocations, "ma_hop_dong");
+  }
+
   return {
     profileMap: indexBy(profiles, "ma_ho_so"),
     bedMap: indexBy(beds, "ma_giuong"),
     roomMap: indexBy(rooms, "ma_phong"),
     floorMap: indexBy(floors, "ma_tang"),
     buildingMap: indexBy(buildings, "ma_toa"),
+    allocationGroup,
   };
 }
 

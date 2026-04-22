@@ -24,9 +24,12 @@ function RentalRequestListPage() {
   const getStatusConfig = (status) => {
     switch (status) {
       case 'MOI_TAO': return { label: 'MỚI TẠO', color: 'bg-blue-100 text-blue-700', icon: 'M12 6v6m0 0v6m0-6h6m-6 0H6' };
+      case 'DANG_XU_LY': return { label: 'CHỜ THANH TOÁN', color: 'bg-amber-100 text-amber-700', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' };
       case 'CHO_THANH_TOAN': return { label: 'CHỜ CỌC', color: 'bg-amber-100 text-amber-700', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' };
+      case 'DA_COC': return { label: 'CHỜ DUYỆT CỌC', color: 'bg-indigo-100 text-indigo-700', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' };
       case 'DA_XAC_NHAN': return { label: 'ĐÃ XÁC NHẬN', color: 'bg-green-100 text-green-700', icon: 'M5 13l4 4L19 7' };
       case 'TU_CHOI': return { label: 'TỪ CHỐI', color: 'bg-red-100 text-red-700', icon: 'M6 18L18 6M6 6l12 12' };
+      case 'QUA_HAN': return { label: 'QUÁ HẠN', color: 'bg-red-100 text-red-700', icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' };
       default: return { label: status, color: 'bg-slate-100 text-slate-700', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' };
     }
   };
@@ -108,7 +111,11 @@ function RentalRequestListPage() {
                     <div className="text-right">
                       <div className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest mb-2">LOẠI THUÊ</div>
                       <div className="text-[14px] font-black text-[#0F172A] leading-none uppercase tracking-tighter">
-                        {req.loai_muc_tieu === 'PHONG' ? 'Nguyên phòng' : 'Giường lẻ'}
+                        {req.loai_muc_tieu === 'PHONG'
+                          ? 'Nguyên phòng'
+                          : req.so_luong_giuong_dat > 1
+                            ? `${req.so_luong_giuong_dat} giường`
+                            : 'Giường lẻ'}
                       </div>
                     </div>
                   </div>

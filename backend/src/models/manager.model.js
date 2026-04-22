@@ -86,7 +86,12 @@ const ManagerModel = {
           ma_ho_so, ho_ten, so_dien_thoai
         ),
         phong ( ma_phong_hien_thi, tang ( ten_tang ) ),
-        giuong ( ma_giuong_hien_thi )
+        giuong ( ma_giuong_hien_thi ),
+        phan_bo_hop_dong (
+          ma_giuong,
+          giuong ( ma_giuong_hien_thi ),
+          trang_thai
+        )
       `, { count: 'exact' })
       .eq("trang_thai", "HIEU_LUC");
 
@@ -105,8 +110,17 @@ const ManagerModel = {
 
     const formatData = (data || []).map((h) => {
       let roomDisplay = "";
-      if (h.loai_muc_tieu === 'PHONG') roomDisplay = `Phòng ${h.phong?.ma_phong_hien_thi || ''}`;
-      else roomDisplay = `Giường ${h.giuong?.ma_giuong_hien_thi || ''} - P.${h.phong?.ma_phong_hien_thi || ''}`;
+      // Multi-bed: check phan_bo_hop_dong first, fallback to legacy giuong
+      const allocations = h.phan_bo_hop_dong || [];
+      if (h.loai_muc_tieu === 'PHONG') {
+        roomDisplay = `Phòng ${h.phong?.ma_phong_hien_thi || ''}`;
+      } else if (allocations.length > 1) {
+        // Multi-bed display
+        const bedCodes = allocations.map(a => a.giuong?.ma_giuong_hien_thi || `B${a.ma_giuong}`).join(', ');
+        roomDisplay = `${bedCodes} - P.${h.phong?.ma_phong_hien_thi || ''}`;
+      } else {
+        roomDisplay = `Giường ${h.giuong?.ma_giuong_hien_thi || ''} - P.${h.phong?.ma_phong_hien_thi || ''}`;
+      }
 
       return {
         id: h.ma_hop_dong,
@@ -444,8 +458,8 @@ const ManagerModel = {
 
     let stats = {
         total: count,
-        occupied: formatData.filter(r => r.status === 'SAP_DAY' || r.status === 'DAY').length, // Tạm
-        reserved: 0,
+        occupied: formatData.filter(r => r.status === 'SAP_DAY' || r.status === 'DAY').length,
+        reserved: 0, // TODO: Query giu_cho_tam active holds to count reserved beds/rooms
         empty: formatData.filter(r => r.status === 'TRONG').length,
         maintenance: formatData.filter(r => r.status === 'BAO_TRI').length,
     };

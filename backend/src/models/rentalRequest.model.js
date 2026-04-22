@@ -1,5 +1,4 @@
 const { supabase } = require("../config/supabase");
-const { createRequestCode } = require("../utils/helpers");
 
 const TABLE_NAME = "yeu_cau_thue";
 
@@ -53,6 +52,15 @@ const mapRequestToFrontendFormat = (raw) => {
   const roomName = raw.phong ? `Phòng ${raw.phong.ma_phong_hien_thi}` : "Không xác định";
   const date = new Date(raw.created_at).toLocaleDateString('vi-VN');
 
+  // Map giu_cho_tam rows to selectedBeds
+  const holdRows = raw.giu_cho_tam || [];
+  const selectedBeds = holdRows.map(h => ({
+    ma_giuong: h.ma_giuong,
+    ma_giuong_hien_thi: h.giuong?.ma_giuong_hien_thi || null,
+    trang_thai_hold: h.trang_thai,
+    thoi_gian_het_han: h.thoi_gian_het_han,
+  }));
+
   return {
     ...raw,
     id: `#REQ-${raw.ma_yeu_cau_thue.toString().padStart(4, '0')}`,
@@ -62,12 +70,14 @@ const mapRequestToFrontendFormat = (raw) => {
     roomName,
     date,
     amount: formatPrice(raw.so_tien_dat_coc),
-    deadline: "--/--/----", // Derived dynamically depending on states usually
+    deadline: "--/--/----",
     actionLink: `/rental-requests/${raw.ma_yeu_cau_thue}`,
     actionLabel,
     actionStyle,
     iconType,
     hasIcon: true,
+    so_luong_giuong_dat: raw.so_luong_giuong_dat || 1,
+    selectedBeds,
   };
 };
 
@@ -79,7 +89,13 @@ const RentalRequestModel = {
       .from(TABLE_NAME)
       .select(`
          *,
-         phong ( ma_phong_hien_thi )
+         phong ( ma_phong_hien_thi ),
+         giu_cho_tam (
+           ma_giuong,
+           trang_thai,
+           thoi_gian_het_han,
+           giuong ( ma_giuong_hien_thi )
+         )
       `)
       .order('created_at', { ascending: false });
       
@@ -95,7 +111,13 @@ const RentalRequestModel = {
       .select(`
          *,
          ho_so!yeu_cau_thue_ma_ho_so_khach_hang_fkey!inner ( ma_nguoi_dung_xac_thuc ),
-         phong ( ma_phong_hien_thi )
+         phong ( ma_phong_hien_thi ),
+         giu_cho_tam (
+           ma_giuong,
+           trang_thai,
+           thoi_gian_het_han,
+           giuong ( ma_giuong_hien_thi )
+         )
       `)
       .eq("ho_so.ma_nguoi_dung_xac_thuc", userId)
       .order('created_at', { ascending: false });
@@ -111,7 +133,14 @@ const RentalRequestModel = {
       .from(TABLE_NAME)
       .select(`
          *,
-         phong ( ma_phong_hien_thi )
+         phong ( ma_phong_hien_thi ),
+         giu_cho_tam (
+           ma_giu_cho_tam,
+           ma_giuong,
+           trang_thai,
+           thoi_gian_het_han,
+           giuong ( ma_giuong_hien_thi )
+         )
       `)
       .eq("ma_yeu_cau_thue", id)
       .maybeSingle();
@@ -120,6 +149,31 @@ const RentalRequestModel = {
     return data ? mapRequestToFrontendFormat(data) : null;
   },
 
+  /**
+   * Atomic create: 1 yeu_cau_thue + N giu_cho_tam via Postgres RPC
+   */
+  async createWithHolds(payload) {
+    if (!supabase) return null;
+
+    const { data, error } = await supabase.rpc('create_rental_request_with_holds', {
+      p_ma_ho_so_khach_hang: payload.ma_ho_so_khach_hang,
+      p_loai_muc_tieu: payload.loai_muc_tieu,
+      p_ma_phong: payload.ma_phong,
+      p_selected_beds: payload.selectedBeds || [],
+      p_ngay_du_kien_vao_o: payload.ngay_du_kien_vao_o,
+      p_gia_thue_thang: payload.gia_thue_thang,
+      p_so_tien_dat_coc: payload.so_tien_dat_coc,
+      p_trang_thai: payload.trang_thai || 'DANG_XU_LY',
+      p_thoi_gian_het_han: payload.thoi_gian_het_han || null,
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Legacy create (without holds) — kept for backward compatibility
+   */
   async create(payload) {
     if (!supabase) return null;
 
@@ -146,6 +200,32 @@ const RentalRequestModel = {
       .eq("ma_yeu_cau_thue", maYeuCauThue)
       .select("*")
       .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Confirm payment: updates request + holds via Postgres RPC
+   */
+  async confirmPayment(maYeuCauThue) {
+    if (!supabase) return null;
+
+    const { data, error } = await supabase.rpc('confirm_rental_payment', {
+      p_ma_yeu_cau_thue: maYeuCauThue,
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Expire stale holds via Postgres RPC
+   */
+  async expireStaleHolds() {
+    if (!supabase) return null;
+
+    const { data, error } = await supabase.rpc('expire_stale_holds');
 
     if (error) throw error;
     return data;

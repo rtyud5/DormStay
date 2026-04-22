@@ -111,7 +111,11 @@ function ContractListPage() {
                 </div>
                 <div className="flex-1 py-6 flex flex-col justify-center">
                   <h2 className="text-[26px] font-black text-[#0F172A] leading-tight mb-1 uppercase">
-                    P. {contract.phong?.ma_phong_hien_thi || 'N/A'} {contract.ma_giuong ? `- B${contract.ma_giuong}` : ''}
+                    P. {contract.phong?.ma_phong_hien_thi || 'N/A'}
+                    {/* Multi-bed: show from phan_bo_hop_dong */}
+                    {contract.phan_bo_hop_dong && contract.phan_bo_hop_dong.length > 0
+                      ? ` - ${contract.phan_bo_hop_dong.map(a => a.giuong?.ma_giuong_hien_thi || `B${a.ma_giuong}`).join(', ')}`
+                      : contract.ma_giuong ? ` - B${contract.ma_giuong}` : ''}
                   </h2>
                   <p className="text-[#64748B] text-[13px] font-bold tracking-tight mb-8">Mã hđ: #{contract.ma_hop_dong}</p>
                   
