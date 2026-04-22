@@ -22,7 +22,7 @@ export default function AccountingLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <AccountingTopbar onOpenSidebar={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto pt-20">
           <Outlet />
         </main>
       </div>

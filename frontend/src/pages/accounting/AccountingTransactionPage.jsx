@@ -3,14 +3,13 @@ import { Download, RefreshCw, Search, AlertTriangle, CheckCircle2, Clock, Eye, L
 import { getTransactions, getTransactionDetail, resolveTransaction } from "../../services/accounting.service";
 import { formatCurrency } from "../../utils/accounting.utils";
 
-const STATUS_OPTIONS = ["all", "CONFIRMED", "PENDING", "FAILED", "CANCELLED"];
-const MATCH_OPTIONS = ["all", "MATCHED", "MISMATCH", "PENDING"];
+const STATUS_OPTIONS = ["all", "CONFIRMED", "PENDING", "FAILED"];
 
 export default function AccountingTransactionPage() {
   const [transactions, setTransactions] = useState([]);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
-  const [stats, setStats] = useState({ success: 0, failed: 0, pending: 0, mismatch: 0 });
-  const [filters, setFilters] = useState({ search: "", status: "all", matchStatus: "all" });
+  const [stats, setStats] = useState({ confirmed: 0, failed: 0, pending: 0 });
+  const [filters, setFilters] = useState({ search: "", status: "all" });
   const [loading, setLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState(null);
 
@@ -21,13 +20,11 @@ export default function AccountingTransactionPage() {
 
       if (nextFilters.search.trim()) requestFilters.search = nextFilters.search.trim();
       if (nextFilters.status !== "all") requestFilters.status = nextFilters.status;
-      if (nextFilters.matchStatus !== "all") requestFilters.matchStatus = nextFilters.matchStatus;
-
       const response = await getTransactions(requestFilters);
       const nextTransactions = response.data || [];
 
       setTransactions(nextTransactions);
-      setStats(response.stats || { success: 0, failed: 0, pending: 0, mismatch: 0 });
+      setStats(response.stats || { confirmed: 0, failed: 0, pending: 0 });
 
       const nextSelectedId = selectedId || selectedTransaction?.id || nextTransactions[0]?.id;
       if (nextSelectedId) {
@@ -40,7 +37,7 @@ export default function AccountingTransactionPage() {
       console.error("Error loading transactions:", error);
       setTransactions([]);
       setSelectedTransaction(null);
-      setStats({ success: 0, failed: 0, pending: 0, mismatch: 0 });
+      setStats({ confirmed: 0, failed: 0, pending: 0 });
     } finally {
       setLoading(false);
     }
@@ -73,7 +70,7 @@ export default function AccountingTransactionPage() {
             Tra soát giao dịch
           </h1>
           <p className="text-gray-500 font-medium max-w-2xl leading-relaxed">
-            Theo dõi giao dịch thanh toán, xem chi tiết đối soát và xử lý các giao dịch chờ xác nhận hoặc bị lệch.
+            Theo dõi giao dịch thanh toán, xem chênh lệch số tiền và xử lý các giao dịch chờ xác nhận hoặc thất bại.
           </p>
         </div>
         <div className="flex gap-4">
@@ -91,7 +88,7 @@ export default function AccountingTransactionPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard label="Tổng giao dịch" value={transactions.length} accent="text-gray-900" />
-        <StatCard label="Khớp lệnh" value={stats.success} accent="text-[#22a654]" />
+        <StatCard label="Đã xác nhận" value={stats.confirmed} accent="text-[#22a654]" />
         <StatCard label="Đang chờ" value={stats.pending} accent="text-[#1a56db]" />
         <StatCard label="Tổng chênh lệch" value={formatCurrency(totalVariance)} accent="text-[#e02424]" />
       </div>
@@ -128,22 +125,6 @@ export default function AccountingTransactionPage() {
             ))}
           </select>
         </div>
-        <div className="w-full md:w-56">
-          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-2">
-            Khớp lệnh
-          </label>
-          <select
-            value={filters.matchStatus}
-            onChange={(event) => setFilters((prev) => ({ ...prev, matchStatus: event.target.value }))}
-            className="w-full px-5 py-3.5 bg-[#f4f7fa] border-none rounded-full focus:ring-2 focus:ring-blue-200 text-sm font-semibold text-gray-700 outline-none cursor-pointer"
-          >
-            {MATCH_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option === "all" ? "Tất cả" : option}
-              </option>
-            ))}
-          </select>
-        </div>
         <button
           onClick={() => loadTransactions(filters)}
           className="px-8 py-3.5 bg-[#8ebbfa] hover:bg-[#a5cbfb] text-[#0b2447] font-black rounded-full transition-colors whitespace-nowrap"
@@ -165,9 +146,6 @@ export default function AccountingTransactionPage() {
                   <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                     Trạng thái
                   </th>
-                  <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    Khớp lệnh
-                  </th>
                   <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">
                     Thao tác
                   </th>
@@ -176,14 +154,14 @@ export default function AccountingTransactionPage() {
               <tbody className="divide-y divide-gray-100/50">
                 {loading && (
                   <tr>
-                    <td colSpan={5} className="py-10 px-6 text-center text-gray-400 font-medium">
+                    <td colSpan={4} className="py-10 px-6 text-center text-gray-400 font-medium">
                       Đang tải giao dịch...
                     </td>
                   </tr>
                 )}
                 {!loading && transactions.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-10 px-6 text-center text-gray-400 font-medium">
+                    <td colSpan={4} className="py-10 px-6 text-center text-gray-400 font-medium">
                       Chưa có giao dịch nào phù hợp với bộ lọc hiện tại.
                     </td>
                   </tr>
@@ -208,9 +186,6 @@ export default function AccountingTransactionPage() {
                         <StatusPill value={transaction.status} />
                       </td>
                       <td className="py-5 px-6">
-                        <MatchPill value={transaction.matchStatus} />
-                      </td>
-                      <td className="py-5 px-6">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => loadTransactions(filters, transaction.id)}
@@ -228,13 +203,13 @@ export default function AccountingTransactionPage() {
                               Xác nhận
                             </button>
                           )}
-                          {transaction.matchStatus === "MISMATCH" && transaction.status !== "CONFIRMED" && (
+                          {transaction.status === "FAILED" && (
                             <button
                               onClick={() => handleResolve(transaction, "CONFIRMED")}
                               disabled={resolvingId === transaction.id}
                               className="px-3 py-2 rounded-full bg-[#ea580c] text-white text-[11px] font-black uppercase tracking-widest disabled:opacity-60"
                             >
-                              Khớp thủ công
+                              Xác nhận lại
                             </button>
                           )}
                         </div>
@@ -273,9 +248,8 @@ export default function AccountingTransactionPage() {
               <DetailRow label="Số tiền thực nhận" value={formatCurrency(selectedTransaction.actualAmount || 0)} />
               <DetailRow label="Chênh lệch" value={formatCurrency(selectedTransaction.variance || 0)} />
               <DetailRow label="Trạng thái" value={selectedTransaction.status || "--"} />
-              <DetailRow label="Khớp lệnh" value={selectedTransaction.matchStatus || "--"} />
               <div className="bg-[#f8fbff] border border-blue-100 rounded-2xl p-4 text-sm text-gray-600 font-medium">
-                {selectedTransaction.notes || "Giao dịch đã khớp, chưa có ghi chú xử lý bổ sung."}
+                {selectedTransaction.notes || "Không có ghi chú xử lý bổ sung."}
               </div>
             </>
           )}
@@ -323,30 +297,6 @@ function StatusPill({ value }) {
   return (
     <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black tracking-widest">
       <AlertTriangle className="w-3 h-3" /> {value}
-    </span>
-  );
-}
-
-function MatchPill({ value }) {
-  if (value === "MATCHED") {
-    return (
-      <span className="inline-flex items-center gap-1.5 bg-[#eaffec] text-[#22a654] px-3 py-1 rounded-full text-[10px] font-black tracking-widest">
-        <CheckCircle2 className="w-3 h-3" /> MATCHED
-      </span>
-    );
-  }
-
-  if (value === "PENDING") {
-    return (
-      <span className="inline-flex items-center gap-1.5 bg-[#fef3c7] text-[#b45309] px-3 py-1 rounded-full text-[10px] font-black tracking-widest">
-        <Clock className="w-3 h-3" /> PENDING
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black tracking-widest">
-      <AlertTriangle className="w-3 h-3" /> MISMATCH
     </span>
   );
 }

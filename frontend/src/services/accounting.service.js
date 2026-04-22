@@ -74,7 +74,6 @@ const mapRefundUiFields = (refund) => ({
 const mapTransactionUiFields = (transaction) => ({
   ...transaction,
   statusText: transaction.statusText || transaction.status,
-  matchStatusText: transaction.matchStatusText || transaction.matchStatus,
 });
 
 const mapReconciliationUiFields = (reconciliation) => ({
@@ -82,6 +81,8 @@ const mapReconciliationUiFields = (reconciliation) => ({
   avatarInitials: reconciliation.avatarInitials || getInitials(reconciliation.customerName),
   statusText: reconciliation.statusText || reconciliation.status,
   lineItems: Array.isArray(reconciliation.lineItems) ? reconciliation.lineItems : [],
+  suggestedLineItems: Array.isArray(reconciliation.suggestedLineItems) ? reconciliation.suggestedLineItems : [],
+  inspectionItems: Array.isArray(reconciliation.inspectionItems) ? reconciliation.inspectionItems : [],
 });
 
 // ==================== CONTRACTS ====================
@@ -539,7 +540,7 @@ export const processRefund = async (refundId, status = "PROCESSING") => {
 
 /**
  * Get transaction log with filters
- * Chức năng: lấy danh sách giao dịch để kế toán theo dõi khớp lệnh và các giao dịch lệch.
+ * Chức năng: lấy danh sách giao dịch để kế toán theo dõi trạng thái xác nhận và chênh lệch số tiền.
  */
 export const getTransactions = async (filters = {}) => {
   if (USE_MOCK_DATA) {
@@ -549,10 +550,6 @@ export const getTransactions = async (filters = {}) => {
 
     if (filters.status) {
       filtered = filtered.filter((txn) => txn.status === filters.status);
-    }
-
-    if (filters.matchStatus) {
-      filtered = filtered.filter((txn) => txn.matchStatus === filters.matchStatus);
     }
 
     if (filters.search) {
@@ -567,10 +564,9 @@ export const getTransactions = async (filters = {}) => {
       data: filtered,
       total: filtered.length,
       stats: {
-        success: filtered.filter((t) => t.status === "SUCCESS").length,
+        confirmed: filtered.filter((t) => t.status === "CONFIRMED").length,
         failed: filtered.filter((t) => t.status === "FAILED").length,
         pending: filtered.filter((t) => t.status === "PENDING").length,
-        mismatch: filtered.filter((t) => t.status === "MISMATCH").length,
       },
     };
   }
@@ -582,10 +578,9 @@ export const getTransactions = async (filters = {}) => {
     ...normalized,
     data: normalized.data.map(mapTransactionUiFields),
     stats: {
-      success: normalized.data.filter((item) => item.matchStatus === "MATCHED").length,
+      confirmed: normalized.data.filter((item) => item.status === "CONFIRMED").length,
       failed: normalized.data.filter((item) => item.status === "FAILED").length,
       pending: normalized.data.filter((item) => item.status === "PENDING").length,
-      mismatch: normalized.data.filter((item) => item.matchStatus === "MISMATCH").length,
     },
   };
 };
@@ -615,8 +610,8 @@ export const getTransactionDetail = async (transactionId) => {
 };
 
 /**
- * Resolve transaction mismatch
- * Chức năng: xử lý thủ công giao dịch bị lệch hoặc đang chờ xác nhận ở màn tra soát.
+ * Resolve transaction
+ * Chức năng: cập nhật trạng thái giao dịch đang chờ xác nhận hoặc cần xác nhận lại ở màn tra soát.
  */
 export const resolveTransaction = async (transactionId, resolution) => {
   if (USE_MOCK_DATA) {
@@ -624,7 +619,6 @@ export const resolveTransaction = async (transactionId, resolution) => {
     const txn = mockTransactionLog.find((t) => t.id === transactionId);
     if (txn) {
       txn.status = resolution.status;
-      txn.matchStatus = resolution.matchStatus;
       txn.notes = resolution.notes;
     }
 
@@ -645,6 +639,71 @@ export const resolveTransaction = async (transactionId, resolution) => {
 };
 
 // ==================== RECONCILIATION ====================
+
+export const getReconciliationWorkItems = async (filters = {}) => {
+  const response = await api.get("/accounting/reconciliation/work-items", { params: filters });
+  const normalized = mapListResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data.map(mapReconciliationUiFields),
+  };
+};
+
+export const getReconciliationWorkItemDetail = async (checkoutRequestId) => {
+  const response = await api.get(`/accounting/reconciliation/work-items/${checkoutRequestId}`);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapReconciliationUiFields(normalized.data) : null,
+  };
+};
+
+export const previewReconciliation = async (payload) => {
+  const response = await api.post("/accounting/reconciliation/preview", payload);
+  return mapDetailResponse(response);
+};
+
+export const createReconciliationDraft = async (payload) => {
+  const response = await api.post("/accounting/reconciliation", payload);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapReconciliationUiFields(normalized.data) : null,
+  };
+};
+
+export const updateReconciliationDraft = async (reconciliationId, payload = {}) => {
+  const response = await api.put(`/accounting/reconciliation/${reconciliationId}/draft`, payload);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapReconciliationUiFields(normalized.data) : null,
+  };
+};
+
+export const finalizeReconciliation = async (reconciliationId) => {
+  const response = await api.post(`/accounting/reconciliation/${reconciliationId}/finalize`);
+  const normalized = mapDetailResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data ? mapReconciliationUiFields(normalized.data) : null,
+  };
+};
+
+export const createRefundVoucherFromReconciliation = async (reconciliationId, payload = {}) => {
+  const response = await api.post(`/accounting/reconciliation/${reconciliationId}/create-refund`, payload);
+  return mapDetailResponse(response);
+};
+
+export const createAdditionalPaymentVoucherFromReconciliation = async (reconciliationId, payload = {}) => {
+  const response = await api.post(`/accounting/reconciliation/${reconciliationId}/create-additional-payment`, payload);
+  return mapDetailResponse(response);
+};
 
 /**
  * Get reconciliation records
@@ -667,13 +726,7 @@ export const getReconciliations = async (filters = {}) => {
     };
   }
 
-  const response = await api.get("/accounting/reconciliation", { params: filters });
-  const normalized = mapListResponse(response);
-
-  return {
-    ...normalized,
-    data: normalized.data.map(mapReconciliationUiFields),
-  };
+  return getReconciliationWorkItems(filters);
 };
 
 /**
@@ -748,8 +801,7 @@ export const performReconciliation = async (reconciliationData) => {
     };
   }
 
-  const response = await api.post("/accounting/reconciliation", reconciliationData);
-  return mapDetailResponse(response);
+  return createReconciliationDraft(reconciliationData);
 };
 
 /**
@@ -772,13 +824,7 @@ export const updateReconciliation = async (reconciliationId, reconciliationData 
     };
   }
 
-  const response = await api.put(`/accounting/reconciliation/${reconciliationId}`, reconciliationData);
-  const normalized = mapDetailResponse(response);
-
-  return {
-    ...normalized,
-    data: normalized.data ? mapReconciliationUiFields(normalized.data) : null,
-  };
+  return updateReconciliationDraft(reconciliationId, reconciliationData);
 };
 
 // ==================== FINANCIAL STATEMENT ====================
@@ -922,6 +968,14 @@ export default {
   getTransactions,
   getTransactionDetail,
   resolveTransaction,
+  getReconciliationWorkItems,
+  getReconciliationWorkItemDetail,
+  previewReconciliation,
+  createReconciliationDraft,
+  updateReconciliationDraft,
+  finalizeReconciliation,
+  createRefundVoucherFromReconciliation,
+  createAdditionalPaymentVoucherFromReconciliation,
   getReconciliations,
   getReconciliationDetail,
   performReconciliation,

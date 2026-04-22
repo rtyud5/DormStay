@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
 import {
   ArrowRightLeft,
-  BadgePercent,
   CalendarDays,
-  ChevronRight,
   ClipboardList,
-  Filter,
   Landmark,
   Plus,
   ReceiptText,
@@ -15,6 +13,16 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
+import {
+  createAdditionalPaymentVoucherFromReconciliation,
+  createReconciliationDraft,
+  createRefundVoucherFromReconciliation,
+  finalizeReconciliation,
+  getReconciliationWorkItemDetail,
+  getReconciliationWorkItems,
+  previewReconciliation,
+  updateReconciliationDraft,
+} from "../../services/accounting.service";
 import { formatCurrency } from "../../utils/accounting.utils";
 
 const REFUND_POLICY_OPTIONS = [
@@ -54,118 +62,22 @@ const LINE_ITEM_CATEGORIES = [
   { value: "KHAC", label: "Khoản khác" },
 ];
 
-const WORKFLOW_FILTERS = [
+const SIDEBAR_FILTER_OPTIONS = [
   { value: "ALL", label: "Tất cả" },
   { value: "CHO_DOI_SOAT", label: "Chờ đối soát" },
-  { value: "DANG_LAP", label: "Đang lập" },
-  { value: "CHO_HANH_DONG", label: "Chờ bước tiếp theo" },
-  { value: "DA_CHOT", label: "Đã chốt" },
+  { value: "DANG_XU_LY", label: "Đang xử lý" },
+  { value: "CAN_THU_THEM", label: "Cần thu thêm" },
+  { value: "HOAN_TAT", label: "Hoàn tất" },
 ];
 
-const INITIAL_CASES = [
-  {
-    id: "REC-DRAFT-240419-01",
-    checkoutRequestId: "YCTP-240419-01",
-    contractId: "HD-240101-12",
-    customerName: "Nguyễn Minh Khang",
-    phone: "0907 118 225",
-    roomDisplay: "P.302",
-    bedDisplay: "Giường G2",
-    moveInDate: "2025-08-15",
-    checkoutDate: "2026-04-22",
-    stayMonths: 8,
-    depositAmount: 6000000,
-    workflowStatus: "CHO_DOI_SOAT",
-    refundReason: "EARLY_TERMINATION_LONG_STAY",
-    inspectionStatus: "Đã kiểm tra tài sản",
-    roomCondition: "Phòng sạch, tủ quần áo trầy nhẹ, mất 1 chìa khóa phụ.",
-    managerNote: "Quản lý đã xác nhận khách trả phòng ngày 22/04 và đồng ý bàn giao sớm trong ngày.",
-    lineItems: [
-      {
-        id: "li-01",
-        category: "TIEN_DIEN_NUOC",
-        direction: "THU",
-        amount: 420000,
-        description: "Chốt tiền điện, nước và internet tháng cuối",
-      },
-      {
-        id: "li-02",
-        category: "BOI_THUONG_HU_HONG",
-        direction: "THU",
-        amount: 250000,
-        description: "Thay chìa khóa dự phòng bị mất",
-      },
-    ],
-  },
-  {
-    id: "REC-DRAFT-240419-02",
-    checkoutRequestId: "YCTP-240419-02",
-    contractId: "HD-231001-05",
-    customerName: "Trần Thu Hà",
-    phone: "0912 501 119",
-    roomDisplay: "P.205",
-    bedDisplay: "Giường G1",
-    moveInDate: "2024-10-01",
-    checkoutDate: "2026-04-25",
-    stayMonths: 18,
-    depositAmount: 5000000,
-    workflowStatus: "DANG_LAP",
-    refundReason: "NORMAL_COMPLETION",
-    inspectionStatus: "Đã kiểm tra tài sản",
-    roomCondition: "Không phát hiện hư hỏng, tài sản bàn giao đủ.",
-    managerNote: "Khách cần xác nhận hoàn cọc qua chuyển khoản trong vòng 02 ngày làm việc.",
-    lineItems: [
-      {
-        id: "li-03",
-        category: "TIEN_DICH_VU",
-        direction: "THU",
-        amount: 180000,
-        description: "Phí vệ sinh cuối kỳ",
-      },
-      {
-        id: "li-04",
-        category: "DIEU_CHINH_HOAN_THEM",
-        direction: "CHI",
-        amount: 100000,
-        description: "Giảm trừ do khách báo hỏng quạt đã được xử lý chậm",
-      },
-    ],
-  },
-  {
-    id: "REC-DRAFT-240419-03",
-    checkoutRequestId: "YCTP-240419-03",
-    contractId: "HD-251201-03",
-    customerName: "Lê Gia Phúc",
-    phone: "0988 624 771",
-    roomDisplay: "P.411",
-    bedDisplay: "Giường G4",
-    moveInDate: "2025-12-10",
-    checkoutDate: "2026-04-21",
-    stayMonths: 4,
-    depositAmount: 4000000,
-    workflowStatus: "CHO_HANH_DONG",
-    refundReason: "EARLY_TERMINATION_SHORT_STAY",
-    inspectionStatus: "Đã kiểm tra tài sản",
-    roomCondition: "Vỡ mặt kính bàn học, còn nợ 01 kỳ phí dịch vụ.",
-    managerNote: "Khách xin tất toán trong ngày trả phòng. Nếu thiếu cọc thì thu thêm trước khi ký thanh lý.",
-    lineItems: [
-      {
-        id: "li-05",
-        category: "TIEN_DICH_VU",
-        direction: "THU",
-        amount: 350000,
-        description: "Phí dịch vụ chưa thanh toán",
-      },
-      {
-        id: "li-06",
-        category: "BOI_THUONG_HU_HONG",
-        direction: "THU",
-        amount: 2100000,
-        description: "Thay mặt kính bàn học và xử lý vệ sinh phát sinh",
-      },
-    ],
-  },
-];
+const SIDEBAR_GROUP_ORDER = ["CHO_DOI_SOAT", "DANG_XU_LY", "CAN_THU_THEM", "HOAN_TAT"];
+
+const SIDEBAR_GROUP_LABELS = {
+  CHO_DOI_SOAT: "Chờ đối soát",
+  DANG_XU_LY: "Đang xử lý",
+  CAN_THU_THEM: "Cần thu thêm",
+  HOAN_TAT: "Hoàn tất",
+};
 
 const formatDate = (value) =>
   value
@@ -176,12 +88,12 @@ const formatDate = (value) =>
       })
     : "--";
 
-const getPolicy = (reasonValue) =>
-  REFUND_POLICY_OPTIONS.find((option) => option.value === reasonValue) || REFUND_POLICY_OPTIONS[3];
+const getPolicy = (reasonValue) => REFUND_POLICY_OPTIONS.find((option) => option.value === reasonValue) || null;
 
 const computeFinancialSummary = (depositAmount, refundReason, lineItems) => {
   const policy = getPolicy(refundReason);
-  const baseRefund = Math.round((Number(depositAmount || 0) * policy.ratio) / 100);
+  const ratio = policy?.ratio || 0;
+  const baseRefund = Math.round((Number(depositAmount || 0) * ratio) / 100);
   const totalCharges = lineItems
     .filter((item) => item.direction === "THU")
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -202,58 +114,223 @@ const computeFinancialSummary = (depositAmount, refundReason, lineItems) => {
 };
 
 const createBlankLineItem = () => ({
-  id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   category: "KHAC",
   direction: "THU",
   amount: 0,
   description: "",
+  sourceType: null,
+  sourceId: null,
 });
 
-export default function AccountingReconciliationPage() {
-  const [records, setRecords] = useState(INITIAL_CASES);
-  const [selectedId, setSelectedId] = useState(INITIAL_CASES[0].id);
-  const [search, setSearch] = useState("");
-  const [workflowFilter, setWorkflowFilter] = useState("ALL");
-  const [refundReason, setRefundReason] = useState(INITIAL_CASES[0].refundReason);
-  const [lineItems, setLineItems] = useState(INITIAL_CASES[0].lineItems);
+const cloneLineItems = (items = []) =>
+  items.map((item) => ({
+    category: item.category || "KHAC",
+    direction: item.direction || "THU",
+    amount: Number(item.amount || 0),
+    description: item.description || "",
+    sourceType: item.sourceType || null,
+    sourceId: item.sourceId || null,
+  }));
 
-  const selectedRecord = useMemo(
-    () => records.find((record) => record.id === selectedId) || records[0] || null,
-    [records, selectedId],
-  );
+const buildInspectionSummary = (inspectionItems = []) => {
+  if (!inspectionItems.length) {
+    return "Chưa có dữ liệu hiện trạng.";
+  }
+
+  return inspectionItems
+    .map((item) => {
+      const compensation = Number(item.compensationAmount || 0);
+      return compensation > 0
+        ? `${item.assetName}: ${item.condition} (${formatCurrency(compensation)})`
+        : `${item.assetName}: ${item.condition}`;
+    })
+    .join(" • ");
+};
+
+export default function AccountingReconciliationPage() {
+  const [records, setRecords] = useState([]);
+  const [selectedContractId, setSelectedContractId] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState("");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [loadingRecords, setLoadingRecords] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [previewSummary, setPreviewSummary] = useState(null);
+  const [savingAction, setSavingAction] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+
+  const {
+    control,
+    register,
+    reset,
+    watch,
+    handleSubmit,
+    formState: { errors, isValid },
+  } = useForm({
+    mode: "onChange",
+    defaultValues: {
+      refundReason: "",
+      lineItems: [],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "lineItems",
+    keyName: "fieldKey",
+  });
+
+  const watchedRefundReason = watch("refundReason");
+  const watchedLineItems = watch("lineItems") || [];
+
+  const hydrateSelectedRecord = (detail) => {
+    setSelectedRecord(detail || null);
+
+    const nextLineItems = detail?.lineItems?.length
+      ? detail.lineItems
+      : detail?.suggestedLineItems?.length
+        ? detail.suggestedLineItems
+        : [];
+
+    reset({
+      refundReason: detail?.refundReason || "",
+      lineItems: cloneLineItems(nextLineItems),
+    });
+    setPreviewSummary(null);
+  };
+
+  const loadWorkItems = async (preferredSelectedId = null) => {
+    try {
+      setLoadingRecords(true);
+      setStatusMessage("");
+
+      const response = await getReconciliationWorkItems();
+      const items = response.data || [];
+      setRecords(items);
+
+      if (preferredSelectedId) {
+        setSelectedContractId(preferredSelectedId);
+      }
+    } catch (error) {
+      console.error("Error loading reconciliation work items:", error);
+      setRecords([]);
+      setSelectedContractId(null);
+      hydrateSelectedRecord(null);
+      setStatusMessage("Không thể tải danh sách hồ sơ đối soát từ backend.");
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
 
   useEffect(() => {
-    if (!selectedRecord) {
+    loadWorkItems();
+  }, []);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setDebouncedSearchKeyword(searchKeyword.trim().toLowerCase());
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchKeyword]);
+
+  const filteredRecords = useMemo(() => {
+    const matchesFilter = (record) => {
+      const isProcessing = record.workflowStatus === "DANG_LAP" || record.workflowStatus === "CHO_HANH_DONG";
+      const needsAdditionalPayment = Number(record.additionalPaymentAmount || 0) > 0;
+
+      if (filterStatus === "ALL") return true;
+      if (filterStatus === "CHO_DOI_SOAT") return record.workflowStatus === "CHO_DOI_SOAT";
+      if (filterStatus === "DANG_XU_LY") return isProcessing;
+      if (filterStatus === "CAN_THU_THEM") return needsAdditionalPayment;
+      if (filterStatus === "HOAN_TAT") return record.workflowStatus === "DA_CHOT";
+      return true;
+    };
+
+    const matchesSearch = (record) => {
+      if (!debouncedSearchKeyword) return true;
+
+      return [record.customerName, record.roomDisplay, record.contractId]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(debouncedSearchKeyword));
+    };
+
+    return records.filter((record) => matchesFilter(record) && matchesSearch(record));
+  }, [records, filterStatus, debouncedSearchKeyword]);
+
+  const groupedRecords = useMemo(() => {
+    const grouped = {
+      CHO_DOI_SOAT: [],
+      DANG_XU_LY: [],
+      CAN_THU_THEM: [],
+      HOAN_TAT: [],
+    };
+
+    filteredRecords.forEach((record) => {
+      if (Number(record.additionalPaymentAmount || 0) > 0) {
+        grouped.CAN_THU_THEM.push(record);
+      }
+
+      if (record.workflowStatus === "CHO_DOI_SOAT") {
+        grouped.CHO_DOI_SOAT.push(record);
+      } else if (record.workflowStatus === "DA_CHOT") {
+        grouped.HOAN_TAT.push(record);
+      } else {
+        grouped.DANG_XU_LY.push(record);
+      }
+    });
+
+    return grouped;
+  }, [filteredRecords]);
+
+  useEffect(() => {
+    if (!filteredRecords.length) {
+      setSelectedContractId(null);
+      hydrateSelectedRecord(null);
       return;
     }
 
-    setRefundReason(selectedRecord.refundReason);
-    setLineItems(selectedRecord.lineItems.map((item) => ({ ...item })));
-  }, [selectedRecord]);
+    if (selectedContractId && filteredRecords.some((item) => item.checkoutRequestId === selectedContractId)) {
+      return;
+    }
 
-  const filteredRecords = useMemo(
-    () =>
-      records.filter((record) => {
-        const matchesQuery =
-          !search ||
-          [record.checkoutRequestId, record.contractId, record.customerName, record.roomDisplay, record.bedDisplay]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(search.toLowerCase()));
+    const processingCandidates = filteredRecords.filter((item) => item.workflowStatus === "DANG_LAP");
+    const sortedProcessing = processingCandidates.sort(
+      (first, second) => new Date(second.checkoutDate || 0) - new Date(first.checkoutDate || 0),
+    );
 
-        const matchesWorkflow = workflowFilter === "ALL" || record.workflowStatus === workflowFilter;
-        return matchesQuery && matchesWorkflow;
-      }),
-    [records, search, workflowFilter],
-  );
+    const nextSelected = sortedProcessing[0]?.checkoutRequestId || filteredRecords[0]?.checkoutRequestId || null;
+    setSelectedContractId(nextSelected);
+  }, [filteredRecords, selectedContractId]);
+
+  useEffect(() => {
+    if (!selectedContractId) {
+      return;
+    }
+
+    const loadSelectedDetail = async () => {
+      try {
+        setLoadingDetail(true);
+        const response = await getReconciliationWorkItemDetail(selectedContractId);
+        hydrateSelectedRecord(response.data);
+      } catch (error) {
+        console.error("Error loading reconciliation detail:", error);
+        hydrateSelectedRecord(null);
+        setStatusMessage("Không thể tải chi tiết hồ sơ đối soát đã chọn.");
+      } finally {
+        setLoadingDetail(false);
+      }
+    };
+
+    loadSelectedDetail();
+  }, [selectedContractId]);
 
   const dashboardStats = useMemo(() => {
     const pending = records.filter((record) => record.workflowStatus === "CHO_DOI_SOAT").length;
     const drafting = records.filter((record) => record.workflowStatus === "DANG_LAP").length;
     const finalized = records.filter((record) => record.workflowStatus === "DA_CHOT").length;
-    const needsAdditionalPayment = records.filter((record) => {
-      const summary = computeFinancialSummary(record.depositAmount, record.refundReason, record.lineItems);
-      return summary.additionalPaymentAmount > 0;
-    }).length;
+    const needsAdditionalPayment = records.filter((record) => Number(record.additionalPaymentAmount || 0) > 0).length;
 
     return {
       pending,
@@ -263,54 +340,179 @@ export default function AccountingReconciliationPage() {
     };
   }, [records]);
 
-  const currentSummary = useMemo(
-    () => computeFinancialSummary(selectedRecord?.depositAmount, refundReason, lineItems),
-    [lineItems, refundReason, selectedRecord],
+  const localSummary = useMemo(
+    () => computeFinancialSummary(selectedRecord?.depositAmount || 0, watchedRefundReason, watchedLineItems),
+    [watchedLineItems, watchedRefundReason, selectedRecord],
   );
 
-  const handleLineItemChange = (lineItemId, key, value) => {
-    setLineItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === lineItemId
-          ? {
-              ...item,
-              [key]: key === "amount" ? Number(value || 0) : value,
-            }
-          : item,
-      ),
-    );
+  useEffect(() => {
+    if (!selectedRecord?.contractId) {
+      setPreviewSummary(null);
+      return;
+    }
+
+    if (!watchedRefundReason) {
+      setPreviewSummary(null);
+      return;
+    }
+
+    const previewTimer = setTimeout(async () => {
+      try {
+        const response = await previewReconciliation({
+          contractId: selectedRecord.contractId,
+          refundReason: watchedRefundReason,
+          lineItems: watchedLineItems.map((item) => ({
+            category: item.category,
+            direction: item.direction,
+            amount: Number(item.amount || 0),
+            description: item.description,
+            sourceType: item.sourceType || null,
+            sourceId: item.sourceId || null,
+          })),
+        });
+        setPreviewSummary(response.data || null);
+      } catch (error) {
+        console.error("Error previewing reconciliation:", error);
+        setPreviewSummary(null);
+      }
+    }, 250);
+
+    return () => clearTimeout(previewTimer);
+  }, [selectedRecord?.contractId, watchedRefundReason, watchedLineItems]);
+
+  const currentSummary = useMemo(
+    () => ({
+      ...localSummary,
+      ...previewSummary,
+      policy: previewSummary?.refundPolicy || localSummary.policy,
+    }),
+    [localSummary, previewSummary],
+  );
+
+  const roomConditionText = useMemo(
+    () => buildInspectionSummary(selectedRecord?.inspectionItems || []),
+    [selectedRecord],
+  );
+
+  const hasFormErrors = Boolean(errors.refundReason) || watchedLineItems.some((_, index) => errors.lineItems?.[index]);
+
+  const handleAddLineItem = () => append(createBlankLineItem());
+
+  const canSubmitForm = Boolean(selectedRecord) && !savingAction && isValid;
+
+  const handleReloadFromBackend = () => {
+    loadWorkItems(selectedContractId);
   };
 
-  const handleAddLineItem = () => {
-    setLineItems((currentItems) => [...currentItems, createBlankLineItem()]);
-  };
+  const buildDraftPayload = (values) => ({
+    checkoutRequestId: selectedRecord?.checkoutRequestId,
+    contractId: selectedRecord?.contractId,
+    refundReason: values.refundReason,
+    lineItems: (values.lineItems || []).map((item) => ({
+      category: item.category,
+      direction: item.direction,
+      amount: Number(item.amount || 0),
+      description: item.description,
+      sourceType: item.sourceType || null,
+      sourceId: item.sourceId || null,
+    })),
+  });
 
-  const handleRemoveLineItem = (lineItemId) => {
-    setLineItems((currentItems) => currentItems.filter((item) => item.id !== lineItemId));
-  };
-
-  const handleResetDraft = () => {
-    setRecords(INITIAL_CASES);
-    setSelectedId(INITIAL_CASES[0].id);
-  };
-
-  const persistSelectedDraft = (nextWorkflowStatus) => {
+  const persistSelectedDraft = async (nextWorkflowStatus, values) => {
     if (!selectedRecord) {
       return;
     }
 
-    setRecords((currentRecords) =>
-      currentRecords.map((record) =>
-        record.id === selectedRecord.id
-          ? {
-              ...record,
-              workflowStatus: nextWorkflowStatus,
-              refundReason,
-              lineItems: lineItems.map((item) => ({ ...item })),
-            }
-          : record,
-      ),
-    );
+    try {
+      setSavingAction(nextWorkflowStatus);
+      const payload = {
+        ...buildDraftPayload(values),
+        status: nextWorkflowStatus,
+      };
+
+      const response = selectedRecord.reconciliationId
+        ? await updateReconciliationDraft(selectedRecord.reconciliationId, payload)
+        : await createReconciliationDraft(payload);
+
+      hydrateSelectedRecord(response.data);
+      await loadWorkItems(selectedRecord.checkoutRequestId);
+      setStatusMessage(
+        nextWorkflowStatus === "DANG_LAP"
+          ? "Đã lưu bản nháp đối soát vào backend."
+          : "Đã cập nhật trạng thái hồ sơ đối soát.",
+      );
+    } catch (error) {
+      console.error("Error saving reconciliation draft:", error);
+      window.alert("Không thể lưu bản nháp đối soát. Kiểm tra console để xem chi tiết.");
+    } finally {
+      setSavingAction("");
+    }
+  };
+
+  const handleSaveDraft = handleSubmit(async (values) => {
+    await persistSelectedDraft("DANG_LAP", values);
+  });
+
+  const handleFinalize = handleSubmit(async (values) => {
+    if (!selectedRecord) {
+      return;
+    }
+
+    try {
+      setSavingAction("DA_CHOT");
+
+      let reconciliationId = selectedRecord.reconciliationId;
+      if (!reconciliationId) {
+        const draftResponse = await createReconciliationDraft({
+          ...buildDraftPayload(values),
+          status: "DANG_LAP",
+        });
+        hydrateSelectedRecord(draftResponse.data);
+        reconciliationId = draftResponse.data?.id;
+      }
+
+      const response = await finalizeReconciliation(reconciliationId);
+      hydrateSelectedRecord(response.data);
+      await loadWorkItems(selectedRecord.checkoutRequestId);
+      setStatusMessage("Đã chốt kết quả đối soát trên backend.");
+    } catch (error) {
+      console.error("Error finalizing reconciliation:", error);
+      window.alert("Không thể chốt kết quả đối soát. Kiểm tra console để xem chi tiết.");
+    } finally {
+      setSavingAction("");
+    }
+  });
+
+  const handleCreateNextDocument = async () => {
+    if (!selectedRecord?.reconciliationId) {
+      window.alert("Cần lưu và chốt bảng đối soát trước khi tạo nghiệp vụ tiếp theo.");
+      return;
+    }
+
+    try {
+      setSavingAction("NEXT_ACTION");
+      let nextMessage = "";
+
+      if (currentSummary.additionalPaymentAmount > 0) {
+        const response = await createAdditionalPaymentVoucherFromReconciliation(selectedRecord.reconciliationId);
+        nextMessage = `Đã tạo phiếu thanh toán phát sinh #${response.data?.id || "--"}.`;
+      } else if (currentSummary.refundAmount > 0) {
+        const response = await createRefundVoucherFromReconciliation(selectedRecord.reconciliationId, {
+          beneficiaryName: selectedRecord.customerName,
+        });
+        nextMessage = `Đã tạo phiếu hoàn cọc #${response.data?.id || "--"}.`;
+      } else {
+        nextMessage = "Hồ sơ này không phát sinh hoàn thêm hoặc thu thêm.";
+      }
+
+      await loadWorkItems(selectedRecord.checkoutRequestId);
+      setStatusMessage(nextMessage);
+    } catch (error) {
+      console.error("Error creating reconciliation next-step document:", error);
+      window.alert("Không thể tạo nghiệp vụ tiếp theo từ bảng đối soát. Kiểm tra console để xem chi tiết.");
+    } finally {
+      setSavingAction("");
+    }
   };
 
   const selectedStatusTone =
@@ -319,6 +521,29 @@ export default function AccountingReconciliationPage() {
       : currentSummary.refundAmount > 0
         ? "refund"
         : "balanced";
+
+  const currentPolicy = getPolicy(watchedRefundReason);
+
+  const highlightKeyword = (text) => {
+    const raw = String(text || "");
+    if (!debouncedSearchKeyword) {
+      return raw;
+    }
+
+    const escapedKeyword = debouncedSearchKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const matcher = new RegExp(`(${escapedKeyword})`, "ig");
+    const parts = raw.split(matcher);
+
+    return parts.map((part, index) =>
+      part.toLowerCase() === debouncedSearchKeyword ? (
+        <mark key={`${raw}-${index}`} className="rounded bg-[#fff3c4] px-0.5 text-inherit">
+          {part}
+        </mark>
+      ) : (
+        <React.Fragment key={`${raw}-${index}`}>{part}</React.Fragment>
+      ),
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -339,18 +564,24 @@ export default function AccountingReconciliationPage() {
 
           <div className="flex flex-wrap gap-3 lg:justify-end">
             <button
-              onClick={handleResetDraft}
+              onClick={handleReloadFromBackend}
               className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-3 font-black text-gray-700 transition-colors hover:bg-gray-50"
             >
               <RotateCcw className="h-4 w-4" />
-              Khôi phục giao diện mẫu
+              Tải lại dữ liệu backend
             </button>
             <div className="inline-flex items-center gap-2 rounded-full bg-[#0b2447] px-6 py-3 font-black text-white shadow-lg shadow-[#0b2447]/15">
               <ShieldCheck className="h-4 w-4" />
-              Chưa nối API, đang chốt format nghiệp vụ
+              {loadingRecords || loadingDetail ? "Đang đồng bộ API đối soát" : "Đã nối API đối soát"}
             </div>
           </div>
         </div>
+
+        {statusMessage && (
+          <div className="mb-6 rounded-3xl border border-blue-100 bg-[#f4f8ff] px-5 py-4 text-sm font-semibold text-[#0b2447]">
+            {statusMessage}
+          </div>
+        )}
 
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
           <StatCard
@@ -377,35 +608,7 @@ export default function AccountingReconciliationPage() {
           />
         </div>
 
-        <div className="mb-6 flex flex-col gap-4 rounded-4xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5 lg:flex-row lg:items-center">
-          <div className="flex flex-1 items-center gap-3 rounded-full bg-[#f4f7fa] px-5 py-3">
-            <Search className="h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm theo mã yêu cầu trả phòng, hợp đồng, khách thuê hoặc phòng"
-              className="w-full bg-transparent text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
-            />
-          </div>
-
-          <label className="inline-flex items-center gap-3 rounded-full border border-gray-200 px-5 py-3 text-sm font-black text-gray-700 transition-colors hover:bg-gray-50">
-            <Filter className="h-4 w-4" />
-            <select
-              value={workflowFilter}
-              onChange={(event) => setWorkflowFilter(event.target.value)}
-              className="bg-transparent outline-none"
-            >
-              {WORKFLOW_FILTERS.map((filterOption) => (
-                <option key={filterOption.value} value={filterOption.value}>
-                  {filterOption.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[0.92fr_1.38fr]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,7fr)_minmax(340px,3fr)]">
           <div className="space-y-6">
             <section className="overflow-hidden rounded-4xl border border-gray-100 bg-white shadow-sm">
               <div className="flex flex-col gap-3 border-b border-gray-50 bg-[#f9fafb] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-6">
@@ -422,106 +625,328 @@ export default function AccountingReconciliationPage() {
                 </span>
               </div>
 
-              <div className="divide-y divide-gray-100">
-                {filteredRecords.length === 0 && (
-                  <div className="px-5 py-12 text-sm font-medium text-gray-400 sm:px-8">
+              <div className="border-b border-gray-100 px-5 py-5 sm:px-8 sm:py-6">
+                <div className="mb-4 flex items-center gap-3 rounded-full bg-[#f4f7fa] px-5 py-3">
+                  <Search className="h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchKeyword}
+                    onChange={(event) => setSearchKeyword(event.target.value)}
+                    placeholder="Tìm theo tên khách, mã phòng hoặc hợp đồng"
+                    className="w-full bg-transparent text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {SIDEBAR_FILTER_OPTIONS.map((option) => {
+                    const active = filterStatus === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFilterStatus(option.value)}
+                        className={`rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                          active
+                            ? "bg-[#0b2447] text-white"
+                            : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="max-h-160 space-y-6 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
+                {loadingRecords && (
+                  <div className="py-8 text-sm font-medium text-gray-400">Đang tải hồ sơ đối soát từ backend...</div>
+                )}
+
+                {!loadingRecords && filteredRecords.length === 0 && (
+                  <div className="py-8 text-sm font-medium text-gray-400">
                     Không có hồ sơ nào phù hợp với bộ lọc hiện tại.
                   </div>
                 )}
 
-                {filteredRecords.map((record) => {
-                  const summary = computeFinancialSummary(record.depositAmount, record.refundReason, record.lineItems);
-                  const isSelected = record.id === selectedId;
+                {!loadingRecords &&
+                  SIDEBAR_GROUP_ORDER.map((groupKey) => {
+                    const groupItems = groupedRecords[groupKey] || [];
 
-                  return (
-                    <button
-                      key={record.id}
-                      type="button"
-                      onClick={() => setSelectedId(record.id)}
-                      className={`w-full px-5 py-5 text-left transition-colors sm:px-8 sm:py-6 ${isSelected ? "bg-[#f8fbff]" : "hover:bg-[#fafcff]"}`}
-                    >
-                      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#edf3fb] text-sm font-black text-[#0b2447]">
-                            {record.customerName
-                              .split(" ")
-                              .filter(Boolean)
-                              .slice(0, 2)
-                              .map((word) => word[0])
-                              .join("")}
-                          </div>
+                    if (!groupItems.length) {
+                      return null;
+                    }
 
-                          <div>
-                            <div className="mb-2 flex flex-wrap items-center gap-3">
-                              <h3 className="text-[1.02rem] font-black text-[#111827]">{record.customerName}</h3>
-                              <StatusBadge status={record.workflowStatus} />
-                            </div>
-                            <p className="text-sm font-semibold text-gray-500">
-                              {record.checkoutRequestId} • {record.contractId}
-                            </p>
-                            <p className="mt-2 text-sm font-medium text-gray-500">
-                              {record.roomDisplay} • {record.bedDisplay} • Trả phòng {formatDate(record.checkoutDate)}
-                            </p>
-                          </div>
-                        </div>
+                    return (
+                      <div key={groupKey}>
+                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">
+                          {SIDEBAR_GROUP_LABELS[groupKey]}
+                        </p>
 
-                        <div className="flex items-center gap-4 sm:gap-6">
-                          <div className="text-right">
-                            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                              Kết quả tạm tính
-                            </p>
-                            <p
-                              className={`text-lg font-black ${
-                                summary.additionalPaymentAmount > 0 ? "text-[#dc2626]" : "text-[#15803d]"
-                              }`}
-                            >
-                              {summary.additionalPaymentAmount > 0
-                                ? `Thu thêm ${formatCurrency(summary.additionalPaymentAmount)}`
-                                : `Hoàn ${formatCurrency(summary.refundAmount)}`}
-                            </p>
-                          </div>
-                          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200">
-                            <ChevronRight className="h-4 w-4 text-gray-500" />
-                          </div>
+                        <div className="space-y-2">
+                          {groupItems.map((record) => {
+                            const isSelected = record.checkoutRequestId === selectedContractId;
+                            const hasAdditionalPayment = Number(record.additionalPaymentAmount || 0) > 0;
+
+                            return (
+                              <button
+                                key={`${groupKey}-${record.checkoutRequestId}`}
+                                type="button"
+                                onClick={() => setSelectedContractId(record.checkoutRequestId)}
+                                className={`w-full rounded-[20px] border-l-4 px-4 py-3 text-left transition-all ${
+                                  isSelected
+                                    ? "border-l-[#0b2447] bg-[#f8fbff] shadow-sm"
+                                    : "border-l-transparent border border-gray-100 bg-white hover:bg-[#fafcff]"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="mb-1 flex items-center gap-2">
+                                      <h3 className="truncate text-[0.97rem] font-black text-[#111827]">
+                                        {highlightKeyword(record.customerName)}
+                                      </h3>
+                                      <StatusBadge status={record.workflowStatus} />
+                                    </div>
+                                    <p className="truncate text-sm font-medium text-gray-500">
+                                      {highlightKeyword(record.roomDisplay)} • {formatDate(record.checkoutDate)}
+                                    </p>
+                                  </div>
+
+                                  <div className="shrink-0 text-right">
+                                    <p
+                                      className={`text-lg font-black ${
+                                        hasAdditionalPayment ? "text-[#dc2626]" : "text-[#15803d]"
+                                      }`}
+                                    >
+                                      {hasAdditionalPayment
+                                        ? formatCurrency(record.additionalPaymentAmount || 0)
+                                        : formatCurrency(record.refundAmount || 0)}
+                                    </p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                      {hasAdditionalPayment ? "Thu thêm" : "Hoàn"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
-                    </button>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </section>
 
-            <section className="rounded-4xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
-              <div className="mb-6 flex items-center gap-3">
-                <ClipboardList className="h-5 w-5 text-[#0b2447]" />
-                <h2 className="text-[13px] font-black uppercase tracking-widest text-[#0b2447]">
-                  Luồng thao tác đề xuất
-                </h2>
+            <section className="rounded-4xl border border-gray-100 bg-white shadow-sm">
+              <div className="border-b border-gray-50 px-5 py-5 sm:px-8 sm:py-6">
+                <div className="mb-3 flex items-center gap-3">
+                  <ClipboardList className="h-5 w-5 text-[#0b2447]" />
+                  <h2 className="text-[14px] font-black uppercase tracking-widest text-[#0b2447]">
+                    Form lập bảng đối soát
+                  </h2>
+                </div>
+                <p className="text-sm font-medium text-gray-500">
+                  Workflow thao tác: chọn hồ sơ → chọn chính sách hoàn cọc → nhập khoản khấu trừ/điều chỉnh → xem
+                  summary bên phải → chốt.
+                </p>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-3">
-                <WorkflowStep
-                  step="01"
-                  title="Nhận hồ sơ"
-                  description="Chọn yêu cầu trả phòng đã kiểm tra tài sản và đã đủ dữ liệu hợp đồng."
-                />
-                <WorkflowStep
-                  step="02"
-                  title="Lập đối soát"
-                  description="Áp dụng tỷ lệ hoàn cọc, nhập line item khấu trừ và xem ngay kết quả."
-                />
-                <WorkflowStep
-                  step="03"
-                  title="Chuyển nghiệp vụ"
-                  description="Sau khi chốt sẽ tạo phiếu hoàn cọc hoặc phiếu thanh toán phát sinh."
-                />
-              </div>
+              {!selectedRecord && (
+                <div className="px-5 py-12 text-sm font-medium text-gray-400 sm:px-8">
+                  Chọn một hồ sơ bên trên để bắt đầu lập bảng đối soát.
+                </div>
+              )}
+
+              {selectedRecord && (
+                <form className="space-y-8 px-5 py-6 sm:px-8 sm:py-8">
+                  <section className="space-y-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">
+                      Bước 1 · Thông tin hồ sơ
+                    </p>
+                    <div className="rounded-[26px] border border-gray-100 bg-[#fafbfd] p-5 sm:p-6">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <DetailRow label="Tên khách" value={selectedRecord.customerName || "--"} strong noBorder />
+                        <DetailRow
+                          label="Phòng / Giường"
+                          value={`${selectedRecord.roomDisplay || "--"} • ${selectedRecord.bedDisplay || "--"}`}
+                          noBorder
+                        />
+                        <DetailRow label="Ngày trả phòng" value={formatDate(selectedRecord.checkoutDate)} noBorder />
+                        <DetailRow label="Số hợp đồng" value={selectedRecord.contractId || "--"} noBorder />
+                      </div>
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        <div className="rounded-2xl bg-white px-4 py-3">
+                          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            Ghi chú quản lý
+                          </p>
+                          <p className="text-sm font-medium text-gray-600">
+                            {selectedRecord.managerNote || "Chưa có ghi chú quản lý."}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white px-4 py-3">
+                          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            Hiện trạng tài sản
+                          </p>
+                          <p className="text-sm font-medium text-gray-600">{roomConditionText}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="space-y-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">
+                      Bước 2 · Chọn chính sách hoàn cọc
+                    </p>
+                    <div className="space-y-3">
+                      {REFUND_POLICY_OPTIONS.map((policy) => {
+                        const active = watchedRefundReason === policy.value;
+
+                        return (
+                          <label
+                            key={policy.value}
+                            className={`flex cursor-pointer items-start justify-between gap-4 rounded-[26px] border px-5 py-4 transition-all ${
+                              active
+                                ? "border-[#0b2447] bg-[#edf3fb] shadow-sm"
+                                : "border-gray-200 bg-white hover:bg-[#fafcff]"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              value={policy.value}
+                              className="sr-only"
+                              {...register("refundReason", { required: "Cần chọn chính sách hoàn cọc" })}
+                            />
+                            <div>
+                              <p className="font-black text-[#111827]">{policy.label}</p>
+                              <p className="mt-2 text-sm font-medium leading-6 text-gray-500">{policy.description}</p>
+                            </div>
+                            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black uppercase tracking-widest text-[#0b2447] shadow-sm">
+                              {policy.ratio}%
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {errors.refundReason && (
+                      <p className="text-sm font-semibold text-[#dc2626]">{errors.refundReason.message}</p>
+                    )}
+                  </section>
+
+                  <section className="space-y-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <p className="text-[11px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">
+                        Bước 3 · Danh sách khoản khấu trừ
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleAddLineItem}
+                        className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0b2447] px-5 py-3 font-black text-white transition-colors hover:bg-[#123365]"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Thêm khoản
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-[26px] border border-gray-100">
+                      <div className="min-w-230 divide-y divide-gray-100">
+                        <div className="grid grid-cols-[1.2fr_0.75fr_0.9fr_1.8fr_70px] gap-3 bg-[#f9fafb] px-5 py-4 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                          <span>Loại khoản</span>
+                          <span>Thu/Chi</span>
+                          <span>Số tiền</span>
+                          <span>Ghi chú</span>
+                          <span className="text-center">Xóa</span>
+                        </div>
+
+                        {fields.length === 0 && (
+                          <div className="px-5 py-8 text-sm font-medium text-gray-400">
+                            Chưa có khoản nào. Bấm "Thêm khoản" để bắt đầu nhập.
+                          </div>
+                        )}
+
+                        {fields.map((field, index) => (
+                          <div
+                            key={field.fieldKey}
+                            className="grid grid-cols-[1.2fr_0.75fr_0.9fr_1.8fr_70px] gap-3 px-5 py-4"
+                          >
+                            <div>
+                              <select
+                                {...register(`lineItems.${index}.category`, { required: "Bắt buộc" })}
+                                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-colors focus:border-[#0b2447]"
+                              >
+                                {LINE_ITEM_CATEGORIES.map((category) => (
+                                  <option key={category.value} value={category.value}>
+                                    {category.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <select
+                                {...register(`lineItems.${index}.direction`, { required: "Bắt buộc" })}
+                                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-colors focus:border-[#0b2447]"
+                              >
+                                <option value="THU">THU</option>
+                                <option value="CHI">CHI</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1000"
+                                {...register(`lineItems.${index}.amount`, {
+                                  required: "Bắt buộc",
+                                  valueAsNumber: true,
+                                  min: {
+                                    value: 0,
+                                    message: "Số tiền phải >= 0",
+                                  },
+                                  validate: (value) => Number.isFinite(value) || "Số tiền không hợp lệ",
+                                })}
+                                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-colors focus:border-[#0b2447]"
+                              />
+                            </div>
+
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Nhập diễn giải nghiệp vụ"
+                                {...register(`lineItems.${index}.description`, {
+                                  required: "Không để trống ghi chú",
+                                })}
+                                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-colors focus:border-[#0b2447]"
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => remove(index)}
+                              className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-gray-200 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+
+                            {(errors.lineItems?.[index]?.amount || errors.lineItems?.[index]?.description) && (
+                              <p className="col-span-5 text-sm font-semibold text-[#dc2626]">
+                                {errors.lineItems?.[index]?.amount?.message ||
+                                  errors.lineItems?.[index]?.description?.message}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                </form>
+              )}
             </section>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">
             <section className="overflow-hidden rounded-4xl bg-[#0b2447] text-white shadow-xl shadow-[#0b2447]/15">
-              <div className="grid gap-5 px-5 py-6 sm:px-8 sm:py-8 xl:grid-cols-[1.35fr_0.9fr]">
+              <div className="grid gap-5 px-5 py-6 sm:px-8 sm:py-8">
                 <div>
                   <p className="mb-3 text-[10px] font-black uppercase tracking-[0.28em] text-blue-200">
                     Hồ sơ đang xử lý
@@ -529,7 +954,7 @@ export default function AccountingReconciliationPage() {
                   <h2 className="mb-4 text-[1.5rem] font-black leading-tight sm:text-[1.75rem]">
                     {selectedRecord?.customerName || "Chưa chọn hồ sơ đối soát"}
                   </h2>
-                  <div className="grid gap-3 text-sm font-semibold text-blue-100 lg:grid-cols-2">
+                  <div className="grid gap-3 text-sm font-semibold text-blue-100">
                     <InfoChip icon={ReceiptText} text={`Yêu cầu: ${selectedRecord?.checkoutRequestId || "--"}`} />
                     <InfoChip icon={Landmark} text={`Hợp đồng: ${selectedRecord?.contractId || "--"}`} />
                     <InfoChip
@@ -563,252 +988,90 @@ export default function AccountingReconciliationPage() {
               </div>
             </section>
 
-            <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
-              <section className="rounded-4xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
-                <div className="mb-6 flex items-center gap-3">
-                  <BadgePercent className="h-5 w-5 text-[#0b2447]" />
-                  <h2 className="text-[13px] font-black uppercase tracking-widest text-[#0b2447]">
-                    Tỷ lệ hoàn cọc cơ bản
-                  </h2>
-                </div>
-
-                <div className="space-y-3">
-                  {REFUND_POLICY_OPTIONS.map((policy) => (
-                    <button
-                      key={policy.value}
-                      type="button"
-                      onClick={() => setRefundReason(policy.value)}
-                      className={`w-full rounded-[26px] border px-5 py-4 text-left transition-all ${
-                        refundReason === policy.value
-                          ? "border-[#0b2447] bg-[#edf3fb] shadow-sm"
-                          : "border-gray-200 bg-white hover:bg-[#fafcff]"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-black text-[#111827]">{policy.label}</p>
-                          <p className="mt-2 text-sm font-medium leading-6 text-gray-500">{policy.description}</p>
-                        </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black uppercase tracking-widest text-[#0b2447] shadow-sm">
-                          {policy.ratio}%
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="rounded-4xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
-                <div className="mb-6 flex items-center gap-3">
-                  <Wallet className="h-5 w-5 text-[#0b2447]" />
-                  <h2 className="text-[13px] font-black uppercase tracking-widest text-[#0b2447]">Thông tin nền</h2>
-                </div>
-
-                <div className="space-y-4">
-                  <DetailRow
-                    label="Tiền cọc ban đầu"
-                    value={formatCurrency(selectedRecord?.depositAmount || 0)}
-                    strong
-                  />
-                  <DetailRow label="Số tháng lưu trú" value={`${selectedRecord?.stayMonths || 0} tháng`} />
-                  <DetailRow label="Ngày vào ở" value={formatDate(selectedRecord?.moveInDate)} />
-                  <DetailRow label="Trạng thái kiểm tra" value={selectedRecord?.inspectionStatus || "--"} />
-                </div>
-
-                <div className="mt-6 rounded-[26px] bg-[#f7f9fc] p-5">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-400">Ghi chú quản lý</p>
-                  <p className="text-sm font-medium leading-7 text-gray-600">
-                    {selectedRecord?.managerNote || "Chưa có ghi chú quản lý."}
-                  </p>
-                </div>
-
-                <div className="mt-4 rounded-[26px] border border-dashed border-gray-200 p-5">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                    Hiện trạng tài sản
-                  </p>
-                  <p className="text-sm font-medium leading-7 text-gray-600">
-                    {selectedRecord?.roomCondition || "Chưa có dữ liệu hiện trạng."}
-                  </p>
-                </div>
-              </section>
-            </div>
-
-            <section className="rounded-4xl border border-gray-100 bg-white shadow-sm">
-              <div className="flex flex-col gap-4 border-b border-gray-50 px-5 py-5 sm:px-8 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h2 className="text-[14px] font-black uppercase tracking-widest text-[#0b2447]">
-                    Chi tiết khấu trừ và điều chỉnh
-                  </h2>
-                  <p className="mt-2 text-sm font-medium text-gray-500">
-                    Mỗi dòng thể hiện một khoản khấu trừ hoặc điều chỉnh có lợi cho khách hàng.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAddLineItem}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0b2447] px-5 py-3 font-black text-white transition-colors hover:bg-[#123365]"
-                >
-                  <Plus className="h-4 w-4" />
-                  Thêm khoản mục
-                </button>
+            <section className="rounded-4xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6 flex items-center gap-3">
+                <Wallet className="h-5 w-5 text-[#0b2447]" />
+                <h2 className="text-[13px] font-black uppercase tracking-widest text-[#0b2447]">Summary kết quả</h2>
               </div>
 
-              <div className="overflow-x-auto px-3 py-4 sm:px-4 lg:px-6">
-                <div className="min-w-230 divide-y divide-gray-100 rounded-[28px] border border-gray-100">
-                  <div className="grid grid-cols-[1.2fr_0.75fr_0.85fr_1.8fr_70px] gap-3 bg-[#f9fafb] px-5 py-4 text-[11px] font-black uppercase tracking-widest text-gray-400">
-                    <span>Danh mục</span>
-                    <span>Hướng</span>
-                    <span>Số tiền</span>
-                    <span>Diễn giải</span>
-                    <span className="text-center">Xóa</span>
-                  </div>
+              <div className="space-y-4">
+                <ResultCard
+                  label="Tiền cọc ban đầu"
+                  value={formatCurrency(selectedRecord?.depositAmount || 0)}
+                  subtle
+                />
+                <ResultCard
+                  label={currentPolicy ? `Mức hoàn theo policy (${currentPolicy.ratio}%)` : "Mức hoàn theo policy"}
+                  value={formatCurrency(currentSummary.baseRefund)}
+                  accent="blue"
+                />
+                <ResultCard label="Tổng khấu trừ" value={formatCurrency(currentSummary.totalCharges)} accent="red" />
+                <ResultCard
+                  label="Điều chỉnh trả thêm cho khách"
+                  value={formatCurrency(currentSummary.totalAdjustments)}
+                  accent="green"
+                />
+              </div>
 
-                  {lineItems.map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1.2fr_0.75fr_0.85fr_1.8fr_70px] gap-3 px-5 py-4">
-                      <select
-                        value={item.category}
-                        onChange={(event) => handleLineItemChange(item.id, "category", event.target.value)}
-                        className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-colors focus:border-[#0b2447]"
-                      >
-                        {LINE_ITEM_CATEGORIES.map((category) => (
-                          <option key={category.value} value={category.value}>
-                            {category.label}
-                          </option>
-                        ))}
-                      </select>
+              <div className="mt-5 grid gap-4">
+                <div className="rounded-[28px] bg-[#eff8f2] p-6">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#15803d]">
+                    Số tiền hoàn lại
+                  </p>
+                  <p className="text-[2rem] font-black leading-none text-[#15803d]">
+                    {formatCurrency(currentSummary.refundAmount)}
+                  </p>
+                </div>
 
-                      <select
-                        value={item.direction}
-                        onChange={(event) => handleLineItemChange(item.id, "direction", event.target.value)}
-                        className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-colors focus:border-[#0b2447]"
-                      >
-                        <option value="THU">THU</option>
-                        <option value="CHI">CHI</option>
-                      </select>
-
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.amount}
-                        onChange={(event) => handleLineItemChange(item.id, "amount", event.target.value)}
-                        className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-colors focus:border-[#0b2447]"
-                      />
-
-                      <input
-                        type="text"
-                        value={item.description}
-                        onChange={(event) => handleLineItemChange(item.id, "description", event.target.value)}
-                        placeholder="Nhập diễn giải nghiệp vụ"
-                        className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 outline-none transition-colors focus:border-[#0b2447]"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveLineItem(item.id)}
-                        className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-gray-200 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+                <div className="rounded-[28px] bg-[#fff3f2] p-6">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#dc2626]">
+                    Số tiền cần thu thêm
+                  </p>
+                  <p className="text-[2rem] font-black leading-none text-[#dc2626]">
+                    {formatCurrency(currentSummary.additionalPaymentAmount)}
+                  </p>
                 </div>
               </div>
             </section>
 
-            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-              <section className="rounded-4xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
-                <div className="mb-6 flex items-center gap-3">
-                  <ArrowRightLeft className="h-5 w-5 text-[#0b2447]" />
-                  <h2 className="text-[13px] font-black uppercase tracking-widest text-[#0b2447]">
-                    Kết quả đối soát tạm tính
-                  </h2>
-                </div>
+            <section className="rounded-4xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6 flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-[#0b2447]" />
+                <h2 className="text-[13px] font-black uppercase tracking-widest text-[#0b2447]">Hành động nghiệp vụ</h2>
+              </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <ResultCard
-                    label="Tiền cọc ban đầu"
-                    value={formatCurrency(selectedRecord?.depositAmount || 0)}
-                    subtle
-                  />
-                  <ResultCard
-                    label={`Mức hoàn cơ bản (${currentSummary.policy.ratio}%)`}
-                    value={formatCurrency(currentSummary.baseRefund)}
-                    accent="blue"
-                  />
-                  <ResultCard label="Tổng khấu trừ" value={formatCurrency(currentSummary.totalCharges)} accent="red" />
-                  <ResultCard
-                    label="Điều chỉnh trả thêm cho khách"
-                    value={formatCurrency(currentSummary.totalAdjustments)}
-                    accent="green"
-                  />
+              {hasFormErrors && selectedRecord && (
+                <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-[#b91c1c]">
+                  Form chưa hợp lệ. Vui lòng kiểm tra số tiền và các trường bắt buộc trước khi chốt.
                 </div>
+              )}
 
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-[28px] bg-[#eff8f2] p-6">
-                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#15803d]">
-                      Số tiền hoàn lại
-                    </p>
-                    <p className="text-[2rem] font-black leading-none text-[#15803d]">
-                      {formatCurrency(currentSummary.refundAmount)}
-                    </p>
-                    <p className="mt-3 text-sm font-medium leading-6 text-[#166534]">
-                      Áp dụng khi phần cọc còn dư sau khi trừ hết các khoản phát sinh.
-                    </p>
-                  </div>
-
-                  <div className="rounded-[28px] bg-[#fff3f2] p-6">
-                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#dc2626]">
-                      Số tiền cần thu thêm
-                    </p>
-                    <p className="text-[2rem] font-black leading-none text-[#dc2626]">
-                      {formatCurrency(currentSummary.additionalPaymentAmount)}
-                    </p>
-                    <p className="mt-3 text-sm font-medium leading-6 text-[#991b1b]">
-                      Áp dụng khi các khoản khấu trừ lớn hơn mức hoàn cọc cơ bản.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="rounded-4xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
-                <div className="mb-6 flex items-center gap-3">
-                  <ShieldCheck className="h-5 w-5 text-[#0b2447]" />
-                  <h2 className="text-[13px] font-black uppercase tracking-widest text-[#0b2447]">
-                    Hành động nghiệp vụ
-                  </h2>
-                </div>
-
-                <div className="space-y-4">
-                  <ActionButton
-                    title="Lưu bản nháp đối soát"
-                    description="Ghi nhận lại tỷ lệ hoàn cọc và danh sách line item đang nhập."
-                    onClick={() => persistSelectedDraft("DANG_LAP")}
-                    tone="secondary"
-                  />
-                  <ActionButton
-                    title="Chốt kết quả đối soát"
-                    description="Khóa số liệu tạm tính để chuyển qua bước hoàn cọc hoặc thu thêm."
-                    onClick={() => persistSelectedDraft("DA_CHOT")}
-                    tone="primary"
-                  />
-                  <ActionButton
-                    title={
-                      currentSummary.additionalPaymentAmount > 0
-                        ? "Sẵn sàng tạo phiếu thanh toán phát sinh"
-                        : "Sẵn sàng tạo phiếu hoàn cọc"
-                    }
-                    description={
-                      currentSummary.additionalPaymentAmount > 0
-                        ? "Sau khi nối API mới, nút này sẽ sinh nghiệp vụ thu thêm cho khách thuê."
-                        : "Sau khi nối API mới, nút này sẽ sinh phiếu hoàn cọc từ kết quả đối soát đã chốt."
-                    }
-                    onClick={() => persistSelectedDraft("CHO_HANH_DONG")}
-                    tone="accent"
-                  />
-                </div>
-              </section>
-            </div>
+              <div className="space-y-4">
+                <ActionButton
+                  title="Lưu bản nháp"
+                  description="Lưu trạng thái hiện tại của form để tiếp tục xử lý sau."
+                  onClick={handleSaveDraft}
+                  tone="secondary"
+                  disabled={!canSubmitForm}
+                />
+                <ActionButton
+                  title="Chốt đối soát"
+                  description="Khóa dữ liệu sau khi form hợp lệ và kết quả đã được xác nhận."
+                  onClick={handleFinalize}
+                  tone="primary"
+                  disabled={!canSubmitForm}
+                />
+                <ActionButton
+                  title={
+                    currentSummary.additionalPaymentAmount > 0 ? "Tạo phiếu thanh toán phát sinh" : "Tạo phiếu hoàn cọc"
+                  }
+                  description="Thực hiện bước nghiệp vụ tiếp theo sau khi đối soát đã chốt."
+                  onClick={handleCreateNextDocument}
+                  tone="accent"
+                  disabled={!selectedRecord?.reconciliationId || Boolean(savingAction)}
+                />
+              </div>
+            </section>
           </div>
         </div>
       </div>
@@ -871,19 +1134,11 @@ function InfoChip({ icon: Icon, text }) {
   );
 }
 
-function WorkflowStep({ step, title, description }) {
+function DetailRow({ label, value, strong = false, noBorder = false }) {
   return (
-    <div className="rounded-[26px] border border-gray-100 bg-[#fafbfd] p-5">
-      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">Bước {step}</p>
-      <p className="mb-2 text-lg font-black text-[#0b2447]">{title}</p>
-      <p className="text-sm font-medium leading-6 text-gray-500">{description}</p>
-    </div>
-  );
-}
-
-function DetailRow({ label, value, strong = false }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-gray-100 py-3 last:border-0 last:pb-0">
+    <div
+      className={`flex items-center justify-between gap-4 py-3 ${noBorder ? "" : "border-b border-gray-100 last:border-0 last:pb-0"}`}
+    >
       <span className="text-sm font-medium text-gray-500">{label}</span>
       <span className={`text-right text-sm font-bold ${strong ? "text-[#0b2447]" : "text-[#111827]"}`}>{value}</span>
     </div>
@@ -908,7 +1163,7 @@ function ResultCard({ label, value, accent = "default", subtle = false }) {
   );
 }
 
-function ActionButton({ title, description, onClick, tone = "secondary" }) {
+function ActionButton({ title, description, onClick, tone = "secondary", disabled = false }) {
   const toneStyles = {
     primary: "bg-[#0b2447] text-white hover:bg-[#123365]",
     secondary: "bg-white text-[#0b2447] border border-gray-200 hover:bg-gray-50",
@@ -919,7 +1174,8 @@ function ActionButton({ title, description, onClick, tone = "secondary" }) {
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-[26px] px-5 py-4 text-left transition-colors ${toneStyles[tone] || toneStyles.secondary}`}
+      disabled={disabled}
+      className={`w-full rounded-[28px] px-5 py-5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${toneStyles[tone] || toneStyles.secondary}`}
     >
       <p className="font-black">{title}</p>
       <p className="mt-2 text-sm font-medium leading-6 opacity-80">{description}</p>

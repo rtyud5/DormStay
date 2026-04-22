@@ -23,7 +23,7 @@ export default function AccountingTopbar({ onOpenSidebar }) {
   const breadcrumb = breadcrumbMap[location.pathname] || "Dashboard";
 
   return (
-    <header className="bg-white sticky top-0 z-30 border-b border-gray-100">
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-gray-100 bg-white">
       <div className="flex h-20 items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-3 lg:gap-4">
           <button
