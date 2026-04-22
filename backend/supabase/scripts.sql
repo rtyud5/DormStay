@@ -133,6 +133,8 @@ create table public.yeu_cau_thue (
   gia_thue_thang numeric(14,2) not null default 0 check (gia_thue_thang >= 0),
   so_tien_dat_coc numeric(14,2) not null default 0 check (so_tien_dat_coc >= 0),
   trang_thai varchar(50) not null default 'MOI_TAO',
+  checkoutUrl text,
+  paymentLinkId text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint chk_yct_loai_muc_tieu check (loai_muc_tieu in ('PHONG', 'GIUONG')),
@@ -170,6 +172,8 @@ create table public.giu_cho_tam (
     or
     (loai_muc_tieu = 'GIUONG' and ma_giuong is not null)
   )
+  checkoutUrl text,
+  paymentLinkid text
 );
 
 -- =========================================================
