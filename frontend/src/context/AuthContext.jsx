@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { setToken, clearToken } from "../lib/storage";
 
@@ -8,9 +8,10 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const currentUserRef = useRef(null);
 
   useEffect(() => {
-    // console.log("AuthContext user:", user);
+    currentUserRef.current = user;
   }, [user]);
 
   useEffect(() => {
@@ -35,10 +36,15 @@ export const AuthProvider = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth event:", _event);
       setUser(session?.user ?? null);
       if (session?.user) {
-        setLoading(true);
+        // Chỉ trigger loading screen nếu là lần đầu hoặc mới đăng nhập thật sự (trước đó chưa có user)
+        if ((_event === "SIGNED_IN" && !currentUserRef.current) || _event === "INITIAL_SESSION") {
+          setLoading(true);
+        }
         setToken(session.access_token);
+        // Vẫn gọi fetchProfile ngầm để cập nhật thông tin nếu cần (không gây re-mount)
         fetchProfile(session.user.id);
       } else {
         setProfile(null);
