@@ -448,13 +448,6 @@ function buildInvoiceItemPayloads(invoiceId, lineItems, insertedCharges = []) {
 function mapTransactionRow(payment, invoice) {
   const systemAmount = toNumber(invoice?.amount);
   const actualAmount = toNumber(payment.amount);
-  let matchStatus = "MATCHED";
-
-  if (payment.status === "PENDING") {
-    matchStatus = "PENDING";
-  } else if (systemAmount !== actualAmount) {
-    matchStatus = "MISMATCH";
-  }
 
   return {
     id: payment.id,
@@ -463,13 +456,12 @@ function mapTransactionRow(payment, invoice) {
     contractId: payment.contractId,
     amount: actualAmount,
     status: payment.status,
-    matchStatus,
     variance: roundMoney(actualAmount - systemAmount),
     issueDate: invoice?.issueDate || null,
     transactionDate: payment.paidAt,
     systemAmount,
     actualAmount,
-    notes: matchStatus === "MISMATCH" ? "So tien thanh toan lech voi so tien he thong" : null,
+    notes: systemAmount !== actualAmount ? "So tien thanh toan lech voi so tien he thong" : null,
     invoice,
   };
 }

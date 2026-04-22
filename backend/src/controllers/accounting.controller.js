@@ -2,89 +2,24 @@ const AccountingService = require("../services/accounting.service");
 const asyncHandler = require("../utils/asyncHandler");
 const { sendSuccess } = require("../utils/apiResponse");
 
-const getDashboard = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getDashboard(req.query);
-  return sendSuccess(res, result, "Fetch accounting dashboard successful");
+const getReconciliationWorkItems = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getReconciliationWorkItems(req.query);
+  return sendSuccess(res, result, "Fetch reconciliation work items successful");
 });
 
-const getContracts = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getContracts(req.query);
-  return sendSuccess(res, result, "Fetch accounting contracts successful");
+const getReconciliationWorkItemDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getReconciliationWorkItemDetail(req.params.checkoutRequestId);
+  return sendSuccess(res, result, "Fetch reconciliation work item detail successful");
 });
 
-const getContractDetail = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getContractDetail(req.params.id);
-  return sendSuccess(res, result, "Fetch accounting contract detail successful");
+const previewReconciliation = asyncHandler(async (req, res) => {
+  const result = await AccountingService.previewReconciliation(req.body);
+  return sendSuccess(res, result, "Preview reconciliation successful");
 });
 
-const getBillingPreview = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getBillingPreview(req.params.id);
-  return sendSuccess(res, result, "Fetch billing preview successful");
-});
-
-const generateInitialBilling = asyncHandler(async (req, res) => {
-  const result = await AccountingService.generateInitialBilling(req.body);
-  return sendSuccess(res, result, "Generate initial billing successful", 201);
-});
-
-const getInvoices = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getInvoices(req.query);
-  return sendSuccess(res, result, "Fetch accounting invoices successful");
-});
-
-const getInvoiceDetail = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getInvoiceDetail(req.params.id);
-  return sendSuccess(res, result, "Fetch accounting invoice detail successful");
-});
-
-const createInvoice = asyncHandler(async (req, res) => {
-  const result = await AccountingService.createInvoice(req.body);
-  return sendSuccess(res, result, "Create accounting invoice successful", 201);
-});
-
-const updateInvoice = asyncHandler(async (req, res) => {
-  const result = await AccountingService.updateInvoice(req.params.id, req.body);
-  return sendSuccess(res, result, "Update accounting invoice successful");
-});
-
-const createExtraInvoice = asyncHandler(async (req, res) => {
-  const result = await AccountingService.createExtraInvoice(req.body);
-  return sendSuccess(res, result, "Create extra invoice successful", 201);
-});
-
-const getPayments = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getPayments(req.query);
-  return sendSuccess(res, result, "Fetch accounting payments successful");
-});
-
-const recordPayment = asyncHandler(async (req, res) => {
-  const result = await AccountingService.recordPayment(req.body);
-  return sendSuccess(res, result, "Record accounting payment successful", 201);
-});
-
-const confirmPayment = asyncHandler(async (req, res) => {
-  const result = await AccountingService.confirmPayment(req.params.id, req.user.profileId);
-  return sendSuccess(res, result, "Confirm accounting payment successful");
-});
-
-const getTransactions = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getTransactions(req.query);
-  return sendSuccess(res, result, "Fetch accounting transactions successful");
-});
-
-const getTransactionDetail = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getTransactionDetail(req.params.id);
-  return sendSuccess(res, result, "Fetch accounting transaction detail successful");
-});
-
-const resolveTransaction = asyncHandler(async (req, res) => {
-  const result = await AccountingService.resolveTransaction(req.params.id, req.body);
-  return sendSuccess(res, result, "Resolve accounting transaction successful");
-});
-
-const getReconciliations = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getReconciliations(req.query);
-  return sendSuccess(res, result, "Fetch reconciliations successful");
+const createReconciliationDraft = asyncHandler(async (req, res) => {
+  const result = await AccountingService.createReconciliationDraft(req.body);
+  return sendSuccess(res, result, "Create reconciliation draft successful", 201);
 });
 
 const getReconciliationDetail = asyncHandler(async (req, res) => {
@@ -92,59 +27,45 @@ const getReconciliationDetail = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch reconciliation detail successful");
 });
 
-const createReconciliation = asyncHandler(async (req, res) => {
-  const result = await AccountingService.createReconciliation(req.body);
-  return sendSuccess(res, result, "Create reconciliation successful", 201);
+const updateReconciliationDraft = asyncHandler(async (req, res) => {
+  const result = await AccountingService.updateReconciliationDraft(req.params.id, req.body);
+  return sendSuccess(res, result, "Update reconciliation draft successful");
 });
 
-const updateReconciliation = asyncHandler(async (req, res) => {
-  const result = await AccountingService.updateReconciliation(req.params.id, req.body);
-  return sendSuccess(res, result, "Update reconciliation successful");
+const finalizeReconciliation = asyncHandler(async (req, res) => {
+  const result = await AccountingService.finalizeReconciliation(req.params.id);
+  return sendSuccess(res, result, "Finalize reconciliation successful");
 });
 
-const getRefunds = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getRefunds(req.query);
-  return sendSuccess(res, result, "Fetch refund vouchers successful");
+const createRefundFromReconciliation = asyncHandler(async (req, res) => {
+  const result = await AccountingService.createRefundFromReconciliation(req.params.id, req.body);
+  return sendSuccess(res, result, "Create refund voucher from reconciliation successful", 201);
 });
 
-const getRefundDetail = asyncHandler(async (req, res) => {
-  const result = await AccountingService.getRefundDetail(req.params.id);
-  return sendSuccess(res, result, "Fetch refund voucher detail successful");
+const createAdditionalPaymentFromReconciliation = asyncHandler(async (req, res) => {
+  const result = await AccountingService.createAdditionalPaymentFromReconciliation(req.params.id, req.body);
+  return sendSuccess(res, result, "Create additional payment voucher from reconciliation successful", 201);
 });
 
-const createRefund = asyncHandler(async (req, res) => {
-  const result = await AccountingService.createRefund(req.body);
-  return sendSuccess(res, result, "Create refund voucher successful", 201);
-});
+const accountingApisTemporarilyDisabled = (req, res) => {
+  const result = AccountingService.getApiResetStatus();
 
-const updateRefund = asyncHandler(async (req, res) => {
-  const result = await AccountingService.updateRefund(req.params.id, req.body);
-  return sendSuccess(res, result, "Update refund voucher successful");
-});
+  return res.status(503).json({
+    success: false,
+    message: "Accounting APIs are temporarily disabled while the team reviews each accounting page.",
+    data: result,
+  });
+};
 
 module.exports = {
-  getDashboard,
-  getContracts,
-  getContractDetail,
-  getBillingPreview,
-  generateInitialBilling,
-  getInvoices,
-  getInvoiceDetail,
-  createInvoice,
-  updateInvoice,
-  createExtraInvoice,
-  getPayments,
-  recordPayment,
-  confirmPayment,
-  getTransactions,
-  getTransactionDetail,
-  resolveTransaction,
-  getReconciliations,
+  getReconciliationWorkItems,
+  getReconciliationWorkItemDetail,
+  previewReconciliation,
+  createReconciliationDraft,
   getReconciliationDetail,
-  createReconciliation,
-  updateReconciliation,
-  getRefunds,
-  getRefundDetail,
-  createRefund,
-  updateRefund,
+  updateReconciliationDraft,
+  finalizeReconciliation,
+  createRefundFromReconciliation,
+  createAdditionalPaymentFromReconciliation,
+  accountingApisTemporarilyDisabled,
 };

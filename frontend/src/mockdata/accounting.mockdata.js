@@ -309,8 +309,7 @@ export const mockTransactionLog = [
     invoiceId: "INV-8821",
     contractId: "CTR-9021",
     amount: 3500000,
-    status: "SUCCESS", // SUCCESS, FAILED, PENDING, MISMATCH
-    matchStatus: "MATCHED", // MATCHED, UNMATCHED, SCANNING
+    status: "CONFIRMED",
     variance: 0,
     issueDate: "2024-04-08",
     transactionDate: "2024-04-08",
@@ -325,7 +324,6 @@ export const mockTransactionLog = [
     contractId: "CTR-7721",
     amount: 1000000,
     status: "FAILED",
-    matchStatus: "NOT_FOUND",
     variance: -1000000,
     issueDate: "2024-04-08",
     transactionDate: "2024-04-08",
@@ -341,7 +339,6 @@ export const mockTransactionLog = [
     contractId: null,
     amount: -500000,
     status: "PENDING",
-    matchStatus: "SCANNING",
     variance: -500000,
     issueDate: "2024-04-08",
     transactionDate: "2024-04-08",
