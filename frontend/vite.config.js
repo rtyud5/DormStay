@@ -9,9 +9,6 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      external: ["@payos/payos-checkout"],
-    },
   },
   optimizeDeps: {
     include: ['@payos/payos-checkout']
