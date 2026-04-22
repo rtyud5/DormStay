@@ -16,6 +16,10 @@ const RentalRequestService = {
   async create(payload) {
     return RentalRequestModel.create(payload);
   },
+
+  async savePayOSInfo(maYeuCauThue, payOSData) {
+    return RentalRequestModel.updatePayOSInfo(maYeuCauThue, payOSData);
+  },
 };
 
 module.exports = RentalRequestService;

@@ -132,6 +132,24 @@ const RentalRequestModel = {
     if (error) throw error;
     return data;
   },
+
+  async updatePayOSInfo(maYeuCauThue, { checkoutUrl, paymentLinkId }) {
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+      .from(TABLE_NAME)
+      .update({
+        checkoutUrl,
+        paymentLinkId,
+        updated_at: new Date()
+      })
+      .eq("ma_yeu_cau_thue", maYeuCauThue)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
 };
 
 module.exports = RentalRequestModel;

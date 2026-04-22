@@ -70,9 +70,28 @@ const create = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Create rental request successful", 201);
 });
 
+const savePayOSInfo = asyncHandler(async (req, res) => {
+  const { maYeuCauThue, checkoutUrl, paymentLinkId } = req.body;
+
+  if (!maYeuCauThue || !checkoutUrl || !paymentLinkId) {
+    return res.status(400).json({
+      success: false,
+      message: "Thiếu thông tin: maYeuCauThue, checkoutUrl hoặc paymentLinkId"
+    });
+  }
+
+  const result = await RentalRequestService.savePayOSInfo(maYeuCauThue, {
+    checkoutUrl,
+    paymentLinkId
+  });
+
+  return sendSuccess(res, result, "Save PayOS payment info successful");
+});
+
 module.exports = {
   getList,
   getDetail,
   getMyRequests,
   create,
+  savePayOSInfo,
 };

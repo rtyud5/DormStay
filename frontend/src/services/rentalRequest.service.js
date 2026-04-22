@@ -13,6 +13,12 @@ const RentalRequestService = {
   getMyRequests() {
     return api.get("/rental-requests/my");
   },
+  savePayOSInfo(maYeuCauThue, payOSData) {
+    return api.post("/rental-requests/save-payos-info", {
+      maYeuCauThue,
+      ...payOSData
+    });
+  },
 };
 
 export default RentalRequestService;

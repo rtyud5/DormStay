@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.get("/", authMiddleware, RentalRequestController.getList);
 router.get("/my", authMiddleware, RentalRequestController.getMyRequests);
+router.post("/save-payos-info", authMiddleware, RentalRequestController.savePayOSInfo);
 router.get("/:id", authMiddleware, RentalRequestController.getDetail);
 router.post("/", authMiddleware, validate(["ma_phong", "loai_muc_tieu"]), RentalRequestController.create);
 

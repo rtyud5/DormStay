@@ -1,50 +1,54 @@
 import React, { useState, useEffect, useRef } from "react";
-// Nhớ thêm cấu hình optimizeDeps trong vite.config.js như đã hướng dẫn nếu Vite báo lỗi import
 import { usePayOS } from "@payos/payos-checkout"; 
-import PaymentService from "../services/payment.service"; // Gọi đúng service backend của bạn
+import PaymentService from "../services/payment.service"; 
 import Card from "../components/ui/Card";
-import PageHeader from "../components/common/PageHeader";
 import Button from "../components/ui/Button";
 
-const PayOS = ({ amount, description, onSuccess, onCancel }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [message, setMessage] = useState("");
-  const [isCreatingLink, setIsCreatingLink] = useState(false);
-  const [error, setError] = useState("");
-
-  // Cấu hình ban đầu cho PayOS
-  const [payOSConfig, setPayOSConfig] = useState({
-    RETURN_URL: window.location.href, 
-    ELEMENT_ID: "embedded-payment-container", 
-    CHECKOUT_URL: null, 
-    embedded: true, 
-    onSuccess: (event) => {
-      setIsOpen(false);
-      setMessage("Thanh toán thành công!");
-      if (onSuccess) onSuccess(event);
-    },
-    onCancel: (event) => {
-      setIsOpen(false);
-      if (onCancel) onCancel(event);
-    },
+// Component con xử lý Iframe
+const PayOSQRDisplay = ({ url, onSuccess, onCancel }) => {
+  const { open, exit } = usePayOS({
+    RETURN_URL: window.location.href,
+    ELEMENT_ID: "embedded-payment-container",
+    CHECKOUT_URL: url,
+    embedded: true,
+    onSuccess,
+    onCancel,
   });
 
-  const { open, exit } = usePayOS(payOSConfig);
+  useEffect(() => {
+    // Chờ DOM chuẩn bị xong container rồi bơm Iframe vào
+    const timer = setTimeout(() => {
+      open();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      exit();
+    };
+  }, [open, exit, url]);
+
+  return (
+    <div 
+      id="embedded-payment-container" 
+      style={{ width: "100%", height: "450px", backgroundColor: "#fff" }}
+    ></div>
+  );
+};
+
+const PayOS = ({ amount, description, onSuccess, onCancel, onPaymentLinkCreated, existingCheckoutUrl }) => {
+  const [activeUrl, setActiveUrl] = useState(existingCheckoutUrl || null);
+  const [isCreatingLink, setIsCreatingLink] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const initialized = useRef(false);
 
   const handleCreatePayment = async () => {
-    if (isCreatingLink) return;
+    if (isCreatingLink || activeUrl) return;
     setIsCreatingLink(true);
     setError("");
-    
-    // Đóng luồng cũ trước khi tạo mới (Học từ code mẫu PayOS)
-    exit();
 
     try {
-      // Hết hạn sau 24 giờ (theo yêu cầu nghiệp vụ của bạn)
-      const expiredAt = Math.floor(Date.now() / 1000) + 60 * 60 * 24; // 24 giờ sau (tùy chỉnh theo nhu cầu)
-
-      // GỌI ĐÚNG API BACKEND CỦA BẠN THÔNG QUA PAYMENT SERVICE
+      const expiredAt = Math.floor(Date.now() / 1000) + 60 * 60 * 24; 
       const response = await PaymentService.createPayOSPayment({
         amount,
         description: description ? description.substring(0, 25) : "Thanh toan DormStay",
@@ -53,43 +57,34 @@ const PayOS = ({ amount, description, onSuccess, onCancel }) => {
         expiredAt
       });
 
-      // Lấy URL trả về từ backend của bạn
       const url = response.data?.data?.checkoutUrl;
+      const paymentLinkId = response.data?.data?.paymentLinkId;
 
-      if (url) {
-        // Cập nhật URL mới vào config
-        setPayOSConfig((oldConfig) => ({
-          ...oldConfig,
-          CHECKOUT_URL: url,
-        }));
-        setIsOpen(true);
+      if (url && paymentLinkId) {
+        if (onPaymentLinkCreated) {
+          onPaymentLinkCreated({ checkoutUrl: url, paymentLinkId: paymentLinkId });
+        }
+        setActiveUrl(url);
       } else {
-        throw new Error("Không lấy được Checkout URL từ server DormStay");
+        throw new Error("Không lấy được Checkout URL từ server.");
       }
     } catch (err) {
       console.error("PayOS Error:", err);
-      setError("Lỗi khởi tạo thanh toán từ Server.");
+      setError("Lỗi khởi tạo thanh toán.");
     } finally {
       setIsCreatingLink(false);
     }
   };
 
-  // Tự động gọi API tạo link ngay khi vào trang
   useEffect(() => {
     if (!initialized.current) {
-      handleCreatePayment();
+      if (!existingCheckoutUrl) {
+        handleCreatePayment();
+      }
       initialized.current = true;
     }
-  }, []);
+  }, [existingCheckoutUrl]);
 
-  // Tự động mở iframe khi CHECKOUT_URL đã sẵn sàng (Học từ code mẫu PayOS)
-  useEffect(() => {
-    if (payOSConfig.CHECKOUT_URL != null) {
-      open();
-    }
-  }, [payOSConfig]);
-
-  // Giao diện khi thanh toán xong
   if (message) {
     return (
       <Card>
@@ -102,56 +97,39 @@ const PayOS = ({ amount, description, onSuccess, onCancel }) => {
   }
 
   return (
-    <div className="space-y-6 sticky top-24">
-      <PageHeader title="Thanh toán" description="Vui lòng thực hiện thanh toán qua cổng PayOS" />
-      <Card title="Cổng thanh toán trực tuyến">
-        <div className="space-y-4">
-          <div className="bg-blue-50 p-4 rounded-lg flex justify-between items-center">
-            <span className="font-medium text-slate-600">Tổng tiền cọc:</span>
-            <span className="font-black text-[18px] text-blue-700">
-              {new Intl.NumberFormat("vi-VN").format(amount)} VND
-            </span>
-          </div>
+    <div className="space-y-4">
+      <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center border border-slate-100">
+        <span className="text-slate-500 font-medium">Tổng tiền cọc:</span>
+        <span className="font-bold text-lg text-[#0052CC]">
+          {new Intl.NumberFormat("vi-VN").format(amount)} VND
+        </span>
+      </div>
 
-          {isCreatingLink && (
-            <div className="text-center py-6 font-medium animate-pulse text-slate-500">
-              Đang khởi tạo mã QR thanh toán...
-            </div>
-          )}
-
-          {error && (
-            <div className="text-red-500 text-sm text-center py-4 bg-red-50 rounded-lg border border-red-100">
-              {error} 
-              <button onClick={handleCreatePayment} className="underline text-blue-600 ml-2 font-medium">Thử lại</button>
-            </div>
-          )}
-
-          {/* QUAN TRỌNG: Div chứa iframe KHÔNG BAO GIỜ bị xóa khỏi DOM */}
-          <div 
-            id="embedded-payment-container" 
-            style={{ 
-              height: isOpen ? "400px" : "0px", // Ẩn hiện mượt mà bằng CSS height
-              overflow: "hidden",
-              transition: "height 0.3s ease-in-out",
-              width: "100%"
-            }}
-          ></div>
-
-          {isOpen && (
-            <Button 
-              variant="secondary" 
-              className="w-full mt-4" 
-              onClick={() => { 
-                setIsOpen(false);
-                exit(); // Hủy nhúng PayOS
-                if(onCancel) onCancel(); // Gọi hàm Hủy để trả form về trạng thái ban đầu
-              }}
-            >
-              Hủy bỏ thanh toán
-            </Button>
-          )}
+      {isCreatingLink && !activeUrl && (
+        <div className="flex flex-col items-center py-10 space-y-3">
+          <div className="w-8 h-8 border-4 border-[#0052CC] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500 animate-pulse text-sm">Đang tạo link thanh toán mới...</p>
         </div>
-      </Card>
+      )}
+
+      {error && (
+        <div className="bg-red-50 p-4 rounded-xl text-red-600 text-sm text-center border border-red-100">
+          {error} <button onClick={handleCreatePayment} className="font-bold underline ml-1">Thử lại</button>
+        </div>
+      )}
+
+      {activeUrl && (
+        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
+          <PayOSQRDisplay 
+            url={activeUrl}
+            onSuccess={(e) => {
+              setMessage("Thanh toán thành công!");
+              if (onSuccess) onSuccess(e);
+            }}
+            onCancel={onCancel}
+          />
+        </div>
+      )}
     </div>
   );
 };

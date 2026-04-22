@@ -2,15 +2,18 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import RentalRequestService from "../services/rentalRequest.service";
 import { formatCurrency } from "../utils/accounting.utils";
-import PayOS from "./PayOS"; // Import trực tiếp component PayOS thật của bạn
+import PayOS from "./PayOS";
+import { useAuth } from "../context/AuthContext";
 
 function RequestDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPayment, setShowPayment] = useState(false);
 
+  // Lấy chi tiết yêu cầu
   useEffect(() => {
     async function fetchDetail() {
       try {
@@ -24,6 +27,13 @@ function RequestDetailPage() {
     }
     fetchDetail();
   }, [id]);
+
+  // TỰ ĐỘNG BẬT THANH TOÁN nếu đã có link QR lưu trong database
+  useEffect(() => {
+    if (request && request.checkoutUrl) {
+      setShowPayment(true);
+    }
+  }, [request]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">Đang tải thông tin yêu cầu...</div>;
   if (!request) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">Không tìm thấy yêu cầu thuê này.</div>;
@@ -43,6 +53,21 @@ function RequestDetailPage() {
 
   const currentStep = canPay ? 3 : isExpired ? 0 : 5; 
 
+  const handlePaymentLinkCreated = async (paymentLinkData) => {
+    try {
+      // Lưu PayOS info vào database ngay khi payment link được tạo mới
+      if (paymentLinkData?.checkoutUrl && paymentLinkData?.paymentLinkId) {
+        await RentalRequestService.savePayOSInfo(id, {
+          checkoutUrl: paymentLinkData.checkoutUrl,
+          paymentLinkId: paymentLinkData.paymentLinkId
+        });
+        console.log("Đã lưu PayOS info thành công");
+      }
+    } catch (err) {
+      console.error("Lỗi khi lưu PayOS info:", err);
+    }
+  };
+
   const handlePaymentSuccess = () => {
     alert("Thanh toán thành công! Hồ sơ của bạn sẽ được duyệt trong thời gian sớm nhất.");
     setShowPayment(false);
@@ -60,7 +85,6 @@ function RequestDetailPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <span className="bg-[#E2E8F0] text-[#0F172A] font-bold text-xs px-3 py-1 rounded-full uppercase tracking-widest">{id}</span>
               {isExpired ? (
                 <span className="bg-[#FEE2E2] text-[#DC2626] font-bold text-xs px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -136,7 +160,7 @@ function RequestDetailPage() {
                   <div className="bg-[#F8FAFC] border border-[#F1F5F9] rounded-xl px-4 py-3 flex-1 min-w-[150px]">
                     <div className="text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-1">NGƯỜI THUÊ</div>
                     <div className="text-[14px] font-bold text-[#0F172A] truncate">
-                       {request.ho_so?.ho_ten || 'Đang cập nhật'}
+                       {profile?.ho_ten || 'Đang cập nhật'}
                     </div>
                   </div>
                   <div className="bg-[#F8FAFC] border border-[#F1F5F9] rounded-xl px-4 py-3 flex-1 min-w-[150px]">
@@ -172,7 +196,7 @@ function RequestDetailPage() {
           </div>
 
           {/* Right Column */}
-          <div className="space-y-6">
+          <div className="space-y-6 sticky top-8 h-fit">
             {!showPayment ? (
               <div className="bg-[#0A192F] text-white rounded-[32px] p-8 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
@@ -211,12 +235,27 @@ function RequestDetailPage() {
                 </div>
               </div>
             ) : (
-              <PayOS 
-                amount={request.so_tien_dat_coc} 
-                description={`Thanh toan coc cho ${id}`} 
-                onSuccess={handlePaymentSuccess} 
-                onCancel={handlePaymentCancel} 
-              />
+              <div className="bg-white p-6 rounded-[32px] border border-[#E2E8F0] shadow-xl animate-fade-in">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+                  <h3 className="font-extrabold text-[#0F172A]">Quét mã QR để thanh toán</h3>
+                  <button 
+                    onClick={handlePaymentCancel}
+                    className="text-[#94A3B8] hover:text-red-500 transition-colors p-1"
+                    title="Hủy thanh toán"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                
+                <PayOS 
+                  amount={request.so_tien_dat_coc} 
+                  description={`Thanh toan phong id ${id}`} 
+                  existingCheckoutUrl={request.checkoutUrl} 
+                  onPaymentLinkCreated={handlePaymentLinkCreated}
+                  onSuccess={handlePaymentSuccess} 
+                  onCancel={handlePaymentCancel} 
+                />
+              </div>
             )}
 
             <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-[24px] p-6 shadow-sm">
