@@ -109,10 +109,15 @@ const RoomModel = {
     let query = supabase.from(TABLE_NAME).select(selectString, { count: 'exact' });
 
     // 2. Tìm kiếm (Chỉ nên lọc trên bảng chính phong)
-    if (filters.search) {
-      query = query.ilike('ma_phong_hien_thi', `%${filters.search}%`);
+     if (filters.search) {
+      const cleanSearch = filters.search
+        .toLowerCase()
+        .replace(/phòng|phong/g, '') 
+        .trim();                  
+      if (cleanSearch) {
+            query = query.ilike('ma_phong_hien_thi', `%${cleanSearch}%`);
+      }
     }
-
     // 3. Lọc Tầng (Đã có !inner ở trên nên eq sẽ hoạt động như filter cứng)
     if (filters.floor && filters.floor !== 'Tất cả các tầng') {
       query = query.eq('tang.ten_tang', filters.floor);

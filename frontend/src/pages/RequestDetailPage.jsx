@@ -2,27 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import RentalRequestService from "../services/rentalRequest.service";
 import { formatCurrency } from "../utils/accounting.utils";
-
-const PayOS = ({ amount, description, onSuccess, onCancel }) => (
-  <div className="bg-white p-6 rounded-3xl border border-[#E2E8F0] shadow-xl text-center">
-    <h3 className="text-lg font-bold text-[#0F172A] mb-4">Cổng thanh toán PayOS</h3>
-    <div className="bg-slate-50 p-8 rounded-2xl border-2 border-dashed border-slate-200 mb-6 flex flex-col items-center justify-center">
-      <div className="w-48 h-48 bg-white border border-slate-200 shadow-sm rounded-xl mb-4 flex items-center justify-center">
-        <span className="text-slate-400 font-medium">Mã QR Thanh Toán</span>
-      </div>
-      <p className="font-medium text-[#0F172A] text-xl">{formatCurrency(amount)}</p>
-      <p className="text-sm text-slate-500 mt-1">{description}</p>
-    </div>
-    <div className="flex gap-3">
-      <button onClick={onCancel} className="flex-1 py-3 px-4 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors">
-        Hủy bỏ
-      </button>
-      <button onClick={onSuccess} className="flex-1 py-3 px-4 rounded-xl bg-[#0052CC] text-white font-bold hover:bg-[#0043A6] transition-colors">
-        Đã thanh toán (Mô phỏng)
-      </button>
-    </div>
-  </div>
-);
+import PayOS from "./PayOS"; // Import trực tiếp component PayOS thật của bạn
 
 function RequestDetailPage() {
   const { id } = useParams();
@@ -61,12 +41,11 @@ function RequestDetailPage() {
     return `${time} ${date}`;
   };
 
-  const currentStep = canPay ? 3 : isExpired ? 0 : 5; // simplified logic just for visual
+  const currentStep = canPay ? 3 : isExpired ? 0 : 5; 
 
   const handlePaymentSuccess = () => {
     alert("Thanh toán thành công! Hồ sơ của bạn sẽ được duyệt trong thời gian sớm nhất.");
     setShowPayment(false);
-    // Ideally update status here or refetch
     window.location.reload();
   };
 
@@ -107,7 +86,7 @@ function RequestDetailPage() {
           )}
         </div>
 
-        {/* Progress Tracker (Mockup) */}
+        {/* Progress Tracker */}
         {!isExpired && (
           <div className="bg-white p-6 rounded-[32px] border border-[#E2E8F0] shadow-sm mb-8 hidden md:block">
             <div className="flex items-center justify-between relative max-w-4xl mx-auto">

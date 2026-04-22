@@ -37,7 +37,7 @@ const PaymentModel = {
     return data;
   },
 
-  async createPayOSPayment({ amount, description, returnUrl, cancelUrl }) {
+  async createPayOSPayment({ amount, description, returnUrl, cancelUrl, expiredAt }) {
     try {
       const paymentData = {
         orderCode : Number(String(Date.now()).slice(-9)),
@@ -45,7 +45,7 @@ const PaymentModel = {
         description: description.substring(0, 25), // PayOS giới hạn 25 ký tự
         returnUrl,
         cancelUrl,
-        expiredAt: Math.floor(Date.now() / 1000) + 15 * 60,
+        expiredAt : expiredAt || Math.floor(Date.now() / 1000) + 60 * 60 * 24 // Mặc định hết hạn sau 24 giờ nếu không được cung cấp
       };
       const paymentLinkResponse = await payOS.paymentRequests.create(paymentData);
       console.log("PayOS Payment Link Response:", paymentLinkResponse);

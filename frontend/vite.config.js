@@ -14,6 +14,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ["@payos/payos-checkout"],
+    include: ['@payos/payos-checkout']
   },
 });

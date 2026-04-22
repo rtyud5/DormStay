@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { usePayOS } from "@payos/payos-checkout";
-import PaymentService from "../services/payment.service";
+// Nhớ thêm cấu hình optimizeDeps trong vite.config.js như đã hướng dẫn nếu Vite báo lỗi import
+import { usePayOS } from "@payos/payos-checkout"; 
+import PaymentService from "../services/payment.service"; // Gọi đúng service backend của bạn
 import Card from "../components/ui/Card";
 import PageHeader from "../components/common/PageHeader";
 import Button from "../components/ui/Button";
@@ -10,13 +11,13 @@ const PayOS = ({ amount, description, onSuccess, onCancel }) => {
   const [message, setMessage] = useState("");
   const [isCreatingLink, setIsCreatingLink] = useState(false);
   const [error, setError] = useState("");
-  
-  const currentUrl = window.location.href;
+
+  // Cấu hình ban đầu cho PayOS
   const [payOSConfig, setPayOSConfig] = useState({
-    RETURN_URL: currentUrl,
-    ELEMENT_ID: "embedded-payment-container",
-    CHECKOUT_URL: null,
-    embedded: true,
+    RETURN_URL: window.location.href, 
+    ELEMENT_ID: "embedded-payment-container", 
+    CHECKOUT_URL: null, 
+    embedded: true, 
     onSuccess: (event) => {
       setIsOpen(false);
       setMessage("Thanh toán thành công!");
@@ -28,9 +29,7 @@ const PayOS = ({ amount, description, onSuccess, onCancel }) => {
     },
   });
 
-  // Khởi tạo hook với config từ state
   const { open, exit } = usePayOS(payOSConfig);
-  
   const initialized = useRef(false);
 
   const handleCreatePayment = async () => {
@@ -38,34 +37,44 @@ const PayOS = ({ amount, description, onSuccess, onCancel }) => {
     setIsCreatingLink(true);
     setError("");
     
+    // Đóng luồng cũ trước khi tạo mới (Học từ code mẫu PayOS)
+    exit();
+
     try {
+      // Hết hạn sau 24 giờ (theo yêu cầu nghiệp vụ của bạn)
+      const expiredAt = Math.floor(Date.now() / 1000) + 60 * 60 * 24; // 24 giờ sau (tùy chỉnh theo nhu cầu)
+
+      // GỌI ĐÚNG API BACKEND CỦA BẠN THÔNG QUA PAYMENT SERVICE
       const response = await PaymentService.createPayOSPayment({
         amount,
         description: description ? description.substring(0, 25) : "Thanh toan DormStay",
-        returnUrl: currentUrl,
-        cancelUrl: currentUrl,
+        returnUrl: window.location.href,
+        cancelUrl: window.location.href,
+        expiredAt
       });
 
+      // Lấy URL trả về từ backend của bạn
       const url = response.data?.data?.checkoutUrl;
 
       if (url) {
-        // 2. Cập nhật state config để hook usePayOS nhận được URL mới
-        setPayOSConfig((prev) => ({
-          ...prev,
-          CHECKOUT_URL: url
+        // Cập nhật URL mới vào config
+        setPayOSConfig((oldConfig) => ({
+          ...oldConfig,
+          CHECKOUT_URL: url,
         }));
-        setIsOpen(true); 
+        setIsOpen(true);
       } else {
-        throw new Error("Không lấy được Checkout URL");
+        throw new Error("Không lấy được Checkout URL từ server DormStay");
       }
     } catch (err) {
       console.error("PayOS Error:", err);
-      setError("Lỗi khởi tạo thanh toán.");
+      setError("Lỗi khởi tạo thanh toán từ Server.");
     } finally {
       setIsCreatingLink(false);
     }
   };
 
+  // Tự động gọi API tạo link ngay khi vào trang
   useEffect(() => {
     if (!initialized.current) {
       handleCreatePayment();
@@ -73,13 +82,14 @@ const PayOS = ({ amount, description, onSuccess, onCancel }) => {
     }
   }, []);
 
-  // 3. Theo dõi khi CHECKOUT_URL trong config có giá trị thì mới gọi open()
+  // Tự động mở iframe khi CHECKOUT_URL đã sẵn sàng (Học từ code mẫu PayOS)
   useEffect(() => {
-    if (payOSConfig.CHECKOUT_URL && isOpen) {
+    if (payOSConfig.CHECKOUT_URL != null) {
       open();
     }
-  }, [payOSConfig, isOpen]);
+  }, [payOSConfig]);
 
+  // Giao diện khi thanh toán xong
   if (message) {
     return (
       <Card>
@@ -92,42 +102,52 @@ const PayOS = ({ amount, description, onSuccess, onCancel }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sticky top-24">
       <PageHeader title="Thanh toán" description="Vui lòng thực hiện thanh toán qua cổng PayOS" />
       <Card title="Cổng thanh toán trực tuyến">
         <div className="space-y-4">
-          <div className="bg-blue-50 p-4 rounded-lg flex justify-between">
-            <span className="font-medium">Tổng tiền:</span>
-            <span className="font-bold text-blue-700">
+          <div className="bg-blue-50 p-4 rounded-lg flex justify-between items-center">
+            <span className="font-medium text-slate-600">Tổng tiền cọc:</span>
+            <span className="font-black text-[18px] text-blue-700">
               {new Intl.NumberFormat("vi-VN").format(amount)} VND
             </span>
           </div>
 
           {isCreatingLink && (
-            <div className="text-center py-4 animate-pulse text-gray-500">
-              Đang kết nối cổng thanh toán...
+            <div className="text-center py-6 font-medium animate-pulse text-slate-500">
+              Đang khởi tạo mã QR thanh toán...
             </div>
           )}
 
           {error && (
-            <div className="text-red-500 text-sm text-center">
-              {error} <button onClick={handleCreatePayment} className="underline">Thử lại</button>
+            <div className="text-red-500 text-sm text-center py-4 bg-red-50 rounded-lg border border-red-100">
+              {error} 
+              <button onClick={handleCreatePayment} className="underline text-blue-600 ml-2 font-medium">Thử lại</button>
             </div>
           )}
 
-          {/* Container nhúng thanh toán */}
+          {/* QUAN TRỌNG: Div chứa iframe KHÔNG BAO GIỜ bị xóa khỏi DOM */}
           <div 
-            className={`transition-all duration-300 border rounded-lg overflow-hidden ${
-              isOpen ? "opacity-100" : "opacity-0 h-0"
-            }`}
-            style={{ minHeight: isOpen ? "600px" : "0px" }}
-          >
-            <div id="embedded-payment-container" style={{ width: "100%", height: "600px" }} />
-          </div>
+            id="embedded-payment-container" 
+            style={{ 
+              height: isOpen ? "400px" : "0px", // Ẩn hiện mượt mà bằng CSS height
+              overflow: "hidden",
+              transition: "height 0.3s ease-in-out",
+              width: "100%"
+            }}
+          ></div>
 
           {isOpen && (
-            <Button variant="secondary" className="w-full" onClick={() => { exit(); setIsOpen(false); if(onCancel) onCancel(); }}>
-              Hủy bỏ
+            <Button 
+              variant="secondary" 
+              className="w-full mt-4" 
+              onClick={() => { 
+                setIsOpen(false);
+                exit(); // Hủy nhúng PayOS
+                if(onCancel) onCancel(); // Gọi hàm Hủy để trả form về trạng thái ban đầu
+              }}
+            >
+              Hủy bỏ thanh toán
             </Button>
           )}
         </div>
