@@ -53,7 +53,57 @@ const PaymentModel = {
     } catch (error) {
       throw error;
     }
+  },
+async cancelPayment(paymentLinkId) {
+      try {
+        let cancelResponse = null;
+        
+        // 1. Bọc try-catch riêng cho PayOS
+        try {
+          cancelResponse = await payOS.paymentRequests.cancel(paymentLinkId);
+          console.log("PayOS Cancel Payment Response:", cancelResponse);
+        } catch (payOsError) {
+          // Bắt lỗi nếu link đã bị hủy hoặc hết hạn trên PayOS, nhưng không throw để code chạy tiếp
+          console.log("Lưu ý từ PayOS (có thể link đã hủy/hết hạn):", payOsError.message);
+        }
+        
+        // 2. Đảm bảo đoạn xóa DB luôn được thực thi
+        const { data, error } = await supabase
+          .from("yeu_cau_thue")
+          .update({ 
+            checkoutUrl: null,
+            paymentLinkId: null
+          })
+          .eq("paymentLinkId", paymentLinkId)
+          .select("*")
+          .single();
+          
+        if (error) {
+          throw error;
+        }
+
+        return { success: true, message: "Payment cancelled successfully", data };
+      } catch (error) {
+        throw error;
+      }
+    },
+  async confirmPayment(paymentLinkId) {
+    try {
+      const paymentStatusResponse = await payOS.paymentRequests.get(paymentLinkId);
+      console.log("PayOS Payment Status Response:", paymentStatusResponse);
+      const { data, error } = await supabase
+        .from("yeu_cau_thue")
+        .update({ trang_thai: "DA_THANH_TOAN" })
+        .eq("paymentLinkId", paymentLinkId)
+        .select("*")
+        .single();
+      if (error) {
+        throw error;
+      }
+      return { success: true, message: "Payment confirmed successfully", data };
+    } catch (error) {
+      throw error;
+    }
   }
 };
-
 module.exports = PaymentModel;
