@@ -57,8 +57,10 @@ const PaymentModel = {
 async cancelPayment(paymentLinkId) {
       try {
         let cancelResponse = null;
-        
-        // 1. Bọc try-catch riêng cho PayOS
+        const paymentStatusResponse = await payOS.paymentRequests.get(paymentLinkId);
+        if (paymentStatusResponse.status === "CANCELED" || paymentStatusResponse.status === "EXPIRED") 
+        return { success: true, message: "Payment already cancelled or expired on PayOS" };                                                                                                     
+        //1. Bọc try-catch riêng cho PayOS
         try {
           cancelResponse = await payOS.paymentRequests.cancel(paymentLinkId);
           console.log("PayOS Cancel Payment Response:", cancelResponse);
@@ -87,23 +89,40 @@ async cancelPayment(paymentLinkId) {
         throw error;
       }
     },
+
   async confirmPayment(paymentLinkId) {
-    try {
-      const paymentStatusResponse = await payOS.paymentRequests.get(paymentLinkId);
-      console.log("PayOS Payment Status Response:", paymentStatusResponse);
-      const { data, error } = await supabase
-        .from("yeu_cau_thue")
-        .update({ trang_thai: "DA_THANH_TOAN" })
-        .eq("paymentLinkId", paymentLinkId)
-        .select("*")
-        .single();
-      if (error) {
+      try {
+        const paymentStatusResponse = await payOS.paymentRequests.get(paymentLinkId);
+        console.log("PayOS Payment Status Response:", paymentStatusResponse);
+        
+        if (paymentStatusResponse.status !== "PAID" && paymentStatusResponse.status !== "COMPLETED") {
+          
+          return { success: false, message: `Payment status is ${paymentStatusResponse.status}. Only PAID or COMPLETED can be confirmed.` };
+        } 
+         const { data: requestData, error: requestError } = await supabase
+            .from("yeu_cau_thue")
+            .update({
+               trang_thai: "DA_DUYET",
+               checkoutUrl: null,
+               paymentLinkId: null,
+               updated_at: new Date()
+            }) 
+            .eq("paymentLinkId", paymentLinkId)
+            .select("*")
+            .single();
+            
+          if (requestError) throw requestError;
+
+          return { 
+            success: true, 
+            message: "Payment confirmed successfully", 
+            data: requestData 
+          };
+          
+      } catch (error) {
+        console.error("Lỗi khi confirm payment:", error);
         throw error;
       }
-      return { success: true, message: "Payment confirmed successfully", data };
-    } catch (error) {
-      throw error;
-    }
   }
 };
 module.exports = PaymentModel;
