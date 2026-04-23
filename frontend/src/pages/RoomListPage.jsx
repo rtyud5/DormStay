@@ -383,7 +383,7 @@ const handleSliderChange = (e, type) => {
             {/* Top Toolbar */}
             <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                <div className="text-[14px] text-[#475569] font-medium text-center sm:text-left w-full sm:w-auto">
-                  Hiển thị <strong className="text-[#0F172A] font-extrabold">{rooms.length}</strong> phòng phù hợp
+                  Hiển thị <strong className="text-[#0F172A] font-bold">{rooms.length} / {total}</strong> phòng phù hợp
                </div>
                <div className="hidden sm:flex items-center gap-3">
                   <span className="text-[13px] font-bold text-[#64748B]">Sắp xếp:</span>

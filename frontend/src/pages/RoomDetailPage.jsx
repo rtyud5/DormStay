@@ -115,29 +115,50 @@ function RoomDetailPage() {
                 </div>
              )}
 
-             {beds && beds.length > 0 && (
-                <div className="mb-12">
-                   <h2 className="text-[24px] font-extrabold text-[#0F172A] mb-6">Danh sách giường</h2>
-                   {bedsLoading ? (
-                      <div className="text-center py-8 text-[#64748B]">Đang tải danh sách giường...</div>
-                   ) : (
-                      <div className="grid gap-4">
-                         {beds.map((bed) => (
-                            <div key={bed.id} className={`bg-[#F8F9FA] rounded-3xl p-6 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${bed.status === 'Đã thuê' ? 'opacity-90' : ''}`}>
-                               <div>
-                                  <div className={`text-[14px] font-bold mb-1 ${bed.status === 'Đã thuê' ? ' text-[#94A3B8]' : 'text-[#0F172A]'}`}>{bed.code}</div>
-                                  <div className={`text-[13px] ${bed.status === 'Đã thuê' ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>{bed.label || 'Giường tiêu chuẩn'}</div>
-                               </div>
-                               <div className="text-right">
-                                  <div className={`text-[16px] font-extrabold ${bed.status === 'Đã thuê' ? ' text-[#94A3B8]' : 'text-[#0052CC]'}`}>{bed.price}</div>
-                                  <div className={`text-[12px] uppercase tracking-wide ${bed.status === 'Đã thuê' ? 'text-[#94A3B8]' : 'text-[#475569]'}`}>{bed.status}</div>
-                               </div>
-                            </div>
-                         ))}
-                      </div>
-                   )}
-                </div>
-             )}
+            {beds && beds.length > 0 && (
+            <div className="mb-12">
+               <h2 className="text-[24px] font-extrabold text-[#0F172A] mb-6">Danh sách giường</h2>
+               {bedsLoading ? (
+                  <div className="text-center py-8 text-[#64748B]">Đang tải danh sách giường...</div>
+               ) : (
+                  <div className="grid gap-4">
+                  {beds.map((bed) => {
+                     // 1. Tạo object map để dịch status
+                     const statusTextMap = {
+                        DA_THUE: 'Đã thuê',
+                        CON_TRONG: 'Còn trống',
+                     };
+
+                     // 2. Lấy text hiển thị (nếu DB trả về mã khác chưa có trong map thì hiển thị mã gốc)
+                     const displayStatus = statusTextMap[bed.status] || bed.status;
+
+                     return (
+                        // 3. Sửa lại toàn bộ điều kiện CSS: check với 'DA_THUE' thay vì 'Đã thuê'
+                        <div key={bed.id} className={`bg-[#F8F9FA] rounded-3xl p-6 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${bed.status === 'DA_THUE' ? 'opacity-90' : ''}`}>
+                        <div>
+                           <div className={`text-[14px] font-bold mb-1 ${bed.status === 'DA_THUE' ? ' text-[#94A3B8]' : 'text-[#0F172A]'}`}>
+                              {bed.code}
+                           </div>
+                           <div className={`text-[13px] ${bed.status === 'DA_THUE' ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
+                              {bed.label || 'Giường tiêu chuẩn'}
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <div className={`text-[16px] font-extrabold ${bed.status === 'DA_THUE' ? ' text-[#94A3B8]' : 'text-[#0052CC]'}`}>
+                              {bed.price}
+                           </div>
+                           <div className={`text-[12px] uppercase tracking-wide ${bed.status === 'DA_THUE' ? 'text-[#94A3B8]' : 'text-[#475569]'}`}>
+                              {/* 4. Render biến text đã được dịch ra đây */}
+                              {displayStatus}
+                           </div>
+                        </div>
+                        </div>
+                     );
+                  })}
+                  </div>
+               )}
+            </div>
+            )}
 
              {/* Split Rules and Policy */}
              <div className="grid md:grid-cols-2 gap-6">
@@ -172,7 +193,7 @@ function RoomDetailPage() {
                    <div className="space-y-6 relative z-10">
                       <div className="flex justify-between items-center border-b border-slate-100 pb-4">
                          <span className="text-[#64748B] text-[14px] font-medium">Tiền đặt cọc</span>
-                         <span className="text-[#0F172A] text-[15px] font-bold">1 tháng tiền phòng</span>
+                         <span className="text-[#0F172A] text-[15px] font-bold">2 tháng tiền phòng</span>
                       </div>
                       <div className="flex justify-between items-center">
                          <span className="text-[#64748B] text-[14px] font-medium">Hoàn cọc</span>
