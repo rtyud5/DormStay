@@ -155,13 +155,93 @@ export const getBillingPreview = async (contractId) => {
   if (USE_MOCK_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
+    const contract = mockContracts.find((item) => String(item.id) === String(contractId)) || null;
+    if (!contract) {
+      return {
+        success: false,
+        data: null,
+        message: "Khong tim thay hop dong",
+      };
+    }
+
+    const startDate = contract.startDate ? new Date(contract.startDate) : new Date();
+    const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
+    const rentDays = Math.max(daysInMonth - startDate.getDate() + 1, 1);
+    const unitPrice = Math.round(contract.baseRent / daysInMonth);
+    const amount = unitPrice * rentDays;
+
     return {
       success: true,
-      data: null,
+      data: {
+        contract,
+        rentLineItem: {
+          category: "TIEN_THUE_THANG_DAU",
+          description: `Tien thue ky dau (${rentDays}/${daysInMonth} ngay)`,
+          quantity: rentDays,
+          unitPrice,
+          amount,
+          period: {
+            daysInMonth,
+            rentDays,
+            startDate: contract.startDate,
+          },
+        },
+        summary: {
+          rentAmount: amount,
+          extraAmount: 0,
+          totalAmount: amount,
+        },
+        options: {
+          includeDeposit: false,
+        },
+      },
     };
   }
 
-  const response = await api.get(`/accounting/contracts/${contractId}/billing-preview`);
+  const response = await api.get(`/accounting/billing/contracts/${contractId}/preview`);
+  return mapDetailResponse(response);
+};
+
+export const getInitialBillingPendingContracts = async (filters = {}) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    return {
+      success: true,
+      data: mockContracts,
+      total: mockContracts.length,
+      page: Number(filters.page || 1),
+      limit: Number(filters.limit || 10),
+    };
+  }
+
+  const response = await api.get("/accounting/billing/contracts", { params: filters });
+  const normalized = mapListResponse(response);
+
+  return {
+    ...normalized,
+    data: normalized.data.map(mapContractUiFields),
+  };
+};
+
+export const createInitialBillingInvoice = async (contractId, payload = {}) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return {
+      success: true,
+      data: {
+        invoice: {
+          id: `INV-${Date.now()}`,
+          contractId,
+          amount: 0,
+        },
+      },
+      message: "Lap hoa don ky dau thanh cong",
+    };
+  }
+
+  const response = await api.post(`/accounting/billing/contracts/${contractId}/invoice`, payload);
   return mapDetailResponse(response);
 };
 
@@ -920,8 +1000,16 @@ export const generateInitialBilling = async (payload) => {
     };
   }
 
-  const response = await api.post("/accounting/billing/generate-initial", payload);
-  return mapDetailResponse(response);
+  const contractId = payload?.contractId;
+  if (!contractId) {
+    return {
+      success: false,
+      data: null,
+      message: "contractId is required",
+    };
+  }
+
+  return createInitialBillingInvoice(contractId, payload);
 };
 
 /**
@@ -952,6 +1040,8 @@ export default {
   getContracts,
   getContractDetail,
   getBillingPreview,
+  getInitialBillingPendingContracts,
+  createInitialBillingInvoice,
   getInvoices,
   getInvoiceDetail,
   createInvoice,
