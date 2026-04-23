@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import RentalRequestService from "../services/rentalRequest.service";
 import PaymentService from "../services/payment.service";
+import BedService from "../services/bed.service";
 import { formatCurrency } from "../utils/accounting.utils";
 import PayOS from "./PayOS";
 import { useAuth } from "../context/AuthContext";
@@ -32,7 +33,12 @@ function RequestDetailPage() {
   // TỰ ĐỘNG BẬT THANH TOÁN nếu đã có link QR lưu trong database
   useEffect(() => {
     if (request && request.checkoutUrl) {
-      setShowPayment(true);
+      // Thêm chốt chặn: Chỉ bật form nếu trạng thái vẫn chưa được duyệt
+      const pendingStatuses = ['DANG_XU_LY', 'CHO_THANH_TOAN', 'MOI_TAO'];
+      
+      if (pendingStatuses.includes(request.trang_thai)) {
+        setShowPayment(true);
+      }
     }
   }, [request]);
 
@@ -75,20 +81,34 @@ function RequestDetailPage() {
   };
 
   const handlePaymentSuccess = async () => {
-    try {
-      // Confirm payment on backend (updates request + hold statuses)
-      await RentalRequestService.confirmPayment(id);
-      // Refetch detail to get updated data
-      const res = await RentalRequestService.getDetail(id);
-      setRequest(res.data.data);
-      setShowPayment(false);
-      alert("Thanh toán thành công! Hồ sơ của bạn sẽ được duyệt trong thời gian sớm nhất.");
-    } catch (err) {
-      console.error("Lỗi xác nhận thanh toán:", err);
-      alert("Thanh toán đã ghi nhận. Trang sẽ tải lại để cập nhật.");
-      window.location.reload();
-    }
-  };
+      try {
+        // 1. Xác nhận thanh toán với backend
+        await PaymentService.confirmPayment(request.paymentLinkId);
+        
+        // 2. Lấy danh sách ma_giuong từ request.selectedBeds và gọi API cập nhật trạng thái
+        if (request?.selectedBeds && request.selectedBeds.length > 0) {
+          // Dùng Promise.all để gửi tất cả request đổi trạng thái cùng lúc
+          await Promise.all(
+            request.selectedBeds.map((bed) => 
+              BedService.updateBedStatusToRented(bed.ma_giuong)
+            )
+          );
+          console.log("Đã cập nhật toàn bộ giường sang trạng thái DA_THUE");
+        }
+
+        // 3. Đóng giao diện QR Code
+        setShowPayment(false);
+        
+        // 4. Refetch lại data để giao diện cập nhật trạng thái mới nhất
+        const res = await RentalRequestService.getDetail(id);
+        setRequest(res.data.data);
+        alert("Thanh toán thành công! Hồ sơ của bạn đã được duyệt và giường đã được khóa.");
+      } catch (err) {
+        console.error("Lỗi xác nhận thanh toán hoặc cập nhật giường:", err);
+        alert("Thanh toán đã ghi nhận. Trang sẽ tải lại để cập nhật.");
+        window.location.reload();
+      }
+    };
 
 const handlePaymentCancel = async () => {
     try {
@@ -302,7 +322,7 @@ const handlePaymentCancel = async () => {
                   ) : (
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex gap-3 items-start">
                       <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      <span className="text-[13px] text-slate-300 font-medium leading-relaxed">Hồ sơ đã được ghi nhận. Hệ thống đang tiến hành xử lý yêu cầu của bạn.</span>
+                      <span className="text-[13px] text-slate-300 font-medium leading-relaxed">Hồ sơ đã được ghi nhận.</span>
                     </div>
                   )}
                 </div>
