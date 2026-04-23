@@ -123,7 +123,7 @@ function BookingPage() {
   // Tính số tiền đặt cọc dựa trên giường đã chọn
   const depositAmount =
     room && room.price
-      ? parseInt(room.price.replace(/[^\d]/g, "")) * selectedBeds.length
+      ? parseInt(room.price.replace(/[^\d]/g, "")) * selectedBeds.length * 2 // Tiền cọc = (Tiền thuê 2 tháng) × (Số giường thuê).
       : 0;
 
   if (!room) {
@@ -583,7 +583,7 @@ function BookingPage() {
                   )}
                   <div className="flex justify-between items-center border-b border-slate-50 pb-4">
                     <span className="text-[#64748B] font-medium">
-                      Đặt cọc (1 tháng × {selectedBeds.length} giường)
+                      Đặt cọc (2 tháng × {selectedBeds.length} giường)
                     </span>
                     <span className="font-extrabold text-[#0052CC]">
                       {formatCurrency(depositAmount)}
