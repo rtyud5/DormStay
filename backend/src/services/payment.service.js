@@ -17,6 +17,12 @@ const PaymentService = {
   async createPayOSPayment({ amount, description, returnUrl, cancelUrl }) {
     return PaymentModel.createPayOSPayment({ amount, description, returnUrl, cancelUrl });
   },
+  async cancelPayment(paymentLinkId) {
+    return PaymentModel.cancelPayment(paymentLinkId);
+  },
+  async confirmPayment(paymentLinkId) {
+    return PaymentModel.confirmPayment(paymentLinkId);
+  }
 };
 
 module.exports = PaymentService;

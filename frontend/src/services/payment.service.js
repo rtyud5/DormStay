@@ -13,6 +13,12 @@ const PaymentService = {
   createPayOSPayment: (payload) => {
     return api.post("/payments/payos", payload);
   },
+  cancelPayment: (paymentLinkId) => {
+    return api.put(`/payments/cancel/${paymentLinkId}`);
+  },
+  confirmPayment: (paymentLinkId) => {
+    return api.put(`/payments/confirm/${paymentLinkId}`);
+  }
 };
 
 export default PaymentService;

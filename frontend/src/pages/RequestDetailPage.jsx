@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import RentalRequestService from "../services/rentalRequest.service";
+import PaymentService from "../services/payment.service";
 import { formatCurrency } from "../utils/accounting.utils";
 import PayOS from "./PayOS";
 import { useAuth } from "../context/AuthContext";
@@ -62,6 +63,11 @@ function RequestDetailPage() {
           paymentLinkId: paymentLinkData.paymentLinkId
         });
         console.log("Đã lưu PayOS info thành công");
+        setRequest(prev => ({
+          ...prev,
+          checkoutUrl: paymentLinkData.checkoutUrl,
+          paymentLinkId: paymentLinkData.paymentLinkId
+        }));
       }
     } catch (err) {
       console.error("Lỗi khi lưu PayOS info:", err);
@@ -84,8 +90,28 @@ function RequestDetailPage() {
     }
   };
 
-  const handlePaymentCancel = () => {
-    setShowPayment(false);
+const handlePaymentCancel = async () => {
+    try {
+      // THÊM ĐOẠN NÀY: Nếu không có ID thì chỉ cần đóng giao diện là xong, không gọi API
+      if (!request?.paymentLinkId) {
+        setShowPayment(false);
+        return;
+      }
+
+      console.log("Hủy thanh toán với paymentLinkId:", request.paymentLinkId);
+      await PaymentService.cancelPayment(request.paymentLinkId);
+      
+      setShowPayment(false);
+      
+      const res = await RentalRequestService.getDetail(id);
+      setRequest(res.data.data);
+    } catch (err) {
+      console.error("Lỗi khi hủy thanh toán:", err);
+      const res = await RentalRequestService.getDetail(id);
+      if (res?.data?.data) {
+        setRequest(res.data.data);
+      }
+    }
   };
 
   return (
@@ -253,10 +279,10 @@ function RequestDetailPage() {
                     {formatCurrency(request.so_tien_dat_coc || 0)}
                   </div>
 
-                  <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
+                  {/* <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
                     <span className="text-slate-400 text-sm font-medium">Hạn thanh toán</span>
                     <span className="font-bold">{formatDateTime(deadline)}</span>
-                  </div>
+                  </div> */}
 
                   {isExpired ? (
                      <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl p-4 flex gap-3 items-start mb-6">
@@ -295,7 +321,7 @@ function RequestDetailPage() {
                 </div>
                 
                 <PayOS 
-                  amount={request.so_tien_dat_coc} 
+                  amount={request.so_tien_dat_coc/1000} 
                   description={`Thanh toan phong id ${id}`} 
                   existingCheckoutUrl={request.checkoutUrl} 
                   onPaymentLinkCreated={handlePaymentLinkCreated}
