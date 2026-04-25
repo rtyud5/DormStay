@@ -11,6 +11,8 @@ const ROLE_ALIASES = {
   accounting: "KE_TOAN",
   accountant: "KE_TOAN",
   ke_toan: "KE_TOAN",
+  sale: "SALE",
+  nhan_vien_sale: "SALE",
 };
 
 function normalizeRole(role = "") {
