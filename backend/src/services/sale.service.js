@@ -1,45 +1,39 @@
-const { supabase } = require("../config/supabase");
+const SaleModel = require("../models/sale.model");
 
 const SaleService = {
-  async getDashboardStats() {
-    // Lấy số lượng các yêu cầu thuê đang chờ xử lý
-    const { count: pendingRequests } = await supabase
-      .from('yeu_cau_thue')
-      .select('*', { count: 'exact', head: true })
-      .in('trang_thai', ['MOI_TAO', 'CHO_XU_LY']);
-
-    // Thống kê số phòng trống
-    const { count: emptyRooms } = await supabase
-      .from('phong')
-      .select('*', { count: 'exact', head: true })
-      .eq('trang_thai', 'TRONG');
-
-    return {
-      pendingRequests: pendingRequests || 0,
-      emptyRooms: emptyRooms || 0,
-    };
+  async getDashboard() {
+    return SaleModel.getDashboard();
   },
-
   async getRentalRequests(filters) {
-    let query = supabase
-      .from('yeu_cau_thue')
-      .select(`
-        *,
-        ho_so!yeu_cau_thue_ma_ho_so_khach_hang_fkey (ho_ten, email, so_dien_thoai),
-        phong (ma_phong_hien_thi, loai_phong)
-      `)
-      .order('created_at', { ascending: false });
-
-    // Hỗ trợ filter cơ bản
-    if (filters.status && filters.status !== 'all') {
-      query = query.eq('trang_thai', filters.status);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    
-    return data;
-  }
+    return SaleModel.getRentalRequests(filters);
+  },
+  async getRentalRequestDetail(id) {
+    return SaleModel.getRentalRequestDetail(id);
+  },
+  async processRentalRequest(id, payload) {
+    return SaleModel.processRentalRequest(id, payload);
+  },
+  async getCustomers(filters) {
+    return SaleModel.getCustomers(filters);
+  },
+  async getCustomerDetail(id) {
+    return SaleModel.getCustomerDetail(id);
+  },
+  async getContracts(filters) {
+    return SaleModel.getContracts(filters);
+  },
+  async getContractDetail(id) {
+    return SaleModel.getContractDetail(id);
+  },
+  async getCheckoutRequests(filters) {
+    return SaleModel.getCheckoutRequests(filters);
+  },
+  async createCheckoutRequest(payload) {
+    return SaleModel.createCheckoutRequest(payload);
+  },
+  async updateCheckoutRequestTime(id, payload) {
+    return SaleModel.updateCheckoutRequestTime(id, payload);
+  },
 };
 
 module.exports = SaleService;
