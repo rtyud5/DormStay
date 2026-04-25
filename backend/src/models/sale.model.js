@@ -198,42 +198,50 @@ const SaleModel = {
     };
   },
 
-  async processRentalRequest(id, { action, ghi_chu, ma_ho_so_nguoi_thuc_hien }) {
-    // Map action → trang_thai mới
-    const STATUS_MAP = {
-      DUYET: "DA_XAC_NHAN",
-      TU_CHOI: "TU_CHOI",
-      TAM_DUNG: "TAM_DUNG",
-      YEU_CAU_BO_SUNG: "DANG_XU_LY",
-    };
-    const trangThaiMoi = STATUS_MAP[action];
-    if (!trangThaiMoi) throw new Error("Action không hợp lệ");
-
-    // 1. Lấy trạng thái cũ
-    const { data: current } = await supabase
-      .from("yeu_cau_thue")
-      .select("trang_thai")
-      .eq("ma_yeu_cau_thue", id)
-      .single();
-
-    // 2. Cập nhật trạng thái
-    const { error } = await supabase
-      .from("yeu_cau_thue")
-      .update({ trang_thai: trangThaiMoi })
-      .eq("ma_yeu_cau_thue", id);
+async processRentalRequest(id, { action, ghi_chu, ngay_vao_o, ngay_ket_thuc, ma_ho_so_nguoi_thuc_hien }) {
+  // Nếu là DUYET → gọi RPC tạo hợp đồng luôn
+  if (action === 'DUYET') {
+    if (!ngay_vao_o) throw new Error("Thiếu ngày vào ở");
+    const { data, error } = await supabase.rpc(
+      'approve_rental_request_and_create_contract',
+      {
+        p_ma_yeu_cau_thue:   parseInt(id),
+        p_ma_nhan_vien_sale: ma_ho_so_nguoi_thuc_hien,
+        p_ngay_vao_o:        ngay_vao_o,
+        p_ngay_ket_thuc:     ngay_ket_thuc || null,
+      }
+    );
     if (error) throw error;
+    return data;
+  }
 
-    // 3. Ghi nhật ký
-    await supabase.from("nhat_ky_yeu_cau_thue").insert({
-      ma_yeu_cau_thue: id,
-      trang_thai_cu: current?.trang_thai || null,
-      trang_thai_moi: trangThaiMoi,
-      ma_ho_so_nguoi_thuc_hien,
-      ghi_chu: ghi_chu || null,
-    });
+  // Các action khác: TU_CHOI, TAM_DUNG, YEU_CAU_BO_SUNG
+  const STATUS_MAP = {
+    TU_CHOI:         'TU_CHOI',
+    TAM_DUNG:        'TAM_DUNG',
+    YEU_CAU_BO_SUNG: 'DANG_XU_LY',
+  };
+  const trangThaiMoi = STATUS_MAP[action];
+  if (!trangThaiMoi) throw new Error("Action không hợp lệ");
 
-    return { success: true, trang_thai: trangThaiMoi };
-  },
+  const { data: current } = await supabase
+    .from('yeu_cau_thue').select('trang_thai')
+    .eq('ma_yeu_cau_thue', id).single();
+
+  const { error } = await supabase.from('yeu_cau_thue')
+    .update({ trang_thai: trangThaiMoi }).eq('ma_yeu_cau_thue', id);
+  if (error) throw error;
+
+  await supabase.from('nhat_ky_yeu_cau_thue').insert({
+    ma_yeu_cau_thue: id,
+    trang_thai_cu: current?.trang_thai || null,
+    trang_thai_moi: trangThaiMoi,
+    ma_ho_so_nguoi_thuc_hien,
+    ghi_chu: ghi_chu || null,
+  });
+
+  return { success: true, trang_thai: trangThaiMoi };
+},
 
   // ============================================================
   // CUSTOMERS
