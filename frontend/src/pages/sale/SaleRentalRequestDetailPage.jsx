@@ -12,6 +12,8 @@ export default function SaleRentalRequestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [note, setNote] = useState("");
+  const [ngayVaoO, setNgayVaoO] = useState("");
+  const [ngayKetThuc, setNgayKetThuc] = useState("");
   const [showNoteFor, setShowNoteFor] = useState(null); // action string
 
   const load = async () => {
@@ -29,9 +31,18 @@ export default function SaleRentalRequestDetailPage() {
   const handleProcess = async (action) => {
     setProcessing(true);
     try {
-      await processSaleRentalRequest(id, { action, ghi_chu: note });
+      // Cập nhật payload gửi đi tại đây
+      await processSaleRentalRequest(id, { 
+        action, 
+        ghi_chu: note,
+        ngay_vao_o: ngayVaoO || undefined,
+        ngay_ket_thuc: ngayKetThuc || undefined,
+      });
+      
       setShowNoteFor(null);
       setNote("");
+      setNgayVaoO(""); // Reset state
+      setNgayKetThuc(""); // Reset state
       await load();
     } finally {
       setProcessing(false);
@@ -162,6 +173,34 @@ export default function SaleRentalRequestDetailPage() {
                     {showNoteFor === "TAM_DUNG" && "Lý do tạm dừng"}
                     {showNoteFor === "YEU_CAU_BO_SUNG" && "Yêu cầu bổ sung thông tin gì?"}
                   </p>
+
+                  {showNoteFor === "DUYET" && (
+                    <>
+                      <div>
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 block">
+                          Ngày vào ở *
+                        </label>
+                        <input
+                          type="date"
+                          value={ngayVaoO}
+                          onChange={(e) => setNgayVaoO(e.target.value)}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 block">
+                          Ngày kết thúc hợp đồng
+                        </label>
+                        <input
+                          type="date"
+                          value={ngayKetThuc}
+                          onChange={(e) => setNgayKetThuc(e.target.value)}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </>
+                  )}
+                
                   <textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
