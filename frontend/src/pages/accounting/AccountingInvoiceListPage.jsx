@@ -22,8 +22,15 @@ export default function AccountingInvoiceListPage() {
   const [loading, setLoading] = useState(true);
   const [filterState, setFilterState] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterTimeRange, setFilterTimeRange] = useState("all");
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState("all");
+  const [filterContractId, setFilterContractId] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalInvoices, setTotalInvoices] = useState(0);
+  const [pageSize] = useState(10);
 
-  const invoiceTotal = Math.max(invoices.length, 1);
+  const invoiceTotal = Math.max(totalInvoices || invoices.length, 1);
+  // Recalculate stats based on ALL invoices (for context), but update display per page
   const completedCount = invoices.filter((invoice) => invoice.status === "COMPLETED").length;
   const pendingCount = invoices.filter((invoice) => invoice.status === "PENDING").length;
   const overdueCount = invoices.filter((invoice) => invoice.status === "OVERDUE").length;
@@ -36,17 +43,42 @@ export default function AccountingInvoiceListPage() {
       try {
         setLoading(true);
 
-        const filters = {};
-        if (filterState !== "all") {
-          filters.status = filterState.toUpperCase();
-        }
-
+        // Load full data for stats (không lọc status)
+        const statsFilters = {};
         if (searchTerm.trim()) {
-          filters.search = searchTerm.trim();
+          statsFilters.search = searchTerm.trim();
         }
+        if (filterTimeRange !== "all") {
+          statsFilters.timeRange = filterTimeRange;
+        }
+        if (filterPaymentMethod !== "all") {
+          statsFilters.paymentMethod = filterPaymentMethod;
+        }
+        if (filterContractId.trim()) {
+          statsFilters.contractId = filterContractId.trim();
+        }
+        statsFilters.page = 1;
+        statsFilters.limit = 1000; // Load all for stats
 
-        const response = await getInvoices(filters);
-        setInvoices(response.data || []);
+        // Load filtered data for pagination
+        const paginationFilters = { ...statsFilters };
+        if (filterState !== "all") {
+          paginationFilters.status = filterState.toUpperCase();
+        }
+        paginationFilters.page = currentPage;
+        paginationFilters.limit = pageSize;
+
+        // Get full dataset for stats
+        const statsResponse = await getInvoices(statsFilters);
+        const allInvoices = statsResponse.data?.items || statsResponse.data || [];
+        const totalAllInvoices = statsResponse.data?.total || allInvoices.length || 0;
+
+        // Get paginated dataset for display
+        const response = await getInvoices(paginationFilters);
+        const pageInvoices = response.data?.items || response.data || [];
+
+        setInvoices(pageInvoices);
+        setTotalInvoices(totalAllInvoices); // Total across all statuses, không phải chỉ filtered
       } catch (error) {
         console.error("Error loading invoices:", error);
       } finally {
@@ -55,7 +87,7 @@ export default function AccountingInvoiceListPage() {
     };
 
     loadInvoices();
-  }, [filterState, searchTerm]);
+  }, [filterState, searchTerm, filterTimeRange, filterPaymentMethod, filterContractId, currentPage, pageSize]);
 
   const totalRevenue = invoices.reduce(
     (sum, invoice) => sum + (invoice.paidAmount || (invoice.status === "COMPLETED" ? invoice.amount || 0 : 0)),
@@ -134,8 +166,16 @@ export default function AccountingInvoiceListPage() {
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">THỜI GIAN</label>
             <div className="relative">
               <Calendar className="absolute left-4 top-3.5 w-4 h-4 text-gray-500" />
-              <select className="w-full pl-11 pr-8 py-3 bg-[#f4f7fa] border-none rounded-xl text-sm font-semibold text-gray-800 appearance-none focus:ring-2 focus:ring-[#0b2447]">
-                <option>Tháng này</option>
+              <select
+                value={filterTimeRange}
+                onChange={(event) => setFilterTimeRange(event.target.value)}
+                className="w-full pl-11 pr-8 py-3 bg-[#f4f7fa] border-none rounded-xl text-sm font-semibold text-gray-800 appearance-none focus:ring-2 focus:ring-[#0b2447]"
+              >
+                <option value="all">Tất cả</option>
+                <option value="this_month">Tháng này</option>
+                <option value="last_month">Tháng trước</option>
+                <option value="this_quarter">Quý này</option>
+                <option value="this_year">Năm nay</option>
               </select>
             </div>
           </div>
@@ -143,8 +183,14 @@ export default function AccountingInvoiceListPage() {
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">PHƯƠNG THỨC</label>
             <div className="relative">
               <CreditCard className="absolute left-4 top-3.5 w-4 h-4 text-gray-500" />
-              <select className="w-full pl-11 pr-8 py-3 bg-[#f4f7fa] border-none rounded-xl text-sm font-semibold text-gray-800 appearance-none focus:ring-2 focus:ring-[#0b2447]">
-                <option>Tất cả</option>
+              <select
+                value={filterPaymentMethod}
+                onChange={(event) => setFilterPaymentMethod(event.target.value)}
+                className="w-full pl-11 pr-8 py-3 bg-[#f4f7fa] border-none rounded-xl text-sm font-semibold text-gray-800 appearance-none focus:ring-2 focus:ring-[#0b2447]"
+              >
+                <option value="all">Tất cả</option>
+                <option value="TIEN_MAT">Tiền mặt</option>
+                <option value="TRANSFER">Chuyển khoản</option>
               </select>
             </div>
           </div>
@@ -153,8 +199,8 @@ export default function AccountingInvoiceListPage() {
             <div className="relative">
               <FileText className="absolute left-4 top-3.5 w-4 h-4 text-gray-500" />
               <input
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                value={filterContractId}
+                onChange={(event) => setFilterContractId(event.target.value)}
                 type="text"
                 placeholder="Ví dụ: CTR-904"
                 className="w-full pl-11 pr-4 py-3 bg-[#f4f7fa] border-none rounded-xl text-sm focus:ring-2 focus:ring-[#0b2447] placeholder-gray-400 font-medium"
@@ -280,8 +326,34 @@ export default function AccountingInvoiceListPage() {
         {/* Pagination */}
         <div className="pt-6 mt-2 border-t border-gray-100 flex items-center justify-between px-2">
           <p className="text-sm text-gray-500 font-medium">
-            Hiển thị <span className="text-gray-900 font-bold">{invoices.length}</span> phiếu thu
+            Hiển thị <span className="text-gray-900 font-bold">{invoices.length}</span> /{" "}
+            <span className="text-gray-900 font-bold">{totalInvoices}</span> phiếu thu
+            {filterState !== "all" && (
+              <span className="text-gray-600 ml-2">
+                (lọc: {filterState.charAt(0).toUpperCase() + filterState.slice(1)})
+              </span>
+            )}
           </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Trước
+            </button>
+            <span className="text-sm text-gray-700 font-medium px-3 py-1.5">
+              Trang <span className="font-bold text-gray-900">{currentPage}</span> /{" "}
+              <span className="font-bold text-gray-900">{Math.ceil(totalInvoices / pageSize)}</span>
+            </span>
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage >= Math.ceil(totalInvoices / pageSize)}
+              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Tiếp →
+            </button>
+          </div>
         </div>
       </div>
 
