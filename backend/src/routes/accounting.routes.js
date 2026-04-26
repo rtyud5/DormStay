@@ -29,6 +29,13 @@ router.post(
   AccountingController.createAdditionalPaymentFromReconciliation,
 );
 
+router.get("/billing/contracts", AccountingController.getInitialBillingPendingContracts);
+router.get("/billing/contracts/:contractId/preview", AccountingController.getInitialBillingPreview);
+router.post("/billing/contracts/:contractId/invoice", AccountingController.createInitialBillingInvoice);
+
+router.get("/invoices", AccountingController.getInvoices);
+router.get("/invoices/:id", AccountingController.getInvoiceDetail);
+
 router.use(AccountingController.accountingApisTemporarilyDisabled);
 
 module.exports = router;

@@ -60,6 +60,26 @@ const AccountingService = {
       payload,
     );
   },
+
+  async getInitialBillingPendingContracts(filters) {
+    return AccountingPageModels.accountingBillingPageModel.listPendingContracts(filters);
+  },
+
+  async getInitialBillingPreview(contractId) {
+    return AccountingPageModels.accountingBillingPageModel.preview(contractId);
+  },
+
+  async createInitialBillingInvoice(contractId, payload) {
+    return AccountingPageModels.accountingBillingPageModel.createInitialInvoice(contractId, payload);
+  },
+
+  async getInvoices(filters) {
+    return AccountingPageModels.accountingInvoiceListPageModel.listInvoices(filters);
+  },
+
+  async getInvoiceDetail(invoiceId) {
+    return AccountingPageModels.accountingInvoiceListPageModel.getInvoiceDetail(invoiceId);
+  },
 };
 
 module.exports = AccountingService;

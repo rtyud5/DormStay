@@ -47,6 +47,31 @@ const createAdditionalPaymentFromReconciliation = asyncHandler(async (req, res) 
   return sendSuccess(res, result, "Create additional payment voucher from reconciliation successful", 201);
 });
 
+const getInitialBillingPendingContracts = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getInitialBillingPendingContracts(req.query);
+  return sendSuccess(res, result, "Fetch initial billing pending contracts successful");
+});
+
+const getInitialBillingPreview = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getInitialBillingPreview(req.params.contractId);
+  return sendSuccess(res, result, "Fetch initial billing preview successful");
+});
+
+const createInitialBillingInvoice = asyncHandler(async (req, res) => {
+  const result = await AccountingService.createInitialBillingInvoice(req.params.contractId, req.body);
+  return sendSuccess(res, result, "Create initial billing invoice successful", 201);
+});
+
+const getInvoices = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getInvoices(req.query);
+  return sendSuccess(res, result, "Fetch invoices successful");
+});
+
+const getInvoiceDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getInvoiceDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch invoice detail successful");
+});
+
 const accountingApisTemporarilyDisabled = (req, res) => {
   const result = AccountingService.getApiResetStatus();
 
@@ -67,5 +92,10 @@ module.exports = {
   finalizeReconciliation,
   createRefundFromReconciliation,
   createAdditionalPaymentFromReconciliation,
+  getInitialBillingPendingContracts,
+  getInitialBillingPreview,
+  createInitialBillingInvoice,
+  getInvoices,
+  getInvoiceDetail,
   accountingApisTemporarilyDisabled,
 };
