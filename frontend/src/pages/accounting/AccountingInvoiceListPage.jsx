@@ -6,7 +6,6 @@ import {
   Calendar,
   CreditCard,
   FileText,
-  CheckCircle,
   CheckCircle2,
   AlertTriangle,
   Clock,
@@ -14,7 +13,7 @@ import {
 } from "lucide-react";
 import { ACCOUNTING_ROUTES } from "../../constants/accounting.constants";
 import AccountingInvoiceTable from "../../components/accounting/AccountingInvoiceTable";
-import { getInvoices, confirmPayment } from "../../services/accounting.service";
+import { getInvoices } from "../../services/accounting.service";
 import { formatCurrency } from "../../utils/accounting.utils";
 
 export default function AccountingInvoiceListPage() {
@@ -57,33 +56,6 @@ export default function AccountingInvoiceListPage() {
 
     loadInvoices();
   }, [filterState, searchTerm]);
-
-  const getConfirmablePaymentId = (invoice) => {
-    const pendingPayment = invoice.payments?.find((payment) =>
-      String(payment.trang_thai || "")
-        .toUpperCase()
-        .includes("CHO"),
-    );
-    return pendingPayment?.ma_thanh_toan || null;
-  };
-
-  const handleConfirmPayment = async (invoice) => {
-    const paymentId = getConfirmablePaymentId(invoice);
-
-    if (!paymentId) {
-      window.alert("Phiếu này chưa có thanh toán chờ xác nhận.");
-      return;
-    }
-
-    try {
-      await confirmPayment(paymentId);
-      const refreshed = await getInvoices(filterState === "all" ? {} : { status: filterState.toUpperCase() });
-      setInvoices(refreshed.data || []);
-    } catch (error) {
-      console.error("Error confirming payment:", error);
-      window.alert("Không thể xác nhận thanh toán. Kiểm tra console để xem chi tiết.");
-    }
-  };
 
   const totalRevenue = invoices.reduce(
     (sum, invoice) => sum + (invoice.paidAmount || (invoice.status === "COMPLETED" ? invoice.amount || 0 : 0)),
@@ -301,14 +273,6 @@ export default function AccountingInvoiceListPage() {
                   {item.paidDate && item.paidDate !== "—" ? new Date(item.paidDate).toLocaleDateString("vi-VN") : "—"}
                 </span>
               ),
-            },
-          ]}
-          actions={[
-            {
-              icon: <CheckCircle className="w-5 h-5 text-gray-700" fill="#374151" color="white" />,
-              label: "Xác nhận",
-              condition: (row) => Boolean(getConfirmablePaymentId(row)),
-              onClick: (row) => handleConfirmPayment(row),
             },
           ]}
         />

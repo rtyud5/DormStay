@@ -18,7 +18,6 @@ export default function AccountingBillingPage() {
   const [preview, setPreview] = useState(null);
   const [extraCharges, setExtraCharges] = useState([]);
   const [dueDate, setDueDate] = useState("");
-  const [internalNote, setInternalNote] = useState("");
 
   const [loadingContracts, setLoadingContracts] = useState(true);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -121,7 +120,6 @@ export default function AccountingBillingPage() {
     try {
       const payload = {
         dueDate: dueDate || undefined,
-        notes: internalNote || undefined,
         extraCharges: extraCharges
           .filter((item) => item.name && Number(item.amount) > 0)
           .map((item) => ({ name: item.name, amount: Number(item.amount) })),
@@ -140,7 +138,6 @@ export default function AccountingBillingPage() {
       );
 
       setExtraCharges([]);
-      setInternalNote("");
       setDueDate("");
 
       const contractResponse = await getInitialBillingPendingContracts({ limit: 100 });
@@ -350,7 +347,7 @@ export default function AccountingBillingPage() {
 
           <div className="bg-white rounded-3xl p-7 shadow-sm border border-gray-100">
             <h2 className="text-[1.1rem] font-extrabold text-[#111827] mb-4">Thong tin bo sung</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Ngay den han</label>
                 <input
@@ -361,12 +358,6 @@ export default function AccountingBillingPage() {
                 />
               </div>
             </div>
-            <textarea
-              value={internalNote}
-              onChange={(event) => setInternalNote(event.target.value)}
-              placeholder="Ghi chu noi bo..."
-              className="w-full h-24 bg-[#f9fafb] border border-gray-200 rounded-2xl p-4 text-sm font-medium resize-none"
-            />
           </div>
         </div>
 
