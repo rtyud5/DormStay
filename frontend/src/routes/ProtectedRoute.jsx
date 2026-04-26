@@ -2,7 +2,6 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { canAccessAccounting, canAccessManager, canAccessSale } from "../lib/authRedirect";
 
-
 function ProtectedRoute({ requireAccounting = false, requireManager = false, requireSale = false }) {
   const { isAuthenticated, loading, profile } = useAuth();
 
@@ -22,6 +21,9 @@ function ProtectedRoute({ requireAccounting = false, requireManager = false, req
     return <Navigate to="/dashboard" replace />;
   }
 
+  if (requireSale && !canAccessSale(profile?.vai_tro)) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return <Outlet />;
 }

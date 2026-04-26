@@ -7,7 +7,7 @@ import {
   RENTAL_REQUEST_STATUS_OPTIONS,
   RENTAL_TYPE_OPTIONS,
 } from "../../constants/sale.constants";
-import SaleStatusBadge from "../../components/sale/SaleStatusBadge";
+import SaleStatusBadge from "../../components/sale/SaleStatusBadge.jsx";
 
 export default function SaleRentalRequestsPage() {
   const navigate = useNavigate();

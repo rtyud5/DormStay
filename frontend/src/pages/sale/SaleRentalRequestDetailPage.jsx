@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, XCircle, PauseCircle, AlertCircle } from "lucide-react";
 import { getSaleRentalRequestDetail, processSaleRentalRequest } from "../../services/sale.service";
 import { RENTAL_REQUEST_STATUS } from "../../constants/sale.constants";
-import SaleStatusBadge from "../../components/sale/SaleStatusBadge";
+import SaleStatusBadge from "../../components/sale/SaleStatusBadge.jsx";
 
 export default function SaleRentalRequestDetailPage() {
   const { id } = useParams();

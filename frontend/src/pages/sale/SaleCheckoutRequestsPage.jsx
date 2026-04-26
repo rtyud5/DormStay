@@ -5,7 +5,7 @@ import {
   updateCheckoutRequestTime,
 } from "../../services/sale.service";
 import { CHECKOUT_STATUS, CHECKOUT_STATUS_OPTIONS } from "../../constants/sale.constants";
-import SaleStatusBadge from "../../components/sale/SaleStatusBadge";
+import SaleStatusBadge from "../../components/sale/SaleStatusBadge.jsx";
 
 export default function SaleCheckoutRequestsPage() {
   const [data, setData] = useState([]);
