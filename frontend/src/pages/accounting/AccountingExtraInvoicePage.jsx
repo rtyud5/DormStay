@@ -1,306 +1,496 @@
 import React, { useState } from "react";
-import { 
-  History, Printer, Plus, Banknote, Landmark, CreditCard,
-  CheckCircle2, Ban, Info, ListChecks, ChevronRight,
-  Trash2
+import {
+  Banknote,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  FileText,
+  Landmark,
+  Search,
 } from "lucide-react";
 import { formatCurrency } from "../../utils/accounting.utils";
 
+const TRANG_THAI = {
+  CHO_THANH_TOAN: "CHO_THANH_TOAN",
+  DA_THANH_TOAN: "DA_THANH_TOAN",
+};
+
+const TRANG_THAI_LABEL = {
+  CHO_THANH_TOAN: "Chờ thanh toán",
+  DA_THANH_TOAN: "Đã thanh toán",
+};
+
+const PHUONG_THUC = {
+  TIEN_MAT: "TIEN_MAT",
+  CHUYEN_KHOAN: "CHUYEN_KHOAN",
+};
+
+const PHUONG_THUC_LABEL = {
+  TIEN_MAT: "Tiền mặt",
+  CHUYEN_KHOAN: "Chuyển khoản",
+};
+
+const FILTER_OPTIONS = [
+  { value: "ALL", label: "Tất cả" },
+  { value: TRANG_THAI.CHO_THANH_TOAN, label: "Chờ thanh toán" },
+  { value: TRANG_THAI.DA_THANH_TOAN, label: "Đã thanh toán" },
+];
+
+const MOCK_VOUCHERS = [
+  {
+    id: "PTPS-2024-001",
+    maDoiSoat: "DS-2024-011",
+    maHopDong: "CTR-9921",
+    tenKhach: "Nguyễn Minh Tuấn",
+    sdtKhach: "0912 345 678",
+    phong: "B-402",
+    soTien: 2700000,
+    trangThai: TRANG_THAI.CHO_THANH_TOAN,
+    ngayTao: "2024-04-20T09:15:00Z",
+    lyDoThu: [
+      { noiDung: "Tiền thuê còn nợ (tháng 4)", soTien: 1200000 },
+      { noiDung: "Bồi thường hư hỏng cửa kính", soTien: 1500000 },
+    ],
+    phuongThuc: null,
+    maGiaoDich: null,
+    thoiGianThu: null,
+    ghiChu: "",
+  },
+  {
+    id: "PTPS-2024-002",
+    maDoiSoat: "DS-2024-008",
+    maHopDong: "CTR-8814",
+    tenKhach: "Trần Thị Lan",
+    sdtKhach: "0987 654 321",
+    phong: "A-201",
+    soTien: 450000,
+    trangThai: TRANG_THAI.CHO_THANH_TOAN,
+    ngayTao: "2024-04-18T14:30:00Z",
+    lyDoThu: [{ noiDung: "Tiền điện nước còn nợ", soTien: 450000 }],
+    phuongThuc: null,
+    maGiaoDich: null,
+    thoiGianThu: null,
+    ghiChu: "",
+  },
+  {
+    id: "PTPS-2024-003",
+    maDoiSoat: "DS-2024-005",
+    maHopDong: "CTR-7703",
+    tenKhach: "Lê Văn Hùng",
+    sdtKhach: "0903 111 222",
+    phong: "C-105",
+    soTien: 800000,
+    trangThai: TRANG_THAI.DA_THANH_TOAN,
+    ngayTao: "2024-04-15T10:00:00Z",
+    lyDoThu: [
+      { noiDung: "Phạt vi phạm nội quy", soTien: 500000 },
+      { noiDung: "Tiền dịch vụ còn nợ", soTien: 300000 },
+    ],
+    phuongThuc: PHUONG_THUC.CHUYEN_KHOAN,
+    maGiaoDich: "VCB20240415-88321",
+    thoiGianThu: "2024-04-16T09:22:00Z",
+    ghiChu: "Khách chuyển khoản qua Vietcombank.",
+  },
+  {
+    id: "PTPS-2024-004",
+    maDoiSoat: "DS-2024-003",
+    maHopDong: "CTR-6601",
+    tenKhach: "Phạm Quỳnh Anh",
+    sdtKhach: "0918 999 000",
+    phong: "D-310",
+    soTien: 300000,
+    trangThai: TRANG_THAI.DA_THANH_TOAN,
+    ngayTao: "2024-04-10T08:45:00Z",
+    lyDoThu: [{ noiDung: "Tiền thuê còn nợ (tháng 3)", soTien: 300000 }],
+    phuongThuc: PHUONG_THUC.TIEN_MAT,
+    maGiaoDich: null,
+    thoiGianThu: "2024-04-11T11:05:00Z",
+    ghiChu: "",
+  },
+];
+
+const formatDate = (iso) =>
+  iso
+    ? new Date(iso).toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "--";
+
+const formatDateTime = (iso) =>
+  iso
+    ? new Date(iso).toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "--";
+
+function StatusBadge({ status }) {
+  if (status === TRANG_THAI.DA_THANH_TOAN) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <CheckCircle2 className="w-3 h-3" strokeWidth={3} />
+        {TRANG_THAI_LABEL[status]}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+      <Clock className="w-3 h-3" strokeWidth={3} />
+      {TRANG_THAI_LABEL[status]}
+    </span>
+  );
+}
+
 export default function AccountingExtraInvoicePage() {
-  const [extraItems, setExtraItems] = useState([
-    {
-      id: 1,
-      name: "Vệ sinh phòng theo yêu cầu",
-      description: "Dịch vụ làm sạch chuyên sâu định kỳ",
-      price: 150000,
-      quantity: 2,
-    },
-    {
-      id: 2,
-      name: "Gia hạn thẻ cư dân",
-      description: "Mất thẻ, cấp lại thẻ từ NFC mới",
-      price: 100000,
-      quantity: 1,
-    },
-    {
-      id: 3,
-      name: "Bồi thường hư hại đồ dùng",
-      description: "Làm nứt kính cửa sổ phòng khách (Có biên bản)",
-      price: 2450000,
-      quantity: 1,
-    }
-  ]);
+  const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState(MOCK_VOUCHERS[0]?.id ?? null);
+  const [vouchers, setVouchers] = useState(MOCK_VOUCHERS);
 
-  const [paymentMethod, setPaymentMethod] = useState("CASH"); // CASH, TRANSFER, POS
+  const [confirmForm, setConfirmForm] = useState({
+    phuongThuc: PHUONG_THUC.TIEN_MAT,
+    maGiaoDich: "",
+    ghiChu: "",
+  });
+  const [saving, setSaving] = useState(false);
 
-  const handleAddItem = () => {
-    setExtraItems([...extraItems, { id: Date.now(), name: "Nội dung phát sinh", description: "Mô tả chi tiết", price: 0, quantity: 1 }]);
+  const filtered = vouchers.filter((v) => {
+    const matchFilter = filter === "ALL" || v.trangThai === filter;
+    const q = search.trim().toLowerCase();
+    const matchSearch =
+      !q ||
+      v.tenKhach.toLowerCase().includes(q) ||
+      v.maHopDong.toLowerCase().includes(q) ||
+      v.phong.toLowerCase().includes(q) ||
+      v.id.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+
+  const selected = vouchers.find((v) => v.id === selectedId) ?? null;
+
+  const pendingCount = vouchers.filter(
+    (v) => v.trangThai === TRANG_THAI.CHO_THANH_TOAN
+  ).length;
+
+  const handleSelect = (id) => {
+    setSelectedId(id);
+    setConfirmForm({ phuongThuc: PHUONG_THUC.TIEN_MAT, maGiaoDich: "", ghiChu: "" });
   };
 
-  const handleRemoveItem = (id) => {
-    setExtraItems(extraItems.filter(item => item.id !== id));
+  const handleConfirm = () => {
+    if (!selected) return;
+    setSaving(true);
+    // TODO: Replace with real API call — POST /accounting/settlement-payments/:id/confirm
+    setTimeout(() => {
+      setVouchers((prev) =>
+        prev.map((v) =>
+          v.id === selected.id
+            ? {
+                ...v,
+                trangThai: TRANG_THAI.DA_THANH_TOAN,
+                phuongThuc: confirmForm.phuongThuc,
+                maGiaoDich: confirmForm.maGiaoDich || null,
+                ghiChu: confirmForm.ghiChu,
+                thoiGianThu: new Date().toISOString(),
+              }
+            : v
+        )
+      );
+      setSaving(false);
+    }, 600);
   };
-
-  const handleUpdateItem = (id, field, value) => {
-    setExtraItems(extraItems.map(item => item.id === id ? { ...item, [field]: value } : item));
-  };
-
-  const subTotal = extraItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const vatAmount = subTotal * 0.1;
-  const grandTotal = subTotal + vatAmount;
 
   return (
-    <div className="p-8 lg:p-10 max-w-[1400px] mx-auto bg-[#f9fafb] min-h-screen">
-      
-      <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-6 mb-8 mt-4">
-        <div>
-          <div className="flex items-center gap-3 text-xs font-black text-gray-500 uppercase tracking-widest mb-3">
-             <span className="bg-gray-200 px-2.5 py-1 rounded-md text-gray-700">MH-33</span>
-             <span>ID: #PC-20231024-08</span>
+    <div className="flex h-screen bg-[#f9fafb] overflow-hidden">
+      {/* LEFT — List panel */}
+      <div className="w-[360px] shrink-0 flex flex-col border-r border-gray-200 bg-white">
+        <div className="px-6 pt-8 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3 mb-1">
+            <FileText className="w-5 h-5 text-[#0b2447]" strokeWidth={2.5} />
+            <h1 className="text-[1.1rem] font-extrabold text-[#0b2447] tracking-tight">
+              Thanh Toán Phát Sinh
+            </h1>
+            {pendingCount > 0 && (
+              <span className="ml-auto bg-amber-500 text-white text-[11px] font-black rounded-full px-2 py-0.5 min-w-[22px] text-center">
+                {pendingCount}
+              </span>
+            )}
           </div>
-          <h1 className="text-[2.5rem] font-extrabold text-[#0b2447] tracking-tight leading-none mb-3">
-            Lập Phiếu Thanh Toán Phát Sinh
-          </h1>
-          <p className="text-gray-500 font-medium">
-            Ghi nhận các khoản thu dịch vụ bổ sung ngoài hợp đồng định kỳ của cư dân.
+          <p className="text-xs text-gray-400 font-medium">
+            Phiếu được tạo tự động khi chốt đối soát
           </p>
         </div>
-        
-        <div className="flex gap-3 self-start xl:self-auto mt-4 xl:mt-8">
-           <button className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-extrabold hover:bg-gray-50 transition-colors shadow-sm">
-              <History className="w-5 h-5 text-gray-500" /> Lịch sử thu
-           </button>
-           <button className="flex items-center gap-2 px-6 py-3 bg-[#0b2447] text-white rounded-xl font-extrabold shadow-md hover:bg-[#0a1e3b] transition-colors">
-              <Printer className="w-5 h-5" /> In phiếu tạm tính
-           </button>
+
+        <div className="px-4 pt-4 pb-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm theo tên, phòng, hợp đồng..."
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-[#f9fafb]"
+            />
+          </div>
+        </div>
+
+        <div className="px-4 pb-3 flex gap-1.5 flex-wrap">
+          {FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setFilter(opt.value)}
+              className={`px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
+                filter === opt.value
+                  ? "bg-[#0b2447] text-white"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+          {filtered.length === 0 && (
+            <p className="text-center text-gray-400 italic text-sm py-12">
+              Không có phiếu nào.
+            </p>
+          )}
+          {filtered.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => handleSelect(v.id)}
+              className={`w-full text-left px-5 py-4 flex items-start gap-3 transition-colors ${
+                selectedId === v.id
+                  ? "bg-blue-50 border-l-4 border-l-[#1a56db]"
+                  : "hover:bg-gray-50 border-l-4 border-l-transparent"
+              }`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="font-extrabold text-[13px] text-gray-900 truncate">
+                    {v.tenKhach}
+                  </span>
+                  <StatusBadge status={v.trangThai} />
+                </div>
+                <p className="text-[12px] font-medium text-gray-500 truncate mb-1">
+                  {v.phong} · {v.maHopDong}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-gray-400">{formatDate(v.ngayTao)}</span>
+                  <span className="font-black text-[13px] text-[#0b2447]">
+                    {formatCurrency(v.soTien)}
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300 shrink-0 mt-1" />
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="flex flex-col xl:flex-row gap-8 items-start">
-        
-        {/* Left Main Content */}
-        <div className="flex-1 space-y-6 w-full">
-           
-           {/* Info Card */}
-           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 flex flex-wrap items-center gap-12">
-              <div className="flex items-center gap-5">
-                 <div className="w-16 h-16 rounded-full bg-[#f0f4fa] overflow-hidden border-2 border-white shadow-sm flex-shrink-0">
-                    <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: "url('https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop')"}}></div>
-                 </div>
-                 <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">CƯ DÂN</p>
-                    <p className="font-extrabold text-lg text-gray-900 leading-tight">Nguyễn Minh Tuấn</p>
-                    <p className="text-sm font-medium text-gray-500">0912-XXX-XXX</p>
-                 </div>
-              </div>
-              <div className="h-12 w-px bg-gray-100 hidden md:block"></div>
+      {/* RIGHT — Detail + Confirm panel */}
+      <div className="flex-1 overflow-y-auto">
+        {!selected ? (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm font-medium">
+            Chọn một phiếu để xem chi tiết
+          </div>
+        ) : (
+          <div className="p-8 max-w-[860px]">
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
               <div>
-                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">THÔNG TIN PHÒNG</p>
-                 <p className="font-extrabold text-[#111827] text-lg leading-tight">B-402 (Luxury Suite)</p>
-                 <p className="text-sm font-medium text-gray-500">Hợp đồng: #CTR-9921</p>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-100 px-2.5 py-1 rounded-md">
+                    {selected.id}
+                  </span>
+                  <StatusBadge status={selected.trangThai} />
+                </div>
+                <h2 className="text-[1.9rem] font-extrabold text-[#0b2447] tracking-tight leading-none">
+                  {selected.tenKhach}
+                </h2>
+                <p className="text-gray-400 font-medium mt-1.5 text-sm">
+                  Phòng {selected.phong} · Hợp đồng {selected.maHopDong} · Đối soát {selected.maDoiSoat}
+                </p>
               </div>
-              <div className="h-12 w-px bg-gray-100 hidden lg:block"></div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6 grid grid-cols-2 md:grid-cols-3 gap-6">
               <div>
-                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">NGÀY NHẬN PHÒNG</p>
-                 <p className="font-extrabold text-[#111827] text-lg mt-1">15/08/2023</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                  Khách thuê
+                </p>
+                <p className="font-extrabold text-gray-900">{selected.tenKhach}</p>
+                <p className="text-sm text-gray-500 font-medium">{selected.sdtKhach}</p>
               </div>
-           </div>
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                  Phòng / Hợp đồng
+                </p>
+                <p className="font-extrabold text-gray-900">{selected.phong}</p>
+                <p className="text-sm text-gray-500 font-medium">{selected.maHopDong}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                  Ngày tạo phiếu
+                </p>
+                <p className="font-extrabold text-gray-900">{formatDate(selected.ngayTao)}</p>
+              </div>
+            </div>
 
-           {/* Extra Charges List */}
-           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-8">
-                 <div className="flex items-center gap-3">
-                    <ListChecks className="w-6 h-6 text-[#111827]" strokeWidth={2.5} />
-                    <h2 className="text-[1.15rem] font-extrabold text-[#111827] uppercase tracking-wide">DANH SÁCH CÁC KHOẢN PHÁT SINH</h2>
-                 </div>
-                 <button 
-                   onClick={handleAddItem}
-                   className="text-[#1a56db] bg-[#f0f5ff] hover:bg-blue-100 px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 transition-colors"
-                 >
-                    <Plus className="w-4 h-4" /> Thêm khoản thu
-                 </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                 <table className="w-full text-left">
-                    <thead>
-                       <tr className="border-b border-gray-100">
-                          <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[45%]">TÊN DỊCH VỤ / SỰ VỤ</th>
-                          <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[20%]">ĐƠN GIÁ</th>
-                          <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-[15%] text-center">SỐ LƯỢNG</th>
-                          <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">THÀNH TIỀN</th>
-                          <th className="py-4 w-10"></th>
-                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100/50">
-                       {extraItems.map((item) => (
-                          <tr key={item.id} className="group">
-                             <td className="py-6 pr-4">
-                                <input 
-                                  className="font-extrabold text-[15px] text-gray-900 leading-tight w-full outline-none bg-transparent"
-                                  value={item.name}
-                                  onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
-                                />
-                                <input 
-                                  className="text-[13px] font-medium text-gray-500 w-full outline-none bg-transparent mt-1"
-                                  value={item.description}
-                                  onChange={(e) => handleUpdateItem(item.id, 'description', e.target.value)}
-                                />
-                             </td>
-                             <td className="py-6">
-                                <div className="flex items-center">
-                                  <input 
-                                    className="font-bold text-gray-700 w-full max-w-[100px] outline-none bg-transparent"
-                                    type="number"
-                                    value={item.price}
-                                    onChange={(e) => handleUpdateItem(item.id, 'price', Number(e.target.value))}
-                                  />
-                                  <span className="text-sm font-bold text-gray-700 ml-1">đ</span>
-                                </div>
-                             </td>
-                             <td className="py-6 text-center">
-                                <input 
-                                  className="font-black text-gray-900 w-12 text-center outline-none bg-[#f4f7fa] py-1 rounded"
-                                  type="number"
-                                  value={item.quantity < 10 ? `0${item.quantity}` : item.quantity}
-                                  onChange={(e) => handleUpdateItem(item.id, 'quantity', Number(e.target.value))}
-                                />
-                             </td>
-                             <td className="py-6 text-right">
-                                <p className="font-black text-[16px] text-gray-900">{formatCurrency(item.price * item.quantity).replace('₫','')} <span className="text-sm font-bold ml-0.5">đ</span></p>
-                             </td>
-                             <td className="py-6 text-right">
-                                <button title="Xoá" onClick={() => handleRemoveItem(item.id)} className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-2">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                             </td>
-                          </tr>
-                       ))}
-                    </tbody>
-                 </table>
-                 {extraItems.length === 0 && (
-                   <p className="text-center italic text-gray-400 font-medium py-8">Chưa có khoản thu nào.</p>
-                 )}
-              </div>
-           </div>
-
-           {/* Payment Methods */}
-           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-3 mb-6">
-                 <Banknote className="w-6 h-6 text-[#111827]" strokeWidth={2.5} />
-                 <h2 className="text-[1.15rem] font-extrabold text-[#111827] uppercase tracking-wide">PHƯƠNG THỨC THANH TOÁN</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <button 
-                   onClick={() => setPaymentMethod("CASH")}
-                   className={`p-6 rounded-2xl flex items-center gap-4 transition-colors font-bold text-[15px] border-2 shadow-sm ${
-                     paymentMethod === "CASH" 
-                       ? "bg-[#f0f5ff] border-[#1a56db] text-[#1a56db]" 
-                       : "bg-white border-gray-100 text-gray-600 hover:border-gray-200"
-                   }`}
-                 >
-                    <Banknote className="w-8 h-8 opacity-80" strokeWidth={1.5} />
-                    Tiền mặt
-                 </button>
-                 <button 
-                   onClick={() => setPaymentMethod("TRANSFER")}
-                   className={`p-6 rounded-2xl flex items-center gap-4 transition-colors font-bold text-[15px] border-2 shadow-sm ${
-                     paymentMethod === "TRANSFER" 
-                       ? "bg-[#f0f5ff] border-[#1a56db] text-[#1a56db]" 
-                       : "bg-white border-gray-100 text-gray-600 hover:border-gray-200"
-                   }`}
-                 >
-                    <Landmark className="w-8 h-8 opacity-80" strokeWidth={1.5} />
-                    Chuyển khoản
-                 </button>
-                 <button 
-                   onClick={() => setPaymentMethod("POS")}
-                   className={`p-6 rounded-2xl flex items-center gap-4 transition-colors font-bold text-[15px] border-2 shadow-sm ${
-                     paymentMethod === "POS" 
-                       ? "bg-[#f0f5ff] border-[#1a56db] text-[#1a56db]" 
-                       : "bg-white border-gray-100 text-gray-600 hover:border-gray-200"
-                   }`}
-                 >
-                    <CreditCard className="w-8 h-8 opacity-80" strokeWidth={1.5} />
-                    Thẻ POS
-                 </button>
-              </div>
-           </div>
-        </div>
-
-        {/* Right Sidebar - Sticky Pane */}
-        <div className="w-full xl:w-[380px] shrink-0 sticky top-10 flex flex-col gap-6">
-           
-           {/* Summary Payment Card */}
-           <div className="bg-[#0b2447] rounded-[2rem] p-8 text-white relative shadow-2xl">
-              <p className="text-[11px] font-black text-blue-200 uppercase tracking-widest mb-6">TÓM TẮT THANH TOÁN</p>
-              
-              <div className="space-y-4 mb-6">
-                 <div className="flex justify-between items-center text-[14px]">
-                    <span className="font-semibold text-blue-100/90 tracking-wide">Tạm tính</span>
-                    <span className="font-bold">{formatCurrency(subTotal).replace('₫','')} <span className="text-xs">đ</span></span>
-                 </div>
-                 <div className="flex justify-between items-center text-[14px]">
-                    <span className="font-semibold text-blue-100/90 tracking-wide">Thuế GTGT (10%)</span>
-                    <span className="font-bold">{formatCurrency(vatAmount).replace('₫','')} <span className="text-xs">đ</span></span>
-                 </div>
-              </div>
-              <div className="border-t border-white/10 pt-6 mb-6 text-right">
-                 <p className="text-[10px] font-black text-blue-300/80 uppercase tracking-widest mb-1.5">TỔNG SỐ TIỀN CẦN THU</p>
-                 <div className="flex items-baseline justify-end gap-1.5">
-                    <span className="text-[2.2rem] font-black tracking-tighter leading-none">{formatCurrency(grandTotal).replace('₫','')}</span>
-                    <span className="text-lg font-bold text-blue-300">đ</span>
-                 </div>
-              </div>
-
-              <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 flex items-center gap-3 mb-8">
-                 <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
-                 <span className="font-bold text-sm tracking-wide text-white">Chờ kế toán xác nhận thu</span>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                 <button className="w-full bg-white text-[#0b2447] py-4 rounded-[1.25rem] font-black text-[15px] hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
-                    <CheckCircle2 className="w-5 h-5" /> Xác nhận thu tiền
-                 </button>
-                 <button className="w-full bg-transparent border border-white/20 text-white py-4 rounded-[1.25rem] font-black text-[15px] hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
-                    <Ban className="w-5 h-5" /> Khách từ chối / Hủy
-                 </button>
-              </div>
-
-              <p className="text-center text-[10px] italic font-medium text-blue-200 mt-6 leading-relaxed opacity-80">
-                 Sau khi xác nhận, hệ thống sẽ cập nhật số dư công nợ và tự động gửi hóa đơn điện tử cho khách hàng.
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                Chi tiết khoản phát sinh (từ đối soát {selected.maDoiSoat})
               </p>
-           </div>
-
-           {/* Quy Định */}
-           <div className="bg-white border-2 border-gray-100 rounded-[2rem] p-6 shadow-sm">
-              <div className="flex items-center gap-2 mb-6">
-                 <Info className="w-5 h-5 text-[#0b2447]" strokeWidth={2.5} />
-                 <h3 className="text-[13px] font-black text-[#0b2447] uppercase tracking-wide">QUY ĐỊNH NGHIỆP VỤ</h3>
+              <div className="divide-y divide-gray-100">
+                {selected.lyDoThu.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center py-3">
+                    <span className="text-[14px] font-semibold text-gray-700">{item.noiDung}</span>
+                    <span className="font-black text-[15px] text-gray-900">
+                      {formatCurrency(item.soTien)}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="space-y-4">
-                 <div className="flex items-start gap-3">
-                    <div className="w-4 h-4 rounded-full bg-[#f0f4fa] text-[#1a56db] flex items-center justify-center flex-shrink-0 mt-0.5">
-                       <Info className="w-2.5 h-2.5" strokeWidth={3} />
-                    </div>
-                    <p className="text-[13px] font-medium text-gray-600 leading-relaxed">
-                       Khoản <b className="font-extrabold text-gray-800">bồi thường hư hại</b> cần đính kèm ảnh hiện trường và biên bản xác nhận của Kỹ thuật.
-                    </p>
-                 </div>
-                 <div className="flex items-start gap-3">
-                    <div className="w-4 h-4 rounded-full bg-[#f0f4fa] text-[#1a56db] flex items-center justify-center flex-shrink-0 mt-0.5">
-                       <Info className="w-2.5 h-2.5" strokeWidth={3} />
-                    </div>
-                    <p className="text-[13px] font-medium text-gray-600 leading-relaxed">
-                       Trường hợp cư dân yêu cầu <b className="font-extrabold text-gray-800">hóa đơn đỏ (VAT)</b>, cần cập nhật đầy đủ mã số thuế và thông tin công ty.
-                    </p>
-                 </div>
+              <div className="flex justify-between items-center pt-4 mt-2 border-t border-gray-200">
+                <span className="text-[12px] font-black text-gray-500 uppercase tracking-widest">
+                  Tổng cần thu
+                </span>
+                <span className="text-[1.5rem] font-black text-[#0b2447]">
+                  {formatCurrency(selected.soTien)}
+                </span>
               </div>
-           </div>
+            </div>
 
-        </div>
+            {selected.trangThai === TRANG_THAI.CHO_THANH_TOAN && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-5">
+                  Xác nhận thu tiền
+                </p>
 
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <button
+                    onClick={() =>
+                      setConfirmForm((f) => ({ ...f, phuongThuc: PHUONG_THUC.TIEN_MAT, maGiaoDich: "" }))
+                    }
+                    className={`p-5 rounded-2xl flex items-center gap-4 transition-colors font-bold text-[14px] border-2 ${
+                      confirmForm.phuongThuc === PHUONG_THUC.TIEN_MAT
+                        ? "bg-[#f0f5ff] border-[#1a56db] text-[#1a56db]"
+                        : "bg-white border-gray-100 text-gray-600 hover:border-gray-200"
+                    }`}
+                  >
+                    <Banknote className="w-7 h-7 opacity-80" strokeWidth={1.5} />
+                    Tiền mặt
+                  </button>
+                  <button
+                    onClick={() =>
+                      setConfirmForm((f) => ({ ...f, phuongThuc: PHUONG_THUC.CHUYEN_KHOAN }))
+                    }
+                    className={`p-5 rounded-2xl flex items-center gap-4 transition-colors font-bold text-[14px] border-2 ${
+                      confirmForm.phuongThuc === PHUONG_THUC.CHUYEN_KHOAN
+                        ? "bg-[#f0f5ff] border-[#1a56db] text-[#1a56db]"
+                        : "bg-white border-gray-100 text-gray-600 hover:border-gray-200"
+                    }`}
+                  >
+                    <Landmark className="w-7 h-7 opacity-80" strokeWidth={1.5} />
+                    Chuyển khoản
+                  </button>
+                </div>
+
+                {confirmForm.phuongThuc === PHUONG_THUC.CHUYEN_KHOAN && (
+                  <div className="mb-4">
+                    <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">
+                      Mã giao dịch
+                    </label>
+                    <input
+                      value={confirmForm.maGiaoDich}
+                      onChange={(e) =>
+                        setConfirmForm((f) => ({ ...f, maGiaoDich: e.target.value }))
+                      }
+                      placeholder="VD: VCB20240427-12345"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                    />
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <label className="block text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2">
+                    Ghi chú{" "}
+                    <span className="normal-case font-medium text-gray-400">(tùy chọn)</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={confirmForm.ghiChu}
+                    onChange={(e) =>
+                      setConfirmForm((f) => ({ ...f, ghiChu: e.target.value }))
+                    }
+                    placeholder="Ghi chú thêm nếu có..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 resize-none"
+                  />
+                </div>
+
+                <button
+                  onClick={handleConfirm}
+                  disabled={saving}
+                  className="w-full bg-[#0b2447] text-white py-4 rounded-2xl font-black text-[15px] hover:bg-[#0a1e3b] transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                  {saving ? "Đang xử lý..." : "Xác nhận đã thu tiền"}
+                </button>
+              </div>
+            )}
+
+            {selected.trangThai === TRANG_THAI.DA_THANH_TOAN && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" strokeWidth={2.5} />
+                  <p className="text-[12px] font-black text-emerald-700 uppercase tracking-widest">
+                    Đã thu tiền
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+                  <div>
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">
+                      Phương thức
+                    </p>
+                    <p className="font-extrabold text-gray-900">
+                      {PHUONG_THUC_LABEL[selected.phuongThuc] ?? "--"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">
+                      Thời gian thu
+                    </p>
+                    <p className="font-extrabold text-gray-900">
+                      {formatDateTime(selected.thoiGianThu)}
+                    </p>
+                  </div>
+                  {selected.maGiaoDich && (
+                    <div>
+                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">
+                        Mã giao dịch
+                      </p>
+                      <p className="font-extrabold text-gray-900 font-mono">
+                        {selected.maGiaoDich}
+                      </p>
+                    </div>
+                  )}
+                  {selected.ghiChu && (
+                    <div className="col-span-2 md:col-span-3">
+                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">
+                        Ghi chú
+                      </p>
+                      <p className="font-medium text-gray-700">{selected.ghiChu}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
