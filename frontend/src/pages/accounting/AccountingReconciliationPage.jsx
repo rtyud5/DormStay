@@ -14,9 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 import {
-  createAdditionalPaymentVoucherFromReconciliation,
   createReconciliationDraft,
-  createRefundVoucherFromReconciliation,
   finalizeReconciliation,
   getReconciliationWorkItemDetail,
   getReconciliationWorkItems,
@@ -65,18 +63,15 @@ const LINE_ITEM_CATEGORIES = [
 const SIDEBAR_FILTER_OPTIONS = [
   { value: "ALL", label: "Tất cả" },
   { value: "CHO_DOI_SOAT", label: "Chờ đối soát" },
-  { value: "DANG_XU_LY", label: "Đang xử lý" },
+  { value: "DANG_LAP", label: "Đang lập" },
   { value: "CAN_THU_THEM", label: "Cần thu thêm" },
-  { value: "HOAN_TAT", label: "Hoàn tất" },
+  { value: "DA_CHOT", label: "Đã chốt" },
 ];
 
-const SIDEBAR_GROUP_ORDER = ["CHO_DOI_SOAT", "DANG_XU_LY", "CAN_THU_THEM", "HOAN_TAT"];
-
-const SIDEBAR_GROUP_LABELS = {
+const STATUS_LABELS = {
   CHO_DOI_SOAT: "Chờ đối soát",
-  DANG_XU_LY: "Đang xử lý",
-  CAN_THU_THEM: "Cần thu thêm",
-  HOAN_TAT: "Hoàn tất",
+  DANG_LAP: "Đang lập",
+  DA_CHOT: "Đã chốt",
 };
 
 const formatDate = (value) =>
@@ -149,11 +144,15 @@ const buildInspectionSummary = (inspectionItems = []) => {
 
 export default function AccountingReconciliationPage() {
   const [records, setRecords] = useState([]);
+  const [dashboardRecords, setDashboardRecords] = useState([]);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [selectedContractId, setSelectedContractId] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [previewSummary, setPreviewSummary] = useState(null);
@@ -200,21 +199,38 @@ export default function AccountingReconciliationPage() {
     setPreviewSummary(null);
   };
 
-  const loadWorkItems = async (preferredSelectedId = null) => {
+  const loadWorkItems = async () => {
     try {
       setLoadingRecords(true);
       setStatusMessage("");
 
-      const response = await getReconciliationWorkItems();
-      const items = response.data || [];
-      setRecords(items);
+      const listFilters = {
+        page: currentPage,
+        limit: pageSize,
+      };
 
-      if (preferredSelectedId) {
-        setSelectedContractId(preferredSelectedId);
+      if (filterStatus !== "ALL") {
+        listFilters.status = filterStatus;
       }
+
+      if (debouncedSearchKeyword) {
+        listFilters.search = debouncedSearchKeyword;
+      }
+
+      const [listResponse, statsResponse] = await Promise.all([
+        getReconciliationWorkItems(listFilters),
+        getReconciliationWorkItems({ page: 1, limit: 1000 }),
+      ]);
+
+      const items = listResponse.data || [];
+      setRecords(items);
+      setTotalRecords(listResponse.total || items.length || 0);
+      setDashboardRecords(statsResponse.data || []);
     } catch (error) {
       console.error("Error loading reconciliation work items:", error);
       setRecords([]);
+      setDashboardRecords([]);
+      setTotalRecords(0);
       setSelectedContractId(null);
       hydrateSelectedRecord(null);
       setStatusMessage("Không thể tải danh sách hồ sơ đối soát từ backend.");
@@ -225,7 +241,11 @@ export default function AccountingReconciliationPage() {
 
   useEffect(() => {
     loadWorkItems();
-  }, []);
+  }, [filterStatus, debouncedSearchKeyword, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, debouncedSearchKeyword]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -235,74 +255,20 @@ export default function AccountingReconciliationPage() {
     return () => clearTimeout(debounceTimer);
   }, [searchKeyword]);
 
-  const filteredRecords = useMemo(() => {
-    const matchesFilter = (record) => {
-      const isProcessing = record.workflowStatus === "DANG_LAP" || record.workflowStatus === "CHO_HANH_DONG";
-      const needsAdditionalPayment = Number(record.additionalPaymentAmount || 0) > 0;
-
-      if (filterStatus === "ALL") return true;
-      if (filterStatus === "CHO_DOI_SOAT") return record.workflowStatus === "CHO_DOI_SOAT";
-      if (filterStatus === "DANG_XU_LY") return isProcessing;
-      if (filterStatus === "CAN_THU_THEM") return needsAdditionalPayment;
-      if (filterStatus === "HOAN_TAT") return record.workflowStatus === "DA_CHOT";
-      return true;
-    };
-
-    const matchesSearch = (record) => {
-      if (!debouncedSearchKeyword) return true;
-
-      return [record.customerName, record.roomDisplay, record.contractId]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(debouncedSearchKeyword));
-    };
-
-    return records.filter((record) => matchesFilter(record) && matchesSearch(record));
-  }, [records, filterStatus, debouncedSearchKeyword]);
-
-  const groupedRecords = useMemo(() => {
-    const grouped = {
-      CHO_DOI_SOAT: [],
-      DANG_XU_LY: [],
-      CAN_THU_THEM: [],
-      HOAN_TAT: [],
-    };
-
-    filteredRecords.forEach((record) => {
-      if (Number(record.additionalPaymentAmount || 0) > 0) {
-        grouped.CAN_THU_THEM.push(record);
-      }
-
-      if (record.workflowStatus === "CHO_DOI_SOAT") {
-        grouped.CHO_DOI_SOAT.push(record);
-      } else if (record.workflowStatus === "DA_CHOT") {
-        grouped.HOAN_TAT.push(record);
-      } else {
-        grouped.DANG_XU_LY.push(record);
-      }
-    });
-
-    return grouped;
-  }, [filteredRecords]);
-
   useEffect(() => {
-    if (!filteredRecords.length) {
+    if (!records.length) {
       setSelectedContractId(null);
       hydrateSelectedRecord(null);
       return;
     }
 
-    if (selectedContractId && filteredRecords.some((item) => item.checkoutRequestId === selectedContractId)) {
+    if (selectedContractId && records.some((item) => item.checkoutRequestId === selectedContractId)) {
       return;
     }
 
-    const processingCandidates = filteredRecords.filter((item) => item.workflowStatus === "DANG_LAP");
-    const sortedProcessing = processingCandidates.sort(
-      (first, second) => new Date(second.checkoutDate || 0) - new Date(first.checkoutDate || 0),
-    );
-
-    const nextSelected = sortedProcessing[0]?.checkoutRequestId || filteredRecords[0]?.checkoutRequestId || null;
+    const nextSelected = records[0]?.checkoutRequestId || null;
     setSelectedContractId(nextSelected);
-  }, [filteredRecords, selectedContractId]);
+  }, [records, selectedContractId]);
 
   useEffect(() => {
     if (!selectedContractId) {
@@ -327,10 +293,12 @@ export default function AccountingReconciliationPage() {
   }, [selectedContractId]);
 
   const dashboardStats = useMemo(() => {
-    const pending = records.filter((record) => record.workflowStatus === "CHO_DOI_SOAT").length;
-    const drafting = records.filter((record) => record.workflowStatus === "DANG_LAP").length;
-    const finalized = records.filter((record) => record.workflowStatus === "DA_CHOT").length;
-    const needsAdditionalPayment = records.filter((record) => Number(record.additionalPaymentAmount || 0) > 0).length;
+    const pending = dashboardRecords.filter((record) => record.workflowStatus === "CHO_DOI_SOAT").length;
+    const drafting = dashboardRecords.filter((record) => record.workflowStatus === "DANG_LAP").length;
+    const finalized = dashboardRecords.filter((record) => record.workflowStatus === "DA_CHOT").length;
+    const needsAdditionalPayment = dashboardRecords.filter(
+      (record) => Number(record.additionalPaymentAmount || 0) > 0,
+    ).length;
 
     return {
       pending,
@@ -338,7 +306,7 @@ export default function AccountingReconciliationPage() {
       finalized,
       needsAdditionalPayment,
     };
-  }, [records]);
+  }, [dashboardRecords]);
 
   const localSummary = useMemo(
     () => computeFinancialSummary(selectedRecord?.depositAmount || 0, watchedRefundReason, watchedLineItems),
@@ -401,7 +369,7 @@ export default function AccountingReconciliationPage() {
   const canSubmitForm = Boolean(selectedRecord) && !savingAction && isValid;
 
   const handleReloadFromBackend = () => {
-    loadWorkItems(selectedContractId);
+    loadWorkItems();
   };
 
   const buildDraftPayload = (values) => ({
@@ -435,7 +403,7 @@ export default function AccountingReconciliationPage() {
         : await createReconciliationDraft(payload);
 
       hydrateSelectedRecord(response.data);
-      await loadWorkItems(selectedRecord.checkoutRequestId);
+      await loadWorkItems();
       setStatusMessage(
         nextWorkflowStatus === "DANG_LAP"
           ? "Đã lưu bản nháp đối soát vào backend."
@@ -473,8 +441,18 @@ export default function AccountingReconciliationPage() {
 
       const response = await finalizeReconciliation(reconciliationId);
       hydrateSelectedRecord(response.data);
-      await loadWorkItems(selectedRecord.checkoutRequestId);
-      setStatusMessage("Đã chốt kết quả đối soát trên backend.");
+      await loadWorkItems();
+
+      const autoGenerated = response.data?.autoGeneratedDocument;
+      if (autoGenerated?.type === "ADDITIONAL_PAYMENT") {
+        setStatusMessage(
+          `Đã chốt bảng đối soát và tự động tạo phiếu thanh toán phát sinh #${autoGenerated.voucher?.id || "--"}.`,
+        );
+      } else if (autoGenerated?.type === "REFUND") {
+        setStatusMessage(`Đã chốt bảng đối soát và tự động tạo phiếu hoàn cọc #${autoGenerated.voucher?.id || "--"}.`);
+      } else {
+        setStatusMessage("Đã chốt kết quả đối soát trên backend.");
+      }
     } catch (error) {
       console.error("Error finalizing reconciliation:", error);
       window.alert("Không thể chốt kết quả đối soát. Kiểm tra console để xem chi tiết.");
@@ -482,38 +460,6 @@ export default function AccountingReconciliationPage() {
       setSavingAction("");
     }
   });
-
-  const handleCreateNextDocument = async () => {
-    if (!selectedRecord?.reconciliationId) {
-      window.alert("Cần lưu và chốt bảng đối soát trước khi tạo nghiệp vụ tiếp theo.");
-      return;
-    }
-
-    try {
-      setSavingAction("NEXT_ACTION");
-      let nextMessage = "";
-
-      if (currentSummary.additionalPaymentAmount > 0) {
-        const response = await createAdditionalPaymentVoucherFromReconciliation(selectedRecord.reconciliationId);
-        nextMessage = `Đã tạo phiếu thanh toán phát sinh #${response.data?.id || "--"}.`;
-      } else if (currentSummary.refundAmount > 0) {
-        const response = await createRefundVoucherFromReconciliation(selectedRecord.reconciliationId, {
-          beneficiaryName: selectedRecord.customerName,
-        });
-        nextMessage = `Đã tạo phiếu hoàn cọc #${response.data?.id || "--"}.`;
-      } else {
-        nextMessage = "Hồ sơ này không phát sinh hoàn thêm hoặc thu thêm.";
-      }
-
-      await loadWorkItems(selectedRecord.checkoutRequestId);
-      setStatusMessage(nextMessage);
-    } catch (error) {
-      console.error("Error creating reconciliation next-step document:", error);
-      window.alert("Không thể tạo nghiệp vụ tiếp theo từ bảng đối soát. Kiểm tra console để xem chi tiết.");
-    } finally {
-      setSavingAction("");
-    }
-  };
 
   const selectedStatusTone =
     currentSummary.additionalPaymentAmount > 0
@@ -524,26 +470,7 @@ export default function AccountingReconciliationPage() {
 
   const currentPolicy = getPolicy(watchedRefundReason);
 
-  const highlightKeyword = (text) => {
-    const raw = String(text || "");
-    if (!debouncedSearchKeyword) {
-      return raw;
-    }
-
-    const escapedKeyword = debouncedSearchKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const matcher = new RegExp(`(${escapedKeyword})`, "ig");
-    const parts = raw.split(matcher);
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === debouncedSearchKeyword ? (
-        <mark key={`${raw}-${index}`} className="rounded bg-[#fff3c4] px-0.5 text-inherit">
-          {part}
-        </mark>
-      ) : (
-        <React.Fragment key={`${raw}-${index}`}>{part}</React.Fragment>
-      ),
-    );
-  };
+  const totalPages = Math.max(Math.ceil(totalRecords / pageSize), 1);
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -621,7 +548,7 @@ export default function AccountingReconciliationPage() {
                   </p>
                 </div>
                 <span className="rounded-full bg-gray-100 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-gray-500">
-                  {filteredRecords.length} hồ sơ
+                  {totalRecords} hồ sơ
                 </span>
               </div>
 
@@ -658,82 +585,97 @@ export default function AccountingReconciliationPage() {
                 </div>
               </div>
 
-              <div className="max-h-160 space-y-6 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
+              <div className="overflow-x-auto px-5 py-5 sm:px-8 sm:py-6">
                 {loadingRecords && (
                   <div className="py-8 text-sm font-medium text-gray-400">Đang tải hồ sơ đối soát từ backend...</div>
                 )}
 
-                {!loadingRecords && filteredRecords.length === 0 && (
+                {!loadingRecords && records.length === 0 && (
                   <div className="py-8 text-sm font-medium text-gray-400">
                     Không có hồ sơ nào phù hợp với bộ lọc hiện tại.
                   </div>
                 )}
 
-                {!loadingRecords &&
-                  SIDEBAR_GROUP_ORDER.map((groupKey) => {
-                    const groupItems = groupedRecords[groupKey] || [];
+                {!loadingRecords && records.length > 0 && (
+                  <table className="w-full min-w-235 table-fixed border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-left text-[11px] font-black uppercase tracking-widest text-gray-400">
+                        <th className="px-3 py-3">Mã YC</th>
+                        <th className="px-3 py-3">Khách hàng</th>
+                        <th className="px-3 py-3">Hợp đồng</th>
+                        <th className="px-3 py-3">Phòng</th>
+                        <th className="px-3 py-3">Ngày trả</th>
+                        <th className="px-3 py-3">Trạng thái</th>
+                        <th className="px-3 py-3 text-right">Kết quả</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {records.map((record) => {
+                        const isSelected = record.checkoutRequestId === selectedContractId;
+                        const hasAdditionalPayment = Number(record.additionalPaymentAmount || 0) > 0;
 
-                    if (!groupItems.length) {
-                      return null;
-                    }
+                        return (
+                          <tr
+                            key={record.checkoutRequestId}
+                            onClick={() => setSelectedContractId(record.checkoutRequestId)}
+                            className={`cursor-pointer border-b border-gray-100 transition-colors hover:bg-[#f8fbff] ${
+                              isSelected ? "bg-[#f1f7ff]" : "bg-white"
+                            }`}
+                          >
+                            <td className="px-3 py-4 text-sm font-bold text-[#0b2447]">#{record.checkoutRequestId}</td>
+                            <td className="px-3 py-4 text-sm font-semibold text-gray-800">{record.customerName}</td>
+                            <td className="px-3 py-4 text-sm font-medium text-gray-600">{record.contractId || "--"}</td>
+                            <td className="px-3 py-4 text-sm font-medium text-gray-600">
+                              {record.roomDisplay || "--"}
+                            </td>
+                            <td className="px-3 py-4 text-sm font-medium text-gray-600">
+                              {formatDate(record.checkoutDate)}
+                            </td>
+                            <td className="px-3 py-4">
+                              <StatusBadge status={record.workflowStatus} />
+                            </td>
+                            <td className="px-3 py-4 text-right text-sm font-black">
+                              <span className={hasAdditionalPayment ? "text-[#dc2626]" : "text-[#15803d]"}>
+                                {hasAdditionalPayment
+                                  ? formatCurrency(record.additionalPaymentAmount || 0)
+                                  : formatCurrency(record.refundAmount || 0)}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
 
-                    return (
-                      <div key={groupKey}>
-                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">
-                          {SIDEBAR_GROUP_LABELS[groupKey]}
-                        </p>
-
-                        <div className="space-y-2">
-                          {groupItems.map((record) => {
-                            const isSelected = record.checkoutRequestId === selectedContractId;
-                            const hasAdditionalPayment = Number(record.additionalPaymentAmount || 0) > 0;
-
-                            return (
-                              <button
-                                key={`${groupKey}-${record.checkoutRequestId}`}
-                                type="button"
-                                onClick={() => setSelectedContractId(record.checkoutRequestId)}
-                                className={`w-full rounded-[20px] border-l-4 px-4 py-3 text-left transition-all ${
-                                  isSelected
-                                    ? "border-l-[#0b2447] bg-[#f8fbff] shadow-sm"
-                                    : "border-l-transparent border border-gray-100 bg-white hover:bg-[#fafcff]"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="mb-1 flex items-center gap-2">
-                                      <h3 className="truncate text-[0.97rem] font-black text-[#111827]">
-                                        {highlightKeyword(record.customerName)}
-                                      </h3>
-                                      <StatusBadge status={record.workflowStatus} />
-                                    </div>
-                                    <p className="truncate text-sm font-medium text-gray-500">
-                                      {highlightKeyword(record.roomDisplay)} • {formatDate(record.checkoutDate)}
-                                    </p>
-                                  </div>
-
-                                  <div className="shrink-0 text-right">
-                                    <p
-                                      className={`text-lg font-black ${
-                                        hasAdditionalPayment ? "text-[#dc2626]" : "text-[#15803d]"
-                                      }`}
-                                    >
-                                      {hasAdditionalPayment
-                                        ? formatCurrency(record.additionalPaymentAmount || 0)
-                                        : formatCurrency(record.refundAmount || 0)}
-                                    </p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                      {hasAdditionalPayment ? "Thu thêm" : "Hoàn"}
-                                    </p>
-                                  </div>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="flex items-center justify-between border-t border-gray-100 px-5 py-4 sm:px-8">
+                <p className="text-sm font-medium text-gray-500">
+                  Hiển thị <span className="font-bold text-gray-900">{records.length}</span> /{" "}
+                  <span className="font-bold text-gray-900">{totalRecords}</span> hồ sơ
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ← Trước
+                  </button>
+                  <span className="px-3 py-1.5 text-sm font-medium text-gray-700">
+                    Trang <span className="font-bold text-gray-900">{currentPage}</span> /{" "}
+                    <span className="font-bold text-gray-900">{totalPages}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Tiếp →
+                  </button>
+                </div>
               </div>
             </section>
 
@@ -1061,15 +1003,6 @@ export default function AccountingReconciliationPage() {
                   tone="primary"
                   disabled={!canSubmitForm}
                 />
-                <ActionButton
-                  title={
-                    currentSummary.additionalPaymentAmount > 0 ? "Tạo phiếu thanh toán phát sinh" : "Tạo phiếu hoàn cọc"
-                  }
-                  description="Thực hiện bước nghiệp vụ tiếp theo sau khi đối soát đã chốt."
-                  onClick={handleCreateNextDocument}
-                  tone="accent"
-                  disabled={!selectedRecord?.reconciliationId || Boolean(savingAction)}
-                />
               </div>
             </section>
           </div>
@@ -1105,14 +1038,12 @@ function StatusBadge({ status }) {
   const toneMap = {
     CHO_DOI_SOAT: "bg-[#fff7ed] text-[#b45309]",
     DANG_LAP: "bg-[#eff6ff] text-[#1d4ed8]",
-    CHO_HANH_DONG: "bg-[#fef3c7] text-[#92400e]",
     DA_CHOT: "bg-[#ecfdf3] text-[#15803d]",
   };
 
   const labelMap = {
     CHO_DOI_SOAT: "Chờ đối soát",
     DANG_LAP: "Đang lập",
-    CHO_HANH_DONG: "Chờ bước tiếp theo",
     DA_CHOT: "Đã chốt",
   };
 

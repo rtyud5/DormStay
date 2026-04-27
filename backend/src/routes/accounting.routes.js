@@ -35,6 +35,13 @@ router.post("/billing/contracts/:contractId/invoice", AccountingController.creat
 
 router.get("/invoices", AccountingController.getInvoices);
 router.get("/invoices/:id", AccountingController.getInvoiceDetail);
+router.get("/extra-invoices", AccountingController.getAdditionalPaymentVouchers);
+router.get("/extra-invoices/:id", AccountingController.getAdditionalPaymentVoucherDetail);
+router.post(
+  "/extra-invoices/confirm-cash",
+  validate(["voucherIds"]),
+  AccountingController.confirmAdditionalPaymentVouchersCash,
+);
 
 router.use(AccountingController.accountingApisTemporarilyDisabled);
 

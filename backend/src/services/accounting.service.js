@@ -80,6 +80,18 @@ const AccountingService = {
   async getInvoiceDetail(invoiceId) {
     return AccountingPageModels.accountingInvoiceListPageModel.getInvoiceDetail(invoiceId);
   },
+
+  async getAdditionalPaymentVouchers(filters) {
+    return AccountingPageModels.accountingExtraInvoicePageModel.listSettlementVouchers(filters);
+  },
+
+  async getAdditionalPaymentVoucherDetail(voucherId) {
+    return AccountingPageModels.accountingExtraInvoicePageModel.getSettlementVoucherDetail(voucherId);
+  },
+
+  async confirmAdditionalPaymentVouchersCash(payload) {
+    return AccountingPageModels.accountingExtraInvoicePageModel.confirmSettlementVouchersCash(payload);
+  },
 };
 
 module.exports = AccountingService;

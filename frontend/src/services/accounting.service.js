@@ -85,6 +85,11 @@ const mapReconciliationUiFields = (reconciliation) => ({
   inspectionItems: Array.isArray(reconciliation.inspectionItems) ? reconciliation.inspectionItems : [],
 });
 
+const mapAdditionalPaymentVoucherUiFields = (voucher) => ({
+  ...voucher,
+  statusText: voucher.statusText || voucher.status,
+});
+
 // ==================== CONTRACTS ====================
 
 /**
@@ -366,6 +371,122 @@ export const createExtraInvoice = async (invoiceData) => {
   }
 
   const response = await api.post("/accounting/invoices/extra", invoiceData);
+  return mapDetailResponse(response);
+};
+
+/**
+ * Get additional payment vouchers created from reconciliation finalization.
+ */
+export const getAdditionalPaymentVouchers = async (filters = {}) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const mapped = mockExtraCharges.map((item, index) => ({
+      id: item.id || `PS-${index + 1}`,
+      reconciliationId: item.reconciliationId || "--",
+      contractId: item.contractId || "--",
+      customerName: item.customerName || "Khach thue",
+      customerPhone: item.customerPhone || "",
+      roomNumber: item.roomNumber || "",
+      bedNumber: item.bedNumber || "",
+      amount: Number(item.amount || item.totalAmount || 0),
+      status: item.status || "CHO_THANH_TOAN",
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+    }));
+
+    const status = String(filters.status || "").toUpperCase();
+    const search = String(filters.search || "")
+      .trim()
+      .toLowerCase();
+
+    const filtered = mapped.filter((voucher) => {
+      const matchStatus = !status || status === "ALL" || voucher.status === status;
+      const matchSearch =
+        !search ||
+        [voucher.id, voucher.reconciliationId, voucher.contractId, voucher.customerName, voucher.roomNumber]
+          .map((value) => String(value || "").toLowerCase())
+          .some((value) => value.includes(search));
+      return matchStatus && matchSearch;
+    });
+
+    const pending = filtered.filter((item) => item.status !== "DA_THANH_TOAN").length;
+    const paid = filtered.length - pending;
+    const page = Number(filters.page || 1);
+    const limit = Number(filters.limit || 10);
+    const from = (page - 1) * limit;
+    const to = from + limit;
+    const paged = filtered.slice(from, to);
+
+    return {
+      success: true,
+      data: paged.map(mapAdditionalPaymentVoucherUiFields),
+      total: filtered.length,
+      page,
+      limit,
+      statusSummary: {
+        total: filtered.length,
+        pending,
+        paid,
+      },
+    };
+  }
+
+  const response = await api.get("/accounting/extra-invoices", { params: filters });
+  const payload = unwrapPayload(response) || {};
+
+  return {
+    success: unwrapSuccess(response),
+    data: (payload.items || []).map(mapAdditionalPaymentVoucherUiFields),
+    total: payload.total || 0,
+    page: payload.page || Number(filters.page || 1),
+    limit: payload.limit || Number(filters.limit || 10),
+    statusSummary: payload.statusSummary || {
+      total: payload.total || 0,
+      pending: 0,
+      paid: 0,
+    },
+    message: unwrapMessage(response),
+  };
+};
+
+/**
+ * Confirm additional payment vouchers as cash collection.
+ */
+export const confirmAdditionalPaymentVouchersCash = async (voucherIds = []) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    const normalizedIds = [...new Set(voucherIds.map((id) => String(id || "").trim()).filter(Boolean))];
+    if (!normalizedIds.length) {
+      return {
+        success: false,
+        data: null,
+        message: "voucherIds is required",
+      };
+    }
+
+    let updatedCount = 0;
+    mockExtraCharges.forEach((item) => {
+      if (normalizedIds.includes(String(item.id || "")) && item.status !== "DA_THANH_TOAN") {
+        item.status = "DA_THANH_TOAN";
+        item.updatedAt = new Date().toISOString();
+        updatedCount += 1;
+      }
+    });
+
+    return {
+      success: true,
+      data: {
+        updatedCount,
+        skippedCount: normalizedIds.length - updatedCount,
+        requestedIds: normalizedIds,
+      },
+      message: "Xac nhan thu tien mat thanh cong",
+    };
+  }
+
+  const response = await api.post("/accounting/extra-invoices/confirm-cash", { voucherIds });
   return mapDetailResponse(response);
 };
 
@@ -1046,6 +1167,8 @@ export default {
   getInvoiceDetail,
   createInvoice,
   createExtraInvoice,
+  getAdditionalPaymentVouchers,
+  confirmAdditionalPaymentVouchersCash,
   updateInvoice,
   getPayments,
   recordPayment,
