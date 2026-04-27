@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FileText, RefreshCw, Search } from "lucide-react";
-import { getAdditionalPaymentVouchers } from "../../services/accounting.service";
+import { confirmAdditionalPaymentVouchersCash, getAdditionalPaymentVouchers } from "../../services/accounting.service";
 import { formatCurrency } from "../../utils/accounting.utils";
 
 const FILTER_OPTIONS = [
@@ -29,13 +29,18 @@ const formatDate = (value) =>
     : "--";
 
 export default function AccountingExtraInvoicePage() {
+  const PAGE_SIZE = 10;
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
   const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ total: 0, pending: 0, paid: 0 });
+  const [selectedIds, setSelectedIds] = useState([]);
   const searchKeyword = search.trim();
 
   const loadVouchers = async (withRefreshing = false) => {
@@ -50,8 +55,8 @@ export default function AccountingExtraInvoicePage() {
       const response = await getAdditionalPaymentVouchers({
         status: statusFilter,
         search: searchKeyword,
-        page: 1,
-        limit: 100,
+        page,
+        limit: PAGE_SIZE,
       });
 
       if (!response.success) {
@@ -62,6 +67,7 @@ export default function AccountingExtraInvoicePage() {
       }
 
       setRows(response.data || []);
+      setTotal(response.total || 0);
       setSummary(
         response.statusSummary || {
           total: response.total || 0,
@@ -87,7 +93,70 @@ export default function AccountingExtraInvoicePage() {
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, searchKeyword]);
+  }, [statusFilter, searchKeyword, page]);
+
+  useEffect(() => {
+    setSelectedIds((prevSelected) => prevSelected.filter((id) => rows.some((row) => row.id === id)));
+  }, [rows]);
+
+  const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  const unpaidRows = rows.filter((row) => row.status === "CHO_THANH_TOAN");
+  const allUnpaidOnPageSelected = unpaidRows.length > 0 && unpaidRows.every((row) => selectedIds.includes(row.id));
+
+  const toggleSelectAllOnPage = () => {
+    const unpaidIds = unpaidRows.map((row) => row.id);
+    if (!unpaidIds.length) return;
+
+    setSelectedIds((prevSelected) => {
+      if (allUnpaidOnPageSelected) {
+        return prevSelected.filter((id) => !unpaidIds.includes(id));
+      }
+
+      return [...new Set([...prevSelected, ...unpaidIds])];
+    });
+  };
+
+  const toggleSelectOne = (voucherId) => {
+    setSelectedIds((prevSelected) =>
+      prevSelected.includes(voucherId) ? prevSelected.filter((id) => id !== voucherId) : [...prevSelected, voucherId],
+    );
+  };
+
+  const handleFilterChange = (value) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
+
+  const handleSearchChange = (event) => {
+    setSearch(event.target.value);
+    setPage(1);
+  };
+
+  const handleConfirmCash = async () => {
+    if (!selectedIds.length) return;
+
+    const accepted = window.confirm(`Xác nhận đã thu tiền mặt cho ${selectedIds.length} phiếu đã chọn?`);
+    if (!accepted) return;
+
+    try {
+      setError("");
+      setConfirming(true);
+
+      const response = await confirmAdditionalPaymentVouchersCash(selectedIds);
+      if (!response.success) {
+        setError(response.message || "Không thể xác nhận thanh toán tiền mặt.");
+        return;
+      }
+
+      setSelectedIds([]);
+      await loadVouchers(true);
+    } catch (err) {
+      console.error("Failed to confirm cash payments", err);
+      setError("Có lỗi khi xác nhận thanh toán tiền mặt.");
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   return (
     <div className="p-6 lg:p-8 bg-[#f9fafb] min-h-screen">
@@ -109,7 +178,7 @@ export default function AccountingExtraInvoicePage() {
           <button
             type="button"
             onClick={() => loadVouchers(true)}
-            disabled={refreshing || loading}
+            disabled={refreshing || loading || confirming}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-gray-50 disabled:opacity-60"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -137,18 +206,18 @@ export default function AccountingExtraInvoicePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={handleSearchChange}
               placeholder="Tìm theo mã phiếu, khách hàng, phòng, hợp đồng..."
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
             />
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 lg:ml-auto">
             {FILTER_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 type="button"
-                onClick={() => setStatusFilter(option.value)}
+                onClick={() => handleFilterChange(option.value)}
                 className={`px-3 py-2 rounded-full text-xs font-black uppercase tracking-wide transition-colors ${
                   statusFilter === option.value
                     ? "bg-[#0b2447] text-white"
@@ -158,6 +227,15 @@ export default function AccountingExtraInvoicePage() {
                 {option.label}
               </button>
             ))}
+
+            <button
+              type="button"
+              onClick={handleConfirmCash}
+              disabled={!selectedIds.length || confirming || loading}
+              className="px-4 py-2 rounded-full text-xs font-black uppercase tracking-wide bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {confirming ? "Đang xác nhận..." : `Xác nhận tiền mặt (${selectedIds.length})`}
+            </button>
           </div>
         </div>
 
@@ -166,6 +244,15 @@ export default function AccountingExtraInvoicePage() {
             <table className="w-full min-w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
+                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allUnpaidOnPageSelected}
+                      onChange={toggleSelectAllOnPage}
+                      disabled={!unpaidRows.length || loading || confirming}
+                      className="w-4 h-4 rounded border-gray-300 text-[#0b2447] focus:ring-[#0b2447]"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">
                     Mã phiếu
                   </th>
@@ -195,7 +282,7 @@ export default function AccountingExtraInvoicePage() {
               <tbody className="divide-y divide-gray-100">
                 {!loading && rows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-sm text-gray-400 italic">
+                    <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-400 italic">
                       Không có phiếu thanh toán phát sinh phù hợp.
                     </td>
                   </tr>
@@ -203,6 +290,15 @@ export default function AccountingExtraInvoicePage() {
 
                 {rows.map((row) => (
                   <tr key={row.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(row.id)}
+                        onChange={() => toggleSelectOne(row.id)}
+                        disabled={row.status !== "CHO_THANH_TOAN" || loading || confirming}
+                        className="w-4 h-4 rounded border-gray-300 text-[#0b2447] focus:ring-[#0b2447]"
+                      />
+                    </td>
                     <td className="px-4 py-3 text-sm font-bold text-gray-900">{row.id}</td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-600">{row.reconciliationId || "--"}</td>
                     <td className="px-4 py-3">
@@ -231,13 +327,38 @@ export default function AccountingExtraInvoicePage() {
 
                 {loading && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-sm text-gray-500">
+                    <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-500">
                       Đang tải danh sách phiếu phát sinh...
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/60">
+            <p className="text-xs font-medium text-gray-500">
+              Trang {page}/{totalPages} - Tổng {total} phiếu
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page <= 1 || loading || confirming}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Trang trước
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={page >= totalPages || loading || confirming}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Trang sau
+              </button>
+            </div>
           </div>
         </div>
 

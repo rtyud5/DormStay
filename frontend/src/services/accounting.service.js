@@ -412,13 +412,18 @@ export const getAdditionalPaymentVouchers = async (filters = {}) => {
 
     const pending = filtered.filter((item) => item.status !== "DA_THANH_TOAN").length;
     const paid = filtered.length - pending;
+    const page = Number(filters.page || 1);
+    const limit = Number(filters.limit || 10);
+    const from = (page - 1) * limit;
+    const to = from + limit;
+    const paged = filtered.slice(from, to);
 
     return {
       success: true,
-      data: filtered.map(mapAdditionalPaymentVoucherUiFields),
+      data: paged.map(mapAdditionalPaymentVoucherUiFields),
       total: filtered.length,
-      page: Number(filters.page || 1),
-      limit: Number(filters.limit || 10),
+      page,
+      limit,
       statusSummary: {
         total: filtered.length,
         pending,
@@ -443,6 +448,46 @@ export const getAdditionalPaymentVouchers = async (filters = {}) => {
     },
     message: unwrapMessage(response),
   };
+};
+
+/**
+ * Confirm additional payment vouchers as cash collection.
+ */
+export const confirmAdditionalPaymentVouchersCash = async (voucherIds = []) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    const normalizedIds = [...new Set(voucherIds.map((id) => String(id || "").trim()).filter(Boolean))];
+    if (!normalizedIds.length) {
+      return {
+        success: false,
+        data: null,
+        message: "voucherIds is required",
+      };
+    }
+
+    let updatedCount = 0;
+    mockExtraCharges.forEach((item) => {
+      if (normalizedIds.includes(String(item.id || "")) && item.status !== "DA_THANH_TOAN") {
+        item.status = "DA_THANH_TOAN";
+        item.updatedAt = new Date().toISOString();
+        updatedCount += 1;
+      }
+    });
+
+    return {
+      success: true,
+      data: {
+        updatedCount,
+        skippedCount: normalizedIds.length - updatedCount,
+        requestedIds: normalizedIds,
+      },
+      message: "Xac nhan thu tien mat thanh cong",
+    };
+  }
+
+  const response = await api.post("/accounting/extra-invoices/confirm-cash", { voucherIds });
+  return mapDetailResponse(response);
 };
 
 /**
@@ -1123,6 +1168,7 @@ export default {
   createInvoice,
   createExtraInvoice,
   getAdditionalPaymentVouchers,
+  confirmAdditionalPaymentVouchersCash,
   updateInvoice,
   getPayments,
   recordPayment,

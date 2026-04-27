@@ -164,6 +164,70 @@ const AccountingExtraInvoicePageModel = {
 
     return mapSettlementVoucher(row, context);
   },
+
+  async confirmSettlementVouchersCash(payload = {}) {
+    ensureClient();
+
+    const voucherIds = [...new Set((payload.voucherIds || []).map((id) => String(id || "").trim()).filter(Boolean))];
+    if (!voucherIds.length) {
+      throw new AppError("voucherIds is required", 400);
+    }
+
+    const { data: existingRows, error: queryError } = await supabase
+      .from(TABLES.settlementPayments)
+      .select("*")
+      .in("ma_phieu_tt_phat_sinh", voucherIds);
+
+    if (queryError) {
+      throw queryError;
+    }
+
+    if (!existingRows || existingRows.length === 0) {
+      throw new AppError("Additional payment vouchers not found", 404);
+    }
+
+    const payableRows = existingRows.filter((row) => normalizeSettlementStatus(row.trang_thai) !== "DA_THANH_TOAN");
+    const payableIds = payableRows.map((row) => row.ma_phieu_tt_phat_sinh);
+
+    if (!payableIds.length) {
+      return {
+        updatedCount: 0,
+        skippedCount: existingRows.length,
+        requestedIds: voucherIds,
+        updatedItems: [],
+      };
+    }
+
+    const { data: updatedRows, error: updateError } = await supabase
+      .from(TABLES.settlementPayments)
+      .update({
+        trang_thai: "DA_THANH_TOAN",
+        updated_at: new Date().toISOString(),
+      })
+      .in("ma_phieu_tt_phat_sinh", payableIds)
+      .select("*");
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    const contractIds = [...new Set((updatedRows || []).map((item) => item.ma_hop_dong).filter(Boolean))];
+    const contracts = await fetchByIds(TABLES.contracts, "ma_hop_dong", contractIds);
+    const contractContext = await loadContractContext(contracts);
+    const context = {
+      contractMap: indexBy(contracts, "ma_hop_dong"),
+      contractContext,
+    };
+
+    const updatedItems = (updatedRows || []).map((row) => mapSettlementVoucher(row, context));
+
+    return {
+      updatedCount: updatedItems.length,
+      skippedCount: existingRows.length - updatedItems.length,
+      requestedIds: voucherIds,
+      updatedItems,
+    };
+  },
 };
 
 module.exports = AccountingExtraInvoicePageModel;

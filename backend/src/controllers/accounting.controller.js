@@ -82,6 +82,11 @@ const getAdditionalPaymentVoucherDetail = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch additional payment voucher detail successful");
 });
 
+const confirmAdditionalPaymentVouchersCash = asyncHandler(async (req, res) => {
+  const result = await AccountingService.confirmAdditionalPaymentVouchersCash(req.body);
+  return sendSuccess(res, result, "Confirm additional payment vouchers by cash successful");
+});
+
 const accountingApisTemporarilyDisabled = (req, res) => {
   const result = AccountingService.getApiResetStatus();
 
@@ -109,5 +114,6 @@ module.exports = {
   getInvoiceDetail,
   getAdditionalPaymentVouchers,
   getAdditionalPaymentVoucherDetail,
+  confirmAdditionalPaymentVouchersCash,
   accountingApisTemporarilyDisabled,
 };

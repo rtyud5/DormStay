@@ -88,6 +88,10 @@ const AccountingService = {
   async getAdditionalPaymentVoucherDetail(voucherId) {
     return AccountingPageModels.accountingExtraInvoicePageModel.getSettlementVoucherDetail(voucherId);
   },
+
+  async confirmAdditionalPaymentVouchersCash(payload) {
+    return AccountingPageModels.accountingExtraInvoicePageModel.confirmSettlementVouchersCash(payload);
+  },
 };
 
 module.exports = AccountingService;
