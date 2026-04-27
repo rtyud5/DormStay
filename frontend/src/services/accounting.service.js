@@ -85,6 +85,11 @@ const mapReconciliationUiFields = (reconciliation) => ({
   inspectionItems: Array.isArray(reconciliation.inspectionItems) ? reconciliation.inspectionItems : [],
 });
 
+const mapAdditionalPaymentVoucherUiFields = (voucher) => ({
+  ...voucher,
+  statusText: voucher.statusText || voucher.status,
+});
+
 // ==================== CONTRACTS ====================
 
 /**
@@ -367,6 +372,77 @@ export const createExtraInvoice = async (invoiceData) => {
 
   const response = await api.post("/accounting/invoices/extra", invoiceData);
   return mapDetailResponse(response);
+};
+
+/**
+ * Get additional payment vouchers created from reconciliation finalization.
+ */
+export const getAdditionalPaymentVouchers = async (filters = {}) => {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const mapped = mockExtraCharges.map((item, index) => ({
+      id: item.id || `PS-${index + 1}`,
+      reconciliationId: item.reconciliationId || "--",
+      contractId: item.contractId || "--",
+      customerName: item.customerName || "Khach thue",
+      customerPhone: item.customerPhone || "",
+      roomNumber: item.roomNumber || "",
+      bedNumber: item.bedNumber || "",
+      amount: Number(item.amount || item.totalAmount || 0),
+      status: item.status || "CHO_THANH_TOAN",
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+    }));
+
+    const status = String(filters.status || "").toUpperCase();
+    const search = String(filters.search || "")
+      .trim()
+      .toLowerCase();
+
+    const filtered = mapped.filter((voucher) => {
+      const matchStatus = !status || status === "ALL" || voucher.status === status;
+      const matchSearch =
+        !search ||
+        [voucher.id, voucher.reconciliationId, voucher.contractId, voucher.customerName, voucher.roomNumber]
+          .map((value) => String(value || "").toLowerCase())
+          .some((value) => value.includes(search));
+      return matchStatus && matchSearch;
+    });
+
+    const pending = filtered.filter((item) => item.status !== "DA_THANH_TOAN").length;
+    const paid = filtered.length - pending;
+
+    return {
+      success: true,
+      data: filtered.map(mapAdditionalPaymentVoucherUiFields),
+      total: filtered.length,
+      page: Number(filters.page || 1),
+      limit: Number(filters.limit || 10),
+      statusSummary: {
+        total: filtered.length,
+        pending,
+        paid,
+      },
+    };
+  }
+
+  const response = await api.get("/accounting/extra-invoices", { params: filters });
+  const payload = unwrapPayload(response) || {};
+
+  return {
+    success: unwrapSuccess(response),
+    data: (payload.items || []).map(mapAdditionalPaymentVoucherUiFields),
+    total: payload.total || 0,
+    page: payload.page || Number(filters.page || 1),
+    limit: payload.limit || Number(filters.limit || 10),
+    statusSummary: payload.statusSummary || {
+      total: payload.total || 0,
+      pending: 0,
+      paid: 0,
+    },
+    message: unwrapMessage(response),
+  };
 };
 
 /**
@@ -1046,6 +1122,7 @@ export default {
   getInvoiceDetail,
   createInvoice,
   createExtraInvoice,
+  getAdditionalPaymentVouchers,
   updateInvoice,
   getPayments,
   recordPayment,

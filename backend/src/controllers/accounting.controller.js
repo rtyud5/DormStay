@@ -72,6 +72,16 @@ const getInvoiceDetail = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch invoice detail successful");
 });
 
+const getAdditionalPaymentVouchers = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getAdditionalPaymentVouchers(req.query);
+  return sendSuccess(res, result, "Fetch additional payment vouchers successful");
+});
+
+const getAdditionalPaymentVoucherDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getAdditionalPaymentVoucherDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch additional payment voucher detail successful");
+});
+
 const accountingApisTemporarilyDisabled = (req, res) => {
   const result = AccountingService.getApiResetStatus();
 
@@ -97,5 +107,7 @@ module.exports = {
   createInitialBillingInvoice,
   getInvoices,
   getInvoiceDetail,
+  getAdditionalPaymentVouchers,
+  getAdditionalPaymentVoucherDetail,
   accountingApisTemporarilyDisabled,
 };
