@@ -1,12 +1,9 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { canAccessAccounting, canAccessManager } from "../lib/authRedirect";
+import { canAccessAccounting, canAccessManager, canAccessSale } from "../lib/authRedirect";
 
-
-function ProtectedRoute({ requireAccounting = false, requireManager = false }) {
+function ProtectedRoute({ requireAccounting = false, requireManager = false, requireSale = false }) {
   const { isAuthenticated, loading, profile } = useAuth();
-
-
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center font-bold text-[#0A192F]">Đang tải...</div>;
@@ -24,6 +21,9 @@ function ProtectedRoute({ requireAccounting = false, requireManager = false }) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  if (requireSale && !canAccessSale(profile?.vai_tro)) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return <Outlet />;
 }

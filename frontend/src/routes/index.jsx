@@ -42,6 +42,14 @@ import ManagerInspectionPage from "../pages/manager/ManagerInspectionPage";
 import ManagerLiquidationPage from "../pages/manager/ManagerLiquidationPage";
 import ManagerRoomPage from "../pages/manager/ManagerRoomPage";
 
+import SaleLayout from "../components/sale/SaleLayout";
+import SaleDashboardPage from "../pages/sale/SaleDashboardPage";
+import SaleRentalRequestsPage from "../pages/sale/SaleRentalRequestsPage";
+import SaleRentalRequestDetailPage from "../pages/sale/SaleRentalRequestDetailPage";
+import SaleCustomersPage from "../pages/sale/SaleCustomersPage";
+import SaleContractsPage from "../pages/sale/SaleContractsPage";
+import SaleCheckoutRequestsPage from "../pages/sale/SaleCheckoutRequestsPage";
+
 
 const router = createBrowserRouter([
   {
@@ -133,6 +141,26 @@ const router = createBrowserRouter([
           { path: "inspections", element: <ManagerInspectionPage /> },
           { path: "liquidations", element: <ManagerLiquidationPage /> },
           { path: "rooms", element: <ManagerRoomPage /> },
+        ],
+      },
+    ],
+  },
+
+  // Sale
+  {
+    path: "/sale",
+    element: <ProtectedRoute requireSale={true} />,
+    children: [
+      {
+        element: <SaleLayout />,
+        children: [
+          { index: true, element: <Navigate to="dashboard" replace /> },
+          { path: "dashboard", element: <SaleDashboardPage /> },
+          { path: "rental-requests", element: <SaleRentalRequestsPage /> },
+          { path: "rental-requests/:id", element: <SaleRentalRequestDetailPage /> },
+          { path: "customers", element: <SaleCustomersPage /> },
+          { path: "contracts", element: <SaleContractsPage /> },
+          { path: "checkout-requests", element: <SaleCheckoutRequestsPage /> },
         ],
       },
     ],

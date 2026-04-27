@@ -11,8 +11,8 @@
   "dependencies": {
     "@payos/payos-checkout": "^1.0.8",
     "@supabase/supabase-js": "^2.101.1",
-    "axios": "^1.14.0",
-    "lucide-react": "^1.8.0",
+    "axios": "^1.15.2",
+    "lucide-react": "^1.11.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.73.1",
