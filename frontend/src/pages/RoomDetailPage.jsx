@@ -127,6 +127,7 @@ function RoomDetailPage() {
                      const statusTextMap = {
                         DA_THUE: 'Đã thuê',
                         CON_TRONG: 'Còn trống',
+                        DANG_GIU : 'Đang giữ chỗ' // Thêm nếu có trạng thái này trong DB
                      };
 
                      // 2. Lấy text hiển thị (nếu DB trả về mã khác chưa có trong map thì hiển thị mã gốc)
@@ -136,18 +137,18 @@ function RoomDetailPage() {
                         // 3. Sửa lại toàn bộ điều kiện CSS: check với 'DA_THUE' thay vì 'Đã thuê'
                         <div key={bed.id} className={`bg-[#F8F9FA] rounded-3xl p-6 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${bed.status === 'DA_THUE' ? 'opacity-90' : ''}`}>
                         <div>
-                           <div className={`text-[14px] font-bold mb-1 ${bed.status === 'DA_THUE' ? ' text-[#94A3B8]' : 'text-[#0F172A]'}`}>
+                           <div className={`text-[14px] font-bold mb-1 ${bed.status === 'DA_THUE' || bed.status === 'DANG_GIU' ? ' text-[#94A3B8]' : 'text-[#0F172A]'}`}>
                               {bed.code}
                            </div>
-                           <div className={`text-[13px] ${bed.status === 'DA_THUE' ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
+                           <div className={`text-[13px] ${bed.status === 'DA_THUE' || bed.status === 'DANG_GIU' ? 'text-[#94A3B8]' : 'text-[#64748B]'}`}>
                               {bed.label || 'Giường tiêu chuẩn'}
                            </div>
                         </div>
                         <div className="text-right">
-                           <div className={`text-[16px] font-extrabold ${bed.status === 'DA_THUE' ? ' text-[#94A3B8]' : 'text-[#0052CC]'}`}>
+                           <div className={`text-[16px] font-extrabold ${bed.status === 'DA_THUE' || bed.status === 'DANG_GIU' ? ' text-[#94A3B8]' : 'text-[#0052CC]'}`}>
                               {bed.price}
                            </div>
-                           <div className={`text-[12px] uppercase tracking-wide ${bed.status === 'DA_THUE' ? 'text-[#94A3B8]' : 'text-[#475569]'}`}>
+                           <div className={`text-[12px] uppercase tracking-wide ${bed.status === 'DA_THUE' || bed.status === 'DANG_GIU' ? 'text-[#94A3B8]' : 'text-[#475569]'}`}>
                               {/* 4. Render biến text đã được dịch ra đây */}
                               {displayStatus}
                            </div>

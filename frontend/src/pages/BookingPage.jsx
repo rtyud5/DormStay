@@ -66,14 +66,31 @@ function BookingPage() {
     });
   };
 
-  const rentWholeRoom = () => {
+  const rentWholeRoom = async () => {
     if (paymentInitiated) return;
     if (!allBedsEmpty) return;
 
-    if (selectedBeds.length === beds.length) {
-      setSelectedBeds([]);
-    } else {
-      setSelectedBeds(beds.map((b) => b.id));
+    // Refresh bed data to check latest availability
+    try {
+      const bedsRes = await RoomService.getRoomBeds(id);
+      const latestBeds = bedsRes.data.data || [];
+      const latestAllBedsEmpty = latestBeds.length > 0 && latestBeds.every((b) => b.status === "CON_TRONG");
+      
+      if (!latestAllBedsEmpty) {
+        alert("Không thể đặt cọc nguyên phòng vì một số giường đã được đặt. Vui lòng chọn giường riêng lẻ.");
+        setBeds(latestBeds);
+        return;
+      }
+      
+      setBeds(latestBeds);
+      
+      if (selectedBeds.length === latestBeds.length) {
+        setSelectedBeds([]);
+      } else {
+        setSelectedBeds(latestBeds.map((b) => b.id));
+      }
+    } catch (err) {
+      console.error("Lỗi refresh dữ liệu giường:", err);
     }
   };
 
@@ -91,6 +108,24 @@ function BookingPage() {
     setPaymentInitiated(true);
     
     try {
+      // Refresh bed data to check for latest availability
+      const bedsRes = await RoomService.getRoomBeds(id);
+      const latestBeds = bedsRes.data.data || [];
+      
+      // Check if selected beds are still available
+      const unavailableBeds = selectedBeds.filter(bedId => {
+        const bed = latestBeds.find(b => b.id === bedId);
+        return !bed || bed.status !== "CON_TRONG";
+      });
+      
+      if (unavailableBeds.length > 0) {
+        alert("Một số giường đã không còn trống. Vui lòng chọn lại giường.");
+        setBeds(latestBeds);
+        setSelectedBeds([]);
+        setPaymentInitiated(false);
+        return;
+      }
+      
       const payload = {
         fullName: formData.fullName,
         phone: formData.phone,
@@ -114,8 +149,23 @@ function BookingPage() {
       navigate(`/rental-requests/${requestId}`);
     } catch (err) {
       console.error("Lỗi tạo yêu cầu:", err);
-      const errMsg = err?.response?.data?.message || "Có lỗi xảy ra khi tạo yêu cầu thuê. Vui lòng thử lại.";
-      alert(errMsg);
+      const errMsg = err?.response?.data?.message || err?.message || "Có lỗi xảy ra khi tạo yêu cầu thuê. Vui lòng thử lại.";
+      
+      // Handle specific database constraint errors
+      if (errMsg.includes("uq_giu_cho_tam_active_bed") || errMsg.includes("duplicate key value") || errMsg.includes("active holds")) {
+        alert("Một hoặc nhiều giường đã được đặt cọc bởi người khác. Vui lòng chọn giường khác hoặc thử lại sau.");
+        // Refresh bed data
+        try {
+          const bedsRes = await RoomService.getRoomBeds(id);
+          setBeds(bedsRes.data.data || []);
+          setSelectedBeds([]);
+        } catch (refreshErr) {
+          console.error("Lỗi refresh dữ liệu giường:", refreshErr);
+        }
+      } else {
+        alert(errMsg);
+      }
+      
       setPaymentInitiated(false);
     }
   };
