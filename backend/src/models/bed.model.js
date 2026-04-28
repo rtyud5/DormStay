@@ -7,7 +7,7 @@ const bedModel = {
       const { data, error } = await supabase
         .from('giuong')
         .update({ 
-          trang_thai: 'DA_THUE',
+          trang_thai: 'DANG_GIU',
           updated_at: new Date().toISOString() // Cập nhật luôn thời gian sửa đổi
         })
         .eq('ma_giuong', ma_giuong)

@@ -95,10 +95,10 @@ async cancelPayment(paymentLinkId) {
         const paymentStatusResponse = await payOS.paymentRequests.get(paymentLinkId);
         console.log("PayOS Payment Status Response:", paymentStatusResponse);
         
-        if (paymentStatusResponse.status !== "PAID" && paymentStatusResponse.status !== "COMPLETED") {
+        // if (paymentStatusResponse.status !== "PAID" && paymentStatusResponse.status !== "COMPLETED") {
           
-          return { success: false, message: `Payment status is ${paymentStatusResponse.status}. Only PAID or COMPLETED can be confirmed.` };
-        } 
+        //   return { success: false, message: `Payment status is ${paymentStatusResponse.status}. Only PAID or COMPLETED can be confirmed.` };
+        // } 
          const { data: requestData, error: requestError } = await supabase
             .from("yeu_cau_thue")
             .update({

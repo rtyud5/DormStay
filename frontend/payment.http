@@ -1,0 +1,51 @@
+### Variables
+@baseUrl = http://localhost:4000/api
+@token = eyJhbGciOiJFUzI1NiIsImtpZCI6Ijc0YTRiNzJlLWYzNjEtNGM2Mi1iYzgxLWVjOGFiYTAzZWI1MyIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2RydHZ4ZGFqaXpudHdrenZ4aGd6LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJlNGEyMTZkNi0xZWY1LTRjNTEtOGJkYS0wYWMzNzcwMGVkMjQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc3MDAzNzk1LCJpYXQiOjE3NzcwMDAxOTUsImVtYWlsIjoiaG9naWFoeTMxMUBnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImNjY2QiOiIwNzUyMDUwMDMxMTEiLCJkb2IiOiIzMS8wMS8yMDA1IiwiZW1haWwiOiJob2dpYWh5MzExQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmdWxsX25hbWUiOiJI4buTIEdpYSBIdXkiLCJwaG9uZSI6IjA4Mzk2ODk1NTUiLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6ImU0YTIxNmQ2LTFlZjUtNGM1MS04YmRhLTBhYzM3NzAwZWQyNCJ9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzc2MTU0OTM2fV0sInNlc3Npb25faWQiOiJiNjNjZTI4Zi1kYjE2LTQzOTQtOGI5NC02NjNjYmJhZGU3NDAiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.rJa9NpHflSLohekUs_HDwyL8XflNdi7bIl4u09ied5K8rOXrhiL9ZZjrw1cf_KGzYW7IUW-8FYk3PMBe-pVj3w
+@paymentLinkId = dee387b5848c44b692a49b7437bef798
+
+### ========================================
+### HƯỚNG DẪN LẤY TOKEN
+### ========================================
+# 1. Mở ứng dụng Frontend trong trình duyệt
+# 2. Đăng nhập để lấy token
+# 3. Mở DevTools (F12) → Console
+# 4. Chạy lệnh: localStorage.getItem('dormstay_token')
+# 5. Copy token vào biến @token ở trên (không cần "Bearer ", chỉ token)
+#
+# VD: @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### ========================================
+### API: Confirm Payment - Xác nhận thanh toán đặt cọc
+### ========================================
+PUT {{baseUrl}}/payments/confirm/{{paymentLinkId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+### ========================================
+### Ví dụ Chi Tiết
+### ========================================
+# Method: POST
+# URL: http://localhost:4000/api/payments/confirm/1 
+# 
+# Headers:
+#   Authorization: Bearer <your_auth_token>
+#   Content-Type: application/json
+#
+# Response Success (200 OK):
+# {
+#   "success": true,
+#   "data": {
+#     "ma_yeu_cau_thue": 1,
+#     "trang_thai": "DA_COC",
+#     "ma_ho_so_khach_hang": 5,
+#     "ma_phong": 10,
+#     ...other fields
+#   },
+#   "message": "Payment confirmed successfully"
+# }
+#
+# Response Error (400):
+# {
+#   "success": false,
+#   "message": "Thiếu mã yêu cầu thuê"
+# }
