@@ -10,10 +10,9 @@ import ManagerStatusBadge from "../../components/manager/ManagerStatusBadge";
 
 const ROOM_STATUS_OPTS = [
   { value: "all", label: "Tất cả trạng thái" },
-  { value: "DANG_O", label: "Đang ở" },
+  { value: "SAP_DAY", label: "Sắp đầy" },
   { value: "TRONG", label: "Trống" },
-  { value: "DANG_COC", label: "Đang cọc" },
-  { value: "BAO_TRI", label: "Bảo trì" },
+  { value: "DAY", label: "Đầy" },
 ];
 
 export default function ManagerRoomPage() {
@@ -222,11 +221,14 @@ export default function ManagerRoomPage() {
                       disabled={updating === room.id}
                       className="flex-1 px-3 py-2.5 bg-[#0b2447] text-white rounded-xl text-sm font-bold appearance-none focus:outline-none disabled:opacity-60 cursor-pointer"
                     >
-                      {Object.entries(ROOM_STATUS).map(([key, val]) => (
+                      {["TRONG", "SAP_DAY", "DAY"].map((key) => {
+                        const val = ROOM_STATUS[key];
+                        return (
                         <option key={key} value={key} className="bg-white text-gray-900">
                           {val.label}
                         </option>
-                      ))}
+                        );
+                      })}
                     </select>
                   </div>
                 </div>

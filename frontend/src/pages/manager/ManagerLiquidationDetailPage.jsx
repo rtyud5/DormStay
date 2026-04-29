@@ -79,6 +79,7 @@ export default function ManagerLiquidationDetailPage() {
 
   const d = data;
   const isCompleted = d.checkoutStatus === "HOAN_TAT";
+  const canLiquidate = !isCompleted && d.liquidationReady;
 
   return (
     <div className="p-6 lg:p-10 max-w-[1400px] mx-auto">
@@ -297,9 +298,9 @@ export default function ManagerLiquidationDetailPage() {
             <div>
               <button
                 onClick={handleLiquidate}
-                disabled={!allChecked || submitting}
+                disabled={!allChecked || !canLiquidate || submitting}
                 className={`w-full py-4 rounded-2xl font-extrabold text-sm transition-all shadow-lg flex items-center justify-center gap-2 ${
-                  allChecked
+                  allChecked && canLiquidate
                     ? "bg-[#0b2447] text-white hover:bg-blue-900 shadow-blue-900/20"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
@@ -308,7 +309,9 @@ export default function ManagerLiquidationDetailPage() {
                 {submitting ? "Đang xử lý..." : "Xác nhận thanh lý hợp đồng"}
               </button>
               <p className="text-[10px] text-gray-400 text-center mt-3 leading-relaxed px-4">
-                Bằng cách nhấn xác nhận, bạn xác nhận rằng mọi thủ tục đã hoàn tất và hệ thống sẽ tự động cập nhật trạng thái phòng thành "Sẵn sàng".
+                {canLiquidate
+                  ? "Bằng cách nhấn xác nhận, hệ thống sẽ kết thúc hợp đồng và trả phòng / giường về trạng thái trống."
+                  : "Cần có biên bản kiểm tra và đối soát kế toán đã chốt trước khi thanh lý hợp đồng."}
               </p>
             </div>
           )}

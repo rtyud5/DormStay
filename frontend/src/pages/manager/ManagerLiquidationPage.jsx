@@ -11,8 +11,10 @@ import ManagerStatusBadge from "../../components/manager/ManagerStatusBadge";
 
 const STATUS_TABS = [
   { value: "all", label: "Tất cả" },
-  { value: "CHO_CHOT", label: "Chờ xử lý" },
-  { value: "DA_CHOT", label: "Đã chốt" },
+  { value: "CHO_KIEM_TRA", label: "Chờ kiểm tra" },
+  { value: "CHO_DOI_SOAT", label: "Chờ đối soát" },
+  { value: "DANG_DOI_SOAT", label: "Đang đối soát" },
+  { value: "CHO_THANH_LY", label: "Chờ thanh lý" },
   { value: "HOAN_TAT", label: "Hoàn tất" },
 ];
 
@@ -38,8 +40,8 @@ export default function ManagerLiquidationPage() {
     }
   };
 
-  const pendingCount = liquidations.filter((l) => l.liquidationStatus === "CHO_CHOT").length;
-  const completedCount = liquidations.filter((l) => l.liquidationStatus === "HOAN_TAT" || l.liquidationStatus === "DA_CHOT").length;
+  const pendingCount = liquidations.filter((l) => l.liquidationStatus === "CHO_THANH_LY").length;
+  const completedCount = liquidations.filter((l) => l.liquidationStatus === "HOAN_TAT").length;
   const totalRefund = liquidations.reduce((s, l) => s + (l.estimatedRefund || 0), 0);
 
   return (
@@ -133,7 +135,7 @@ export default function ManagerLiquidationPage() {
                   liquidations.map((item) => {
                     const canLiquidate =
                       item.inspectionStatus === "DA_KIEM_TRA" &&
-                      item.liquidationStatus === "CHO_CHOT";
+                      item.liquidationStatus === "CHO_THANH_LY";
                     return (
                       <tr
                         key={item.id}

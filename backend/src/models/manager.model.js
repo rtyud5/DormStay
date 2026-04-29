@@ -1,4 +1,83 @@
 const { supabase } = require("../config/supabase");
+const { AppError } = require("../utils/errors");
+
+const ACTIVE_CONTRACT_STATUSES = ["HIEU_LUC", "DANG_HIEU_LUC"];
+const CLOSED_CONTRACT_STATUSES = ["HET_HAN", "DA_KET_THUC"];
+const ACTIVE_CHECKOUT_STATUSES = ["CHO_XU_LY", "DANG_KIEM_TRA"];
+const COMPLETED_CHECKOUT_STATUSES = ["HOAN_TAT", "DA_THANH_LY"];
+const OCCUPIED_BED_STATUSES = ["DA_THUE", "DANG_O", "DANG_SU_DUNG", "DA_THUE_HET"];
+const EMPTY_BED_STATUSES = ["TRONG", "CON_TRONG"];
+
+const normalizeContractStatus = (status) => {
+  const value = String(status || "").toUpperCase();
+  if (CLOSED_CONTRACT_STATUSES.includes(value)) return "HET_HAN";
+  return "HIEU_LUC";
+};
+
+const normalizeBedStatus = (status) => {
+  const value = String(status || "").toUpperCase();
+  if (EMPTY_BED_STATUSES.includes(value)) return "TRONG";
+  if (OCCUPIED_BED_STATUSES.includes(value)) return "DA_THUE";
+  return value || "TRONG";
+};
+
+const normalizeRoomStatus = (status, beds = [], capacity = 0) => {
+  const bedCount = beds.length;
+  if (bedCount > 0) {
+    const occupied = beds.filter((bed) => normalizeBedStatus(bed.trang_thai) === "DA_THUE").length;
+    if (occupied <= 0) return "TRONG";
+    if (occupied >= Math.max(Number(capacity) || bedCount, bedCount)) return "DAY";
+    return "SAP_DAY";
+  }
+
+  const value = String(status || "").toUpperCase();
+  if (["DAY", "DA_THUE_HET", "DANG_O"].includes(value)) return "DAY";
+  if (value === "SAP_DAY") return "SAP_DAY";
+  return "TRONG";
+};
+
+const toNumber = (value) => {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getLatestByContract = async (table, contractIds, select = "*") => {
+  if (!contractIds.length) return {};
+  const { data, error } = await supabase
+    .from(table)
+    .select(select)
+    .in("ma_hop_dong", contractIds)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).reduce((map, row) => {
+    if (!map[row.ma_hop_dong]) map[row.ma_hop_dong] = row;
+    return map;
+  }, {});
+};
+
+const refreshRoomAvailabilityStatus = async (roomId) => {
+  if (!roomId) return null;
+
+  const { data: room, error } = await supabase
+    .from("phong")
+    .select("ma_phong, trang_thai, suc_chua, giuong ( ma_giuong, trang_thai )")
+    .eq("ma_phong", roomId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!room) return null;
+
+  const nextStatus = normalizeRoomStatus(room.trang_thai, room.giuong || [], room.suc_chua);
+  const { error: updateError } = await supabase
+    .from("phong")
+    .update({ trang_thai: nextStatus })
+    .eq("ma_phong", roomId);
+
+  if (updateError) throw updateError;
+  return nextStatus;
+};
 
 // Helper
 const getInitials = (name) => {
@@ -38,6 +117,7 @@ const ManagerModel = {
   // DASHBOARD
   // ============================================
   async getDashboardKPI() {
+    const roomsOverview = await this.getRoomsOverview();
     const { count: totalRooms } = await supabase.from('phong').select('*', { count: 'exact', head: true });
 
     // Đang ở = Số hợp đồng hiệu lực
@@ -49,7 +129,7 @@ const ManagerModel = {
     const { count: maintenanceRooms } = await supabase.from('phong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'BAO_TRI');
 
     // Chờ checkout
-    const { count: pendingCheckoutRequests } = await supabase.from('yeu_cau_tra_phong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'CHO_XU_LY');
+    const { count: pendingCheckoutRequests } = await supabase.from('yeu_cau_tra_phong').select('*', { count: 'exact', head: true }).in('trang_thai', ACTIVE_CHECKOUT_STATUSES);
 
     // Checkout requests this week
     const weekAgo = new Date();
@@ -63,7 +143,7 @@ const ManagerModel = {
     const { data: residentData } = await supabase
       .from('hop_dong')
       .select('ma_ho_so_khach_hang')
-      .eq('trang_thai', 'HIEU_LUC');
+      .in('trang_thai', ACTIVE_CONTRACT_STATUSES);
     const totalResidents = residentData ? new Set(residentData.map(r => r.ma_ho_so_khach_hang)).size : 0;
 
     // Cư dân mới tháng này
@@ -73,7 +153,7 @@ const ManagerModel = {
     const { count: newResidentsThisMonth } = await supabase
       .from('hop_dong')
       .select('*', { count: 'exact', head: true })
-      .eq('trang_thai', 'HIEU_LUC')
+      .in('trang_thai', ACTIVE_CONTRACT_STATUSES)
       .gte('created_at', monthStart.toISOString());
 
     // Sắp hết hạn (<= 30 ngày)
@@ -82,15 +162,15 @@ const ManagerModel = {
     const { count: contractsExpiringSoon } = await supabase
       .from('phan_bo_hop_dong')
       .select('*', { count: 'exact', head: true })
-      .eq('trang_thai', 'HIEU_LUC')
+      .in('trang_thai', ACTIVE_CONTRACT_STATUSES)
       .not('ngay_ket_thuc', 'is', null)
       .lte('ngay_ket_thuc', thirtyDaysFromNow.toISOString());
 
     return {
       totalRooms: totalRooms || 0,
-      occupiedRooms: activeContracts || 0,
-      emptyRooms: emptyRooms || 0,
-      maintenanceRooms: maintenanceRooms || 0,
+      occupiedRooms: roomsOverview.stats?.occupied || 0,
+      emptyRooms: roomsOverview.stats?.empty || 0,
+      maintenanceRooms: 0,
       pendingCheckoutRequests: pendingCheckoutRequests || 0,
       checkoutRequestsThisWeek: checkoutRequestsThisWeek || 0,
       totalResidents,
@@ -164,7 +244,7 @@ const ManagerModel = {
           ngay_ket_thuc
         )
       `, { count: 'exact' })
-      .eq("trang_thai", "HIEU_LUC");
+      .in("trang_thai", ACTIVE_CONTRACT_STATUSES);
 
     if (filters.rentalType && filters.rentalType !== "all") {
       query = query.eq('loai_muc_tieu', filters.rentalType);
@@ -192,7 +272,7 @@ const ManagerModel = {
         phone: h.ho_so?.so_dien_thoai || '',
         baseRent: Number(h.gia_thue_co_ban_thang) || 0,
         deposit: Number(h.so_tien_dat_coc_bao_dam) || 0,
-        status: h.trang_thai
+        status: normalizeContractStatus(h.trang_thai)
       };
     });
 
@@ -235,7 +315,7 @@ const ManagerModel = {
 
     // Tính ngày kết thúc dự kiến từ phan_bo
     const allocations = data.phan_bo_hop_dong || [];
-    const activeAlloc = allocations.find(a => a.trang_thai === 'HIEU_LUC');
+    const activeAlloc = allocations.find(a => ACTIVE_CONTRACT_STATUSES.includes(a.trang_thai));
     const contractEndDate = activeAlloc?.ngay_ket_thuc || null;
 
     // Tính thời hạn thuê (tháng)
@@ -258,13 +338,13 @@ const ManagerModel = {
       { label: "Căn cước công dân (Mặt sau)", done: !!ho.cccd_mat_sau_url },
       { label: "Xác nhận thanh toán cọc", done: data.so_tien_dat_coc_bao_dam > 0 },
       { label: "Thông tin liên hệ khẩn cấp", done: !!ho.lien_he_khan_cap_ho_ten },
-      { label: "Hợp đồng thuê", done: data.trang_thai === 'HIEU_LUC' },
+      { label: "Hợp đồng thuê", done: normalizeContractStatus(data.trang_thai) === 'HIEU_LUC' },
       { label: "Đăng ký tạm trú", done: false },
     ];
 
     return {
       id: data.ma_hop_dong,
-      contractStatus: data.trang_thai,
+      contractStatus: normalizeContractStatus(data.trang_thai),
       rentalType: data.loai_muc_tieu,
       // Thông tin khách hàng
       customerName: ho.ho_ten || '',
@@ -329,6 +409,7 @@ const ManagerModel = {
     if (filters.status && filters.status !== "all") query = query.eq('trang_thai', filters.status);
 
     const { data, count } = await query;
+
     let formatData = (data || []).map(y => {
       const hd = y.hop_dong;
       const { roomDisplay, bedDisplay, floor } = resolveRoomInfo(hd);
@@ -407,7 +488,7 @@ const ManagerModel = {
     }
 
     // End date from allocation
-    const activeAlloc = hd?.phan_bo_hop_dong?.find(a => a.trang_thai === 'HIEU_LUC');
+    const activeAlloc = hd?.phan_bo_hop_dong?.find(a => ACTIVE_CONTRACT_STATUSES.includes(a.trang_thai));
     const contractEndDate = activeAlloc?.ngay_ket_thuc || null;
 
     let inspectionObj = null;
@@ -507,26 +588,38 @@ const ManagerModel = {
         phan_bo_hop_dong ( ngay_ket_thuc, trang_thai )
       ),
       bien_ban_kiem_tra ( tong_uoc_tinh_khau_tru )
-    `, { count: 'exact' }).neq('trang_thai', 'CHO_XU_LY');
+    `, { count: 'exact' });
 
     const { data, count } = await query;
+    const contractIds = [...new Set((data || []).map((y) => y.hop_dong?.ma_hop_dong).filter(Boolean))];
+    const reconciliationByContract = await getLatestByContract(
+      "doi_soat_tai_chinh",
+      contractIds,
+      "ma_doi_soat, ma_hop_dong, so_tien_dat_coc_ban_dau, so_tien_hoan_lai, so_tien_can_thanh_toan_them, trang_thai, created_at"
+    );
+
     let formatData = (data || []).map(y => {
       const hd = y.hop_dong;
       const { roomDisplay, bedDisplay, floor } = resolveRoomInfo(hd);
+      const reconciliation = reconciliationByContract[hd?.ma_hop_dong] || null;
 
       // End date
-      const activeAlloc = hd?.phan_bo_hop_dong?.find(a => a.trang_thai === 'HIEU_LUC');
+      const activeAlloc = hd?.phan_bo_hop_dong?.find(a => ACTIVE_CONTRACT_STATUSES.includes(a.trang_thai));
       const contractEndDate = activeAlloc?.ngay_ket_thuc || y.ngay_yeu_cau_tra_phong;
 
       // Financial
-      const deposit = Number(hd?.so_tien_dat_coc_bao_dam) || 0;
-      const inspectionDeduction = Number(y.bien_ban_kiem_tra?.[0]?.tong_uoc_tinh_khau_tru) || 0;
-      const estimatedRefund = Math.max(0, deposit - inspectionDeduction);
+      const deposit = toNumber(reconciliation?.so_tien_dat_coc_ban_dau || hd?.so_tien_dat_coc_bao_dam);
+      const inspectionDeduction = toNumber(y.bien_ban_kiem_tra?.[0]?.tong_uoc_tinh_khau_tru);
+      const estimatedRefund = toNumber(reconciliation?.so_tien_hoan_lai || Math.max(0, deposit - inspectionDeduction));
 
       // Status logic
-      let liquidationStatus = 'DANG_DOI_SOAT';
-      if (y.trang_thai === 'DA_KIEM_TRA') liquidationStatus = 'CHO_CHOT';
-      if (y.trang_thai === 'HOAN_TAT') liquidationStatus = 'HOAN_TAT';
+      const inspectionDone = (y.bien_ban_kiem_tra || []).length > 0 || y.trang_thai === 'DA_KIEM_TRA';
+      let liquidationStatus = 'CHO_KIEM_TRA';
+      if (COMPLETED_CHECKOUT_STATUSES.includes(y.trang_thai)) liquidationStatus = 'HOAN_TAT';
+      else if (!inspectionDone) liquidationStatus = 'CHO_KIEM_TRA';
+      else if (!reconciliation) liquidationStatus = 'CHO_DOI_SOAT';
+      else if (reconciliation.trang_thai === 'DA_CHOT') liquidationStatus = 'CHO_THANH_LY';
+      else liquidationStatus = 'DANG_DOI_SOAT';
 
       return {
         id: y.ma_yeu_cau_tra_phong,
@@ -539,8 +632,10 @@ const ManagerModel = {
         bedDisplay,
         floor,
         contractEndDate,
-        inspectionStatus: y.trang_thai === 'DA_KIEM_TRA' || y.trang_thai === 'HOAN_TAT' ? 'DA_KIEM_TRA' : 'CHO_KIEM_TRA',
+        inspectionStatus: inspectionDone ? 'DA_KIEM_TRA' : 'CHO_KIEM_TRA',
         liquidationStatus,
+        reconciliationId: reconciliation?.ma_doi_soat || null,
+        reconciliationStatus: reconciliation?.trang_thai || null,
         depositAmount: deposit,
         inspectionDeduction,
         estimatedRefund,
@@ -584,13 +679,19 @@ const ManagerModel = {
     const hd = data.hop_dong;
     const ho = hd?.ho_so || {};
     const { roomDisplay, bedDisplay, floor, roomObj } = resolveRoomInfo(hd);
+    const reconciliationByContract = await getLatestByContract(
+      "doi_soat_tai_chinh",
+      hd?.ma_hop_dong ? [hd.ma_hop_dong] : [],
+      "ma_doi_soat, ma_hop_dong, so_tien_dat_coc_ban_dau, so_tien_hoan_lai, so_tien_can_thanh_toan_them, trang_thai, created_at"
+    );
+    const reconciliation = reconciliationByContract[hd?.ma_hop_dong] || null;
 
-    const activeAlloc = hd?.phan_bo_hop_dong?.find(a => a.trang_thai === 'HIEU_LUC');
+    const activeAlloc = hd?.phan_bo_hop_dong?.find(a => ACTIVE_CONTRACT_STATUSES.includes(a.trang_thai));
     const contractStartDate = hd?.ngay_vao_o || activeAlloc?.ngay_bat_dau;
     const contractEndDate = activeAlloc?.ngay_ket_thuc || data.ngay_yeu_cau_tra_phong;
 
-    let totalDeposit = Number(hd?.so_tien_dat_coc_bao_dam) || 0;
-    let inspectionFee = Number(data.bien_ban_kiem_tra?.[0]?.tong_uoc_tinh_khau_tru) || 0;
+    let totalDeposit = toNumber(reconciliation?.so_tien_dat_coc_ban_dau || hd?.so_tien_dat_coc_bao_dam);
+    let inspectionFee = toNumber(data.bien_ban_kiem_tra?.[0]?.tong_uoc_tinh_khau_tru);
 
     // Check unpaid invoices
     let unpaidAmount = 0;
@@ -603,9 +704,13 @@ const ManagerModel = {
       unpaidAmount = (invoices || []).reduce((s, inv) => s + (Number(inv.tong_so_tien) - Number(inv.so_tien_da_thanh_toan)), 0);
     }
 
-    let finalRefundAmount = totalDeposit - inspectionFee - unpaidAmount;
-    let additionalPaymentAmount = 0;
-    if (finalRefundAmount < 0) {
+    let finalRefundAmount = reconciliation
+      ? toNumber(reconciliation.so_tien_hoan_lai)
+      : totalDeposit - inspectionFee - unpaidAmount;
+    let additionalPaymentAmount = reconciliation
+      ? toNumber(reconciliation.so_tien_can_thanh_toan_them)
+      : 0;
+    if (!reconciliation && finalRefundAmount < 0) {
       additionalPaymentAmount = Math.abs(finalRefundAmount);
       finalRefundAmount = 0;
     }
@@ -621,8 +726,9 @@ const ManagerModel = {
 
     // Determine liquidation process status
     const auditDone = !!bb;
-    const inspectionDone = data.trang_thai === 'DA_KIEM_TRA' || data.trang_thai === 'HOAN_TAT';
-    const financialDone = data.trang_thai === 'HOAN_TAT';
+    const inspectionDone = !!bb || data.trang_thai === 'DA_KIEM_TRA' || COMPLETED_CHECKOUT_STATUSES.includes(data.trang_thai);
+    const financialDone = reconciliation?.trang_thai === 'DA_CHOT';
+    const liquidationReady = inspectionDone && financialDone && !COMPLETED_CHECKOUT_STATUSES.includes(data.trang_thai);
 
     return {
       id: data.ma_yeu_cau_tra_phong,
@@ -639,6 +745,10 @@ const ManagerModel = {
       contractStartDate,
       contractEndDate,
       checkoutStatus: data.trang_thai,
+      contractStatus: normalizeContractStatus(hd?.trang_thai),
+      reconciliationId: reconciliation?.ma_doi_soat || null,
+      reconciliationStatus: reconciliation?.trang_thai || null,
+      liquidationReady,
       // Financial
       depositAmount: totalDeposit,
       unpaidAmount,
@@ -659,31 +769,105 @@ const ManagerModel = {
   },
 
   async performLiquidation(id, payload) {
-    // id = ma_yeu_cau_tra_phong
-    const { data: yctp } = await supabase.from('yeu_cau_tra_phong').select('ma_hop_dong').eq('ma_yeu_cau_tra_phong', id).single();
-    if (!yctp) throw new Error("Yêu cầu không tồn tại");
+    const { data: yctp, error: requestError } = await supabase
+      .from('yeu_cau_tra_phong')
+      .select(`
+        ma_yeu_cau_tra_phong,
+        ma_hop_dong,
+        ngay_yeu_cau_tra_phong,
+        trang_thai,
+        hop_dong (
+          ma_hop_dong,
+          loai_muc_tieu,
+          ma_phong,
+          ma_giuong,
+          trang_thai,
+          giuong ( ma_giuong, ma_phong )
+        ),
+        bien_ban_kiem_tra ( ma_bien_ban_kiem_tra )
+      `)
+      .eq('ma_yeu_cau_tra_phong', id)
+      .maybeSingle();
 
-    // Get contract details to auto-calculate
-    const detail = await this.getLiquidationDetail(id);
-    if (!detail) throw new Error("Không tìm thấy thông tin thanh lý");
+    if (requestError) throw requestError;
+    if (!yctp) throw new AppError("Yêu cầu thanh lý không tồn tại", 404);
+    if (COMPLETED_CHECKOUT_STATUSES.includes(yctp.trang_thai)) {
+      throw new AppError("Yêu cầu này đã hoàn tất thanh lý", 409);
+    }
+    if (!yctp.bien_ban_kiem_tra?.length) {
+      throw new AppError("Cần hoàn tất biên bản kiểm tra trước khi thanh lý", 409);
+    }
 
-    const { data: dstc, error } = await supabase.from('doi_soat_tai_chinh').insert({
-      ma_hop_dong: yctp.ma_hop_dong,
-      so_tien_dat_coc_ban_dau: detail.depositAmount,
-      so_tien_hoan_lai: detail.finalRefundAmount,
-      so_tien_can_thanh_toan_them: detail.additionalPaymentAmount,
-      trang_thai: 'DA_CHOT'
-    }).select().single();
+    const reconciliationByContract = await getLatestByContract(
+      "doi_soat_tai_chinh",
+      [yctp.ma_hop_dong],
+      "ma_doi_soat, ma_hop_dong, so_tien_hoan_lai, so_tien_can_thanh_toan_them, trang_thai, created_at"
+    );
+    const reconciliation = reconciliationByContract[yctp.ma_hop_dong] || null;
+    if (!reconciliation) {
+      throw new AppError("Chưa có đối soát kế toán cho hợp đồng này", 409);
+    }
+    if (reconciliation.trang_thai !== "DA_CHOT") {
+      throw new AppError("Đối soát kế toán chưa được chốt", 409);
+    }
 
-    if (error) throw error;
+    const contract = yctp.hop_dong;
+    const roomId = contract?.ma_phong || contract?.giuong?.ma_phong || null;
+    const bedId = contract?.ma_giuong || null;
 
-    // Chuyển hợp đồng
-    await supabase.from('hop_dong').update({ trang_thai: 'DA_KET_THUC' }).eq('ma_hop_dong', yctp.ma_hop_dong);
+    const { error: contractError } = await supabase
+      .from('hop_dong')
+      .update({ trang_thai: 'HET_HAN' })
+      .eq('ma_hop_dong', yctp.ma_hop_dong);
+    if (contractError) throw contractError;
 
-    // Cập nhật YCTP
-    await supabase.from('yeu_cau_tra_phong').update({ trang_thai: 'HOAN_TAT' }).eq('ma_yeu_cau_tra_phong', id);
+    await supabase
+      .from('phan_bo_hop_dong')
+      .update({
+        trang_thai: 'HET_HAN',
+        ngay_ket_thuc: payload?.ngay_ket_thuc || yctp.ngay_yeu_cau_tra_phong || new Date().toISOString().slice(0, 10),
+      })
+      .eq('ma_hop_dong', yctp.ma_hop_dong)
+      .in('trang_thai', ACTIVE_CONTRACT_STATUSES);
 
-    return dstc;
+    if (contract?.loai_muc_tieu === 'GIUONG' && bedId) {
+      const { error: bedError } = await supabase
+        .from('giuong')
+        .update({ trang_thai: 'TRONG' })
+        .eq('ma_giuong', bedId);
+      if (bedError) throw bedError;
+      await refreshRoomAvailabilityStatus(roomId);
+    } else if (roomId) {
+      const { error: bedsError } = await supabase
+        .from('giuong')
+        .update({ trang_thai: 'TRONG' })
+        .eq('ma_phong', roomId);
+      if (bedsError) throw bedsError;
+
+      const { error: roomError } = await supabase
+        .from('phong')
+        .update({ trang_thai: 'TRONG' })
+        .eq('ma_phong', roomId);
+      if (roomError) throw roomError;
+    }
+
+    const { error: checkoutError } = await supabase
+      .from('yeu_cau_tra_phong')
+      .update({ trang_thai: 'HOAN_TAT' })
+      .eq('ma_yeu_cau_tra_phong', id);
+    if (checkoutError) throw checkoutError;
+
+    return {
+      checkoutRequestId: yctp.ma_yeu_cau_tra_phong,
+      contractId: yctp.ma_hop_dong,
+      reconciliationId: reconciliation.ma_doi_soat,
+      refundAmount: toNumber(reconciliation.so_tien_hoan_lai),
+      additionalPaymentAmount: toNumber(reconciliation.so_tien_can_thanh_toan_them),
+      roomId,
+      bedId,
+      contractStatus: 'HET_HAN',
+      checkoutStatus: 'HOAN_TAT',
+    };
   },
 
   // ============================================
@@ -694,49 +878,85 @@ const ManagerModel = {
       *,
       tang ( ten_tang, so_tang ),
       toa ( ten ),
-      giuong (ma_giuong, ma_giuong_hien_thi, trang_thai, nhan_giuong)
+      giuong (ma_giuong, ma_giuong_hien_thi, trang_thai, nhan_giuong, gia_thang)
     `, { count: 'exact' });
 
-    if (filters.status && filters.status !== "all") {
-      query = query.eq('trang_thai', filters.status);
-    }
     if (filters.roomType && filters.roomType !== "all") query = query.eq('loai_phong', filters.roomType);
 
     const { data, count } = await query;
+    const roomIds = (data || []).map((p) => p.ma_phong);
+    const bedIds = (data || []).flatMap((p) => (p.giuong || []).map((g) => g.ma_giuong));
+    let tenantByBed = {};
+    let tenantByRoom = {};
+
+    if (roomIds.length || bedIds.length) {
+      const { data: contracts, error: contractError } = await supabase
+        .from('hop_dong')
+        .select(`
+          ma_hop_dong,
+          loai_muc_tieu,
+          ma_phong,
+          ma_giuong,
+          ho_so:ma_ho_so_khach_hang ( ho_ten )
+        `)
+        .in('trang_thai', ACTIVE_CONTRACT_STATUSES);
+
+      if (contractError) throw contractError;
+
+      (contracts || []).forEach((contract) => {
+        const tenant = contract.ho_so?.ho_ten || null;
+        if (contract.ma_giuong && bedIds.includes(contract.ma_giuong)) {
+          tenantByBed[contract.ma_giuong] = tenant;
+        }
+        if (contract.ma_phong && roomIds.includes(contract.ma_phong)) {
+          tenantByRoom[contract.ma_phong] = tenant;
+        }
+      });
+    }
+
     let formatData = (data || []).map(p => {
       const beds = p.giuong || [];
-      const occupied = beds.filter(g => g.trang_thai === 'DA_THUE').length;
-      const reserved = beds.filter(g => g.trang_thai === 'DA_COC').length;
-      const empty = beds.filter(g => g.trang_thai === 'TRONG').length;
+      const mappedBeds = beds.map(g => ({
+        id: g.ma_giuong,
+        display: g.nhan_giuong || g.ma_giuong_hien_thi || `Giường ${g.ma_giuong}`,
+        status: normalizeBedStatus(g.trang_thai),
+        tenant: tenantByBed[g.ma_giuong] || null,
+        price: toNumber(g.gia_thang)
+      }));
+      const occupied = mappedBeds.filter(g => g.status === 'DA_THUE').length;
+      const reserved = 0;
+      const empty = mappedBeds.filter(g => g.status === 'TRONG').length;
       const total = beds.length;
+      const capacity = Number(p.suc_chua) || total || 1;
+      const hasRoomTenant = !!tenantByRoom[p.ma_phong];
+      const occupiedCount = total > 0 ? occupied : (hasRoomTenant ? capacity : 0);
+      const status = total > 0 ? normalizeRoomStatus(p.trang_thai, beds, capacity) : (hasRoomTenant ? "DAY" : normalizeRoomStatus(p.trang_thai, beds, capacity));
 
       return {
         id: p.ma_phong,
         displayId: `P.${p.ma_phong_hien_thi}`,
         floor: p.tang?.ten_tang || '',
-        floorLabel: p.tang?.ten_tang ? `Tầng ${p.tang.ten_tang}` : '',
-        roomType: p.loai_phong,
-        roomTypeLabel: p.loai_phong || '',
+        floorValue: p.tang?.so_tang?.toString() || p.tang?.ten_tang || '',
+        floorLabel: p.tang?.ten_tang || '',
+        roomType: String(p.loai_phong || '').trim(),
+        roomTypeLabel: String(p.loai_phong || '').trim(),
         gender: p.gioi_tinh || 'Nam/Nữ',
-        status: p.trang_thai,
-        capacity: p.suc_chua || total,
-        occupiedCount: occupied,
+        status,
+        capacity,
+        occupiedCount,
         reservedCount: reserved,
         price: Number(p.gia_thang) || 0,
         holdRequests: reserved,
-        occupancyRate: Math.round((occupied / Math.max(total, 1)) * 100) + '%',
-        bedsText: `${occupied} đã thuê, ${empty} trống`,
-        beds: beds.map(g => ({
-          id: g.ma_giuong,
-          display: g.nhan_giuong || g.ma_giuong_hien_thi || `Giường ${g.ma_giuong}`,
-          status: g.trang_thai,
-          tenant: null, // Would need join with hop_dong/phan_bo to get tenant
-        }))
+        occupancyRate: Math.round((occupiedCount / Math.max(capacity, 1)) * 100) + '%',
+        bedsText: total > 0 ? `${occupiedCount} đã thuê, ${empty} trống` : (hasRoomTenant ? "Đang thuê nguyên phòng" : "Phòng trống"),
+        tenant: tenantByRoom[p.ma_phong] || null,
+        beds: mappedBeds
       };
     });
 
     // Client-side filters
-    if (filters.floor && filters.floor !== "all") formatData = formatData.filter(d => d.floor === filters.floor);
+    if (filters.status && filters.status !== "all") formatData = formatData.filter(d => d.status === filters.status);
+    if (filters.floor && filters.floor !== "all") formatData = formatData.filter(d => d.floorValue === filters.floor || d.floor === filters.floor);
     if (filters.gender && filters.gender !== "all") formatData = formatData.filter(d => d.gender === filters.gender);
     if (filters.search) {
       const q = filters.search.toLowerCase();
@@ -745,25 +965,32 @@ const ManagerModel = {
 
     let stats = {
       total: count || 0,
-      occupied: formatData.filter(r => r.status === 'SAP_DAY' || r.status === 'DA_DAY' || r.occupiedCount > 0).length,
+      occupied: formatData.filter(r => r.status === 'SAP_DAY' || r.status === 'DAY' || r.occupiedCount > 0).length,
       reserved: formatData.filter(r => r.reservedCount > 0).length,
       empty: formatData.filter(r => r.status === 'TRONG').length,
-      maintenance: formatData.filter(r => r.status === 'BAO_TRI').length,
+      maintenance: 0,
     };
 
     return { items: formatData, total: count || 0, stats };
   },
 
   async updateRoomStatus(roomId, statusData) {
+    if (!["TRONG", "SAP_DAY", "DAY"].includes(statusData.status)) {
+      throw new AppError("Trạng thái phòng không hợp lệ", 400);
+    }
     const { error } = await supabase.from('phong').update({ trang_thai: statusData.status }).eq('ma_phong', roomId);
     if (error) throw error;
     return true;
   },
 
   async updateBedStatus(roomId, bedId, statusData) {
+    if (!["TRONG", "DA_THUE"].includes(statusData.status)) {
+      throw new AppError("Trạng thái giường không hợp lệ", 400);
+    }
     const { error } = await supabase.from('giuong').update({ trang_thai: statusData.status }).eq('ma_giuong', bedId).eq('ma_phong', roomId);
     if (error) throw error;
-    return true;
+    const roomStatus = await refreshRoomAvailabilityStatus(roomId);
+    return { success: true, roomStatus };
   }
 };
 

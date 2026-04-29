@@ -70,6 +70,18 @@ export const ROOM_STATUS = {
     textColor: "text-emerald-700",
     dot: "bg-emerald-500",
   },
+  SAP_DAY: {
+    label: "Sắp đầy",
+    color: "bg-blue-100",
+    textColor: "text-blue-700",
+    dot: "bg-blue-500",
+  },
+  DAY: {
+    label: "Đầy",
+    color: "bg-blue-100",
+    textColor: "text-blue-700",
+    dot: "bg-blue-500",
+  },
   DANG_O: {
     label: "Đang ở",
     color: "bg-blue-100",
@@ -160,6 +172,30 @@ export const CHECKOUT_REQUEST_STATUS = {
 
 // Doi soat tai chinh (Liquidation)
 export const LIQUIDATION_STATUS = {
+  CHO_KIEM_TRA: {
+    label: "Chờ kiểm tra",
+    color: "bg-yellow-100",
+    textColor: "text-yellow-700",
+    dot: "bg-yellow-500",
+  },
+  CHO_DOI_SOAT: {
+    label: "Chờ đối soát",
+    color: "bg-orange-100",
+    textColor: "text-orange-700",
+    dot: "bg-orange-500",
+  },
+  DANG_DOI_SOAT: {
+    label: "Đang đối soát",
+    color: "bg-blue-100",
+    textColor: "text-blue-700",
+    dot: "bg-blue-500",
+  },
+  CHO_THANH_LY: {
+    label: "Chờ thanh lý",
+    color: "bg-purple-100",
+    textColor: "text-purple-700",
+    dot: "bg-purple-500",
+  },
   CHO_CHOT: {
     label: "Chờ chốt",
     color: "bg-yellow-100",

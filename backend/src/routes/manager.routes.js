@@ -1,7 +1,11 @@
 const express = require("express");
 const managerController = require("../controllers/manager.controller");
+const authMiddleware = require("../middlewares/auth.middleware");
+const { requireManagerAccess } = require("../middlewares/manager.middleware");
 
 const router = express.Router();
+
+router.use(authMiddleware, requireManagerAccess);
 
 // DASHBOARD
 router.get("/dashboard", managerController.getDashboardKPI);
