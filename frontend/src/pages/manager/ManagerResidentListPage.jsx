@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Building2, Home, Eye, Phone, MapPin, CreditCard, X } from "lucide-react";
+import { Search, Building2, Home, Eye, Phone } from "lucide-react";
 import { getResidents } from "../../services/manager.service";
 import { CONTRACT_STATUS, FLOOR_OPTIONS, RENTAL_TYPE_OPTIONS } from "../../constants/manager.constants";
 import ManagerStatusBadge from "../../components/manager/ManagerStatusBadge";
@@ -11,7 +11,6 @@ export default function ManagerResidentListPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ floor: "all", rentalType: "all" });
-  const [selectedResident, setSelectedResident] = useState(null);
 
   useEffect(() => {
     loadResidents();
@@ -136,7 +135,7 @@ export default function ManagerResidentListPage() {
                   residents.map((r) => (
                     <tr
                       key={r.id}
-                      onClick={() => setSelectedResident(r)}
+                      onClick={() => navigate(`/manager/residents/${r.id}`)}
                       className="border-b border-gray-50 hover:bg-[#f9fafb] cursor-pointer transition-colors"
                     >
                       <td className="px-5 py-4">
@@ -146,25 +145,25 @@ export default function ManagerResidentListPage() {
                           </div>
                           <div>
                             <p className="font-bold text-[#111827] text-sm">{r.customerName}</p>
-                            <p className="text-xs text-gray-400">{r.id}</p>
+                            <p className="text-xs text-gray-400">{r.phone || ""}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-5 py-4">
                         <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
-                          {r.roomDisplay}{r.bedDisplay ? ` — ${r.bedDisplay}` : ""}
+                          {r.roomDisplay}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-sm text-gray-600 font-medium">Tầng {r.floor}</td>
+                      <td className="px-5 py-4 text-sm text-gray-600 font-medium">{r.floor ? `Tầng ${r.floor}` : "—"}</td>
                       <td className="px-5 py-4 text-sm text-gray-600">
                         {r.rentalType === "PHONG" ? "Thuê phòng" : "Thuê giường"}
                       </td>
                       <td className="px-5 py-4 text-sm text-gray-500">
-                        {new Date(r.checkInDate).toLocaleDateString("vi-VN")}
+                        {r.moveInDate ? new Date(r.moveInDate).toLocaleDateString("vi-VN") : "—"}
                       </td>
                       <td className="px-5 py-4">
                         <span className="font-extrabold text-[#111827] text-sm">
-                          {r.baseRent.toLocaleString("vi-VN")}đ
+                          {(r.baseRent || 0).toLocaleString("vi-VN")}đ
                         </span>
                       </td>
                       <td className="px-5 py-4">
@@ -172,7 +171,7 @@ export default function ManagerResidentListPage() {
                       </td>
                       <td className="px-5 py-4">
                         <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedResident(r); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/manager/residents/${r.id}`); }}
                           className="w-8 h-8 rounded-full bg-gray-100 hover:bg-blue-100 hover:text-blue-700 flex items-center justify-center text-gray-500 transition-colors"
                         >
                           <Eye className="w-4 h-4" />
@@ -190,98 +189,6 @@ export default function ManagerResidentListPage() {
             </div>
           </>
         )}
-      </div>
-
-      {/* Resident Detail Drawer / Modal */}
-      {selectedResident && (
-        <ResidentDetailDrawer
-          resident={selectedResident}
-          onClose={() => setSelectedResident(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function ResidentDetailDrawer({ resident: r, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Drawer */}
-      <div className="relative bg-white w-full max-w-lg h-full overflow-y-auto shadow-2xl animate-slide-in-right">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 flex items-center justify-between px-8 py-5 z-10">
-          <h2 className="text-lg font-extrabold text-[#0b2447]">Chi tiết cư dân</h2>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-8 space-y-8">
-          {/* Avatar + Name */}
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0b2447] to-blue-700 flex items-center justify-center text-white text-2xl font-black shadow-lg">
-              {r.avatarInitials}
-            </div>
-            <div>
-              <p className="text-xl font-extrabold text-[#0b2447]">{r.customerName}</p>
-              <p className="text-sm text-gray-400 font-medium">Mã HĐ: {r.id}</p>
-              <div className="mt-1">
-                <ManagerStatusBadge statusMap={CONTRACT_STATUS} statusKey={r.status} />
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Info */}
-          <Section title="Thông tin liên hệ">
-            <InfoRow icon={<Phone className="w-4 h-4" />} label="Điện thoại" value={r.phone} />
-            <InfoRow icon={<CreditCard className="w-4 h-4" />} label="CCCD" value={r.cccd} />
-            <InfoRow icon={<MapPin className="w-4 h-4" />} label="Địa chỉ" value={r.address} />
-          </Section>
-
-          {/* Contract Info */}
-          <Section title="Thông tin thuê phòng">
-            <InfoRow label="Phòng / Giường" value={`${r.roomDisplay}${r.bedDisplay ? ` — ${r.bedDisplay}` : ""}`} />
-            <InfoRow label="Tầng" value={`Tầng ${r.floor}`} />
-            <InfoRow label="Loại thuê" value={r.rentalType === "PHONG" ? "Thuê phòng" : "Thuê giường"} />
-            <InfoRow label="Ngày vào ở" value={new Date(r.checkInDate).toLocaleDateString("vi-VN")} />
-            <InfoRow label="Tiền thuê / tháng" value={`${r.baseRent.toLocaleString("vi-VN")}đ`} />
-            <InfoRow label="Tiền cọc" value={`${r.deposit.toLocaleString("vi-VN")}đ`} />
-          </Section>
-
-          {/* Emergency Contact */}
-          <Section title="Liên hệ khẩn cấp">
-            <InfoRow label="Họ tên" value={r.emergencyContact?.name ?? "—"} />
-            <InfoRow label="Điện thoại" value={r.emergencyContact?.phone ?? "—"} />
-            <InfoRow label="Quan hệ" value={r.emergencyContact?.relation ?? "—"} />
-          </Section>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Section({ title, children }) {
-  return (
-    <div>
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">{title}</p>
-      <div className="bg-[#f9fafb] rounded-2xl p-5 space-y-3">{children}</div>
-    </div>
-  );
-}
-
-function InfoRow({ icon, label, value }) {
-  return (
-    <div className="flex items-start gap-3">
-      {icon && <span className="text-gray-400 mt-0.5 flex-shrink-0">{icon}</span>}
-      <div className="flex-1 flex justify-between gap-4">
-        <span className="text-xs text-gray-500 font-medium flex-shrink-0">{label}</span>
-        <span className="text-sm font-bold text-[#111827] text-right">{value ?? "—"}</span>
       </div>
     </div>
   );

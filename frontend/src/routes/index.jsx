@@ -38,8 +38,11 @@ import AccountingReconciliationPage from "../pages/accounting/AccountingReconcil
 import ManagerLayout from "../components/manager/ManagerLayout";
 import ManagerDashboardPage from "../pages/manager/ManagerDashboardPage";
 import ManagerResidentListPage from "../pages/manager/ManagerResidentListPage";
+import ManagerResidentDetailPage from "../pages/manager/ManagerResidentDetailPage";
 import ManagerInspectionPage from "../pages/manager/ManagerInspectionPage";
+import ManagerInspectionDetailPage from "../pages/manager/ManagerInspectionDetailPage";
 import ManagerLiquidationPage from "../pages/manager/ManagerLiquidationPage";
+import ManagerLiquidationDetailPage from "../pages/manager/ManagerLiquidationDetailPage";
 import ManagerRoomPage from "../pages/manager/ManagerRoomPage";
 
 import SaleLayout from "../components/sale/SaleLayout";
@@ -138,8 +141,11 @@ const router = createBrowserRouter([
           { index: true, element: <Navigate to="dashboard" replace /> },
           { path: "dashboard", element: <ManagerDashboardPage /> },
           { path: "residents", element: <ManagerResidentListPage /> },
+          { path: "residents/:id", element: <ManagerResidentDetailPage /> },
           { path: "inspections", element: <ManagerInspectionPage /> },
+          { path: "inspections/:id", element: <ManagerInspectionDetailPage /> },
           { path: "liquidations", element: <ManagerLiquidationPage /> },
+          { path: "liquidations/:id", element: <ManagerLiquidationDetailPage /> },
           { path: "rooms", element: <ManagerRoomPage /> },
         ],
       },

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Search, Building2, AlertTriangle, FileCheck2, X } from "lucide-react";
-import { getLiquidations, performLiquidation } from "../../services/manager.service";
+import { useNavigate } from "react-router-dom";
+import { Search, Building2, AlertTriangle, FileCheck2 } from "lucide-react";
+import { getLiquidations } from "../../services/manager.service";
 import {
   LIQUIDATION_STATUS,
   INSPECTION_STATUS,
@@ -16,14 +17,12 @@ const STATUS_TABS = [
 ];
 
 export default function ManagerLiquidationPage() {
+  const navigate = useNavigate();
   const [liquidations, setLiquidations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusTab, setStatusTab] = useState("all");
   const [floor, setFloor] = useState("all");
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [showDetail, setShowDetail] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -39,22 +38,8 @@ export default function ManagerLiquidationPage() {
     }
   };
 
-  const handleLiquidate = async (liquidationId) => {
-    try {
-      setSubmitting(true);
-      const res = await performLiquidation(liquidationId, { liquidationStatus: "DA_CHOT" });
-      if (res.success) {
-        setShowDetail(false);
-        setSelected(null);
-        loadData();
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const pendingCount = liquidations.filter((l) => l.liquidationStatus === "CHO_CHOT").length;
-  const completedThisWeek = liquidations.filter((l) => l.liquidationStatus === "DA_CHOT").length;
+  const completedCount = liquidations.filter((l) => l.liquidationStatus === "HOAN_TAT" || l.liquidationStatus === "DA_CHOT").length;
   const totalRefund = liquidations.reduce((s, l) => s + (l.estimatedRefund || 0), 0);
 
   return (
@@ -152,7 +137,7 @@ export default function ManagerLiquidationPage() {
                     return (
                       <tr
                         key={item.id}
-                        onClick={() => { setSelected(item); setShowDetail(true); }}
+                        onClick={() => navigate(`/manager/liquidations/${item.id}`)}
                         className="border-b border-gray-50 hover:bg-[#f9fafb] cursor-pointer transition-colors"
                       >
                         <td className="px-5 py-4">
@@ -175,7 +160,7 @@ export default function ManagerLiquidationPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-sm text-gray-500">
-                          {new Date(item.contractEndDate).toLocaleDateString("vi-VN")}
+                          {item.contractEndDate ? new Date(item.contractEndDate).toLocaleDateString("vi-VN") : "—"}
                         </td>
                         <td className="px-5 py-4">
                           <ManagerStatusBadge statusMap={INSPECTION_STATUS} statusKey={item.inspectionStatus ?? "CHO_KIEM_TRA"} />
@@ -187,21 +172,15 @@ export default function ManagerLiquidationPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelected(item);
-                              setShowDetail(true);
+                              navigate(`/manager/liquidations/${item.id}`);
                             }}
-                            disabled={!canLiquidate}
                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
                               canLiquidate
                                 ? "bg-[#0b2447] text-white hover:bg-blue-900"
-                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                             }`}
                           >
-                            {item.liquidationStatus === "CHO_CHOT" && item.inspectionStatus !== "DA_KIEM_TRA"
-                              ? "Chờ kiểm tra"
-                              : item.liquidationStatus === "CHO_CHOT"
-                              ? "Thanh lý"
-                              : "Đã xử lý"}
+                            {canLiquidate ? "Thanh lý" : "Xem chi tiết"}
                           </button>
                         </td>
                       </tr>
@@ -239,7 +218,7 @@ export default function ManagerLiquidationPage() {
           </div>
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">ĐÃ THANH LÝ</p>
-            <p className="text-3xl font-black text-gray-900">{completedThisWeek}</p>
+            <p className="text-3xl font-black text-gray-900">{completedCount}</p>
             <p className="text-xs text-gray-400">hợp đồng hoàn tất</p>
           </div>
         </div>
@@ -254,97 +233,6 @@ export default function ManagerLiquidationPage() {
               {(totalRefund / 1_000_000).toFixed(1)}M
             </p>
             <p className="text-xs text-gray-400">tổng tiền hoàn cọc</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Liquidation Detail Modal */}
-      {showDetail && selected && (
-        <LiquidationDetailModal
-          record={selected}
-          onClose={() => { setShowDetail(false); setSelected(null); }}
-          onLiquidate={() => handleLiquidate(selected.id)}
-          submitting={submitting}
-        />
-      )}
-    </div>
-  );
-}
-
-function LiquidationDetailModal({ record: r, onClose, onLiquidate, submitting }) {
-  const canLiquidate = r.inspectionStatus === "DA_KIEM_TRA" && r.liquidationStatus === "CHO_CHOT";
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl mx-4">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 flex items-center justify-between px-8 py-5 z-10 rounded-t-3xl">
-          <div>
-            <h2 className="text-lg font-extrabold text-[#0b2447]">Chi tiết thanh lý</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{r.contractId} — {r.customerName}</p>
-          </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-
-        <div className="p-8 space-y-6">
-          {/* Info grid */}
-          <div className="bg-[#f4f7fa] rounded-2xl p-5 grid grid-cols-2 gap-4 text-sm">
-            {[
-              ["Phòng / Giường", `${r.roomDisplay}${r.bedDisplay ? ` — ${r.bedDisplay}` : ""}`],
-              ["Ngày kết thúc HĐ", new Date(r.contractEndDate).toLocaleDateString("vi-VN")],
-              ["Kiểm tra tài sản", r.inspectionStatus ?? "Chưa kiểm tra"],
-              ["Trạng thái đối soát", r.liquidationStatus],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <p className="text-xs text-gray-400 mb-1">{label}</p>
-                <p className="font-bold text-[#111827]">{value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Financial summary */}
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Tóng kết tài chính</p>
-            <div className="space-y-3">
-              {[
-                { label: "Tiền cọc ban đầu", value: r.depositAmount, color: "text-gray-900" },
-                { label: "Khấu trừ tài sản hỏng", value: -r.inspectionDeduction, color: "text-red-600" },
-                { label: "Dự kiến hoàn lại", value: r.estimatedRefund, color: "text-green-700 font-black text-xl" },
-              ].map((item) => (
-                <div key={item.label} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                  <span className="text-sm font-medium text-gray-600">{item.label}</span>
-                  <span className={`text-sm font-bold ${item.color}`}>
-                    {item.value >= 0 ? "+" : ""}{Math.abs(item.value).toLocaleString("vi-VN")}đ
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {r.note && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
-              <p className="text-xs font-black text-yellow-700 uppercase tracking-widest mb-1">Ghi chú</p>
-              <p className="text-sm text-yellow-800">{r.note}</p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">
-              Đóng
-            </button>
-            {canLiquidate && (
-              <button
-                onClick={onLiquidate}
-                disabled={submitting}
-                className="flex-1 py-3 bg-[#0b2447] text-white rounded-xl font-bold hover:bg-blue-900 transition-colors disabled:opacity-60 shadow-md shadow-blue-900/20"
-              >
-                {submitting ? "Đang xử lý..." : "Xác nhận thanh lý"}
-              </button>
-            )}
           </div>
         </div>
       </div>
