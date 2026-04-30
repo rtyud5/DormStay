@@ -33,7 +33,7 @@ export default function SaleSidebar() {
         </div>
         <div>
           <h1 className="text-[1.35rem] font-extrabold text-[#0b2447] tracking-tight leading-none mb-1">
-            DormiCare
+            DormStay
           </h1>
           <p className="text-[0.68rem] text-gray-500 font-bold uppercase tracking-[0.2em]">
             Sales Management
