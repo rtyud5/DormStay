@@ -49,6 +49,7 @@ import SaleRentalRequestDetailPage from "../pages/sale/SaleRentalRequestDetailPa
 import SaleCustomersPage from "../pages/sale/SaleCustomersPage";
 import SaleContractsPage from "../pages/sale/SaleContractsPage";
 import SaleCheckoutRequestsPage from "../pages/sale/SaleCheckoutRequestsPage";
+import SaleCheckoutRequestCreatePage from "../pages/sale/SaleCheckoutRequestCreatePage";
 
 
 const router = createBrowserRouter([
@@ -161,6 +162,7 @@ const router = createBrowserRouter([
           { path: "customers", element: <SaleCustomersPage /> },
           { path: "contracts", element: <SaleContractsPage /> },
           { path: "checkout-requests", element: <SaleCheckoutRequestsPage /> },
+          { path: "checkout-requests/new", element: <SaleCheckoutRequestCreatePage /> },
         ],
       },
     ],

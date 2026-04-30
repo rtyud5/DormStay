@@ -1,72 +1,91 @@
-// src/constants/sale.constants.js
+/**
+ * Constants cho Module Sale
+ * Routes, menu, breadcrumbs, status maps và option lists.
+ */
 
-const makeStatus = (label, className) => ({ label, className });
+export const SALE_ROUTES = {
+  HOME: "/",
+  DASHBOARD: "/sale/dashboard",
+  RENTAL_REQUESTS: "/sale/rental-requests",
+  RENTAL_REQUEST_NEW: "/sale/checkout-requests/new",
+  CHECKOUT_REQUEST_NEW: "/sale/checkout-requests/new",
+  RENTAL_REQUEST_DETAIL: (id) => `/sale/rental-requests/${id}`,
+  CUSTOMERS: "/sale/customers",
+  CONTRACTS: "/sale/contracts",
+  CHECKOUT_REQUESTS: "/sale/checkout-requests",
+};
+
+export const SALE_BREADCRUMB_MAP = {
+  "/sale/dashboard": "Dashboard",
+  "/sale/rental-requests/new": "Ghi nhận yêu cầu thuê",
+  "/sale/rental-requests": "Yêu cầu thuê",
+  "/sale/customers": "Khách hàng",
+  "/sale/contracts": "Hợp đồng",
+  "/sale/checkout-requests/new": "Ghi nhận yêu cầu trả phòng",
+  "/sale/checkout-requests": "Yêu cầu trả phòng",
+};
 
 export const RENTAL_REQUEST_STATUS = {
-  MOI_TAO: makeStatus("Mới tạo", "bg-sky-100 text-sky-700 ring-sky-200"),
-  DANG_XU_LY: makeStatus("Đang xử lý", "bg-amber-100 text-amber-700 ring-amber-200"),
-  CHO_THANH_TOAN: makeStatus("Chờ thanh toán", "bg-orange-100 text-orange-700 ring-orange-200"),
-  DA_COC: makeStatus("Đã cọc", "bg-indigo-100 text-indigo-700 ring-indigo-200"),
-  DA_XAC_NHAN: makeStatus("Đã xác nhận", "bg-emerald-100 text-emerald-700 ring-emerald-200"),
-  TU_CHOI: makeStatus("Từ chối", "bg-rose-100 text-rose-700 ring-rose-200"),
-  TAM_DUNG: makeStatus("Tạm dừng", "bg-slate-100 text-slate-700 ring-slate-200"),
+  MOI_TAO: { label: "Mới tạo", color: "bg-blue-100", textColor: "text-blue-700", dot: "bg-blue-500" },
+  DANG_XU_LY: { label: "Đang xử lý", color: "bg-amber-100", textColor: "text-amber-700", dot: "bg-amber-500" },
+  CHO_THANH_TOAN: { label: "Chờ thanh toán", color: "bg-orange-100", textColor: "text-orange-700", dot: "bg-orange-500" },
+  DA_XAC_NHAN: { label: "Đã xác nhận", color: "bg-emerald-100", textColor: "text-emerald-700", dot: "bg-emerald-500" },
+  TU_CHOI: { label: "Từ chối", color: "bg-rose-100", textColor: "text-rose-700", dot: "bg-rose-500" },
+  TAM_DUNG: { label: "Tạm dừng", color: "bg-slate-100", textColor: "text-slate-600", dot: "bg-slate-400" },
 };
 
 export const RENTAL_REQUEST_STATUS_OPTIONS = [
-  { value: "all", label: "Tất cả" },
-  { value: "MOI_TAO", label: RENTAL_REQUEST_STATUS.MOI_TAO.label },
-  { value: "DANG_XU_LY", label: RENTAL_REQUEST_STATUS.DANG_XU_LY.label },
-  { value: "CHO_THANH_TOAN", label: RENTAL_REQUEST_STATUS.CHO_THANH_TOAN.label },
-  { value: "DA_COC", label: RENTAL_REQUEST_STATUS.DA_COC.label },
-  { value: "DA_XAC_NHAN", label: RENTAL_REQUEST_STATUS.DA_XAC_NHAN.label },
-  { value: "TU_CHOI", label: RENTAL_REQUEST_STATUS.TU_CHOI.label },
-  { value: "TAM_DUNG", label: RENTAL_REQUEST_STATUS.TAM_DUNG.label },
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "MOI_TAO", label: "Mới tạo" },
+  { value: "DANG_XU_LY", label: "Đang xử lý" },
+  { value: "CHO_THANH_TOAN", label: "Chờ thanh toán" },
+  { value: "DA_XAC_NHAN", label: "Đã xác nhận" },
+  { value: "TU_CHOI", label: "Từ chối" },
+  { value: "TAM_DUNG", label: "Tạm dừng" },
 ];
 
 export const RENTAL_TYPE_OPTIONS = [
-  { value: "all", label: "Tất cả loại" },
+  { value: "all", label: "Tất cả loại thuê" },
   { value: "PHONG", label: "Thuê phòng" },
   { value: "GIUONG", label: "Thuê giường" },
 ];
 
 export const SALE_CONTRACT_STATUS = {
-  HIEU_LUC: makeStatus("Hiệu lực", "bg-emerald-100 text-emerald-700 ring-emerald-200"),
-  TAM_NGUNG: makeStatus("Tạm ngưng", "bg-amber-100 text-amber-700 ring-amber-200"),
-  HET_HAN: makeStatus("Hết hạn", "bg-slate-100 text-slate-700 ring-slate-200"),
-  CHO_THANH_LY: makeStatus("Chờ thanh lý", "bg-orange-100 text-orange-700 ring-orange-200"),
-  DA_THANH_LY: makeStatus("Đã thanh lý", "bg-indigo-100 text-indigo-700 ring-indigo-200"),
+  HIEU_LUC: { label: "Hiệu lực", color: "bg-emerald-100", textColor: "text-emerald-700", dot: "bg-emerald-500" },
+  CHO_THANH_LY: { label: "Chờ thanh lý", color: "bg-amber-100", textColor: "text-amber-700", dot: "bg-amber-500" },
+  TAM_DUNG: { label: "Tạm dừng", color: "bg-slate-100", textColor: "text-slate-600", dot: "bg-slate-400" },
+  CHAM_DUT: { label: "Chấm dứt", color: "bg-rose-100", textColor: "text-rose-700", dot: "bg-rose-500" },
 };
 
 export const CONTRACT_STATUS_OPTIONS = [
-  { value: "all", label: "Tất cả" },
-  { value: "HIEU_LUC", label: SALE_CONTRACT_STATUS.HIEU_LUC.label },
-  { value: "TAM_NGUNG", label: SALE_CONTRACT_STATUS.TAM_NGUNG.label },
-  { value: "HET_HAN", label: SALE_CONTRACT_STATUS.HET_HAN.label },
-  { value: "CHO_THANH_LY", label: SALE_CONTRACT_STATUS.CHO_THANH_LY.label },
-  { value: "DA_THANH_LY", label: SALE_CONTRACT_STATUS.DA_THANH_LY.label },
+  { value: "all", label: "Tất cả hợp đồng" },
+  { value: "HIEU_LUC", label: "Hiệu lực" },
+  { value: "CHO_THANH_LY", label: "Chờ thanh lý" },
+  { value: "TAM_DUNG", label: "Tạm dừng" },
+  { value: "CHAM_DUT", label: "Chấm dứt" },
 ];
 
 export const CHECKOUT_STATUS = {
-  CHO_XU_LY: makeStatus("Chờ xử lý", "bg-yellow-100 text-yellow-700 ring-yellow-200"),
-  DANG_KIEM_TRA: makeStatus("Đang kiểm tra", "bg-blue-100 text-blue-700 ring-blue-200"),
-  DA_KIEM_TRA: makeStatus("Đã kiểm tra", "bg-purple-100 text-purple-700 ring-purple-200"),
-  DA_THANH_LY: makeStatus("Đã thanh lý", "bg-emerald-100 text-emerald-700 ring-emerald-200"),
-  HUY: makeStatus("Đã hủy", "bg-slate-100 text-slate-700 ring-slate-200"),
+  CHO_XU_LY: { label: "Chờ xử lý", color: "bg-amber-100", textColor: "text-amber-700", dot: "bg-amber-500" },
+  DANG_KIEM_TRA: { label: "Đang kiểm tra", color: "bg-blue-100", textColor: "text-blue-700", dot: "bg-blue-500" },
+  DA_KIEM_TRA: { label: "Đã kiểm tra", color: "bg-violet-100", textColor: "text-violet-700", dot: "bg-violet-500" },
+  DA_THANH_LY: { label: "Đã thanh lý", color: "bg-emerald-100", textColor: "text-emerald-700", dot: "bg-emerald-500" },
+  HUY: { label: "Đã hủy", color: "bg-slate-100", textColor: "text-slate-600", dot: "bg-slate-400" },
 };
 
 export const CHECKOUT_STATUS_OPTIONS = [
-  { value: "all", label: "Tất cả" },
-  { value: "CHO_XU_LY", label: CHECKOUT_STATUS.CHO_XU_LY.label },
-  { value: "DANG_KIEM_TRA", label: CHECKOUT_STATUS.DANG_KIEM_TRA.label },
-  { value: "DA_KIEM_TRA", label: CHECKOUT_STATUS.DA_KIEM_TRA.label },
-  { value: "DA_THANH_LY", label: CHECKOUT_STATUS.DA_THANH_LY.label },
-  { value: "HUY", label: CHECKOUT_STATUS.HUY.label },
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "CHO_XU_LY", label: "Chờ xử lý" },
+  { value: "DANG_KIEM_TRA", label: "Đang kiểm tra" },
+  { value: "DA_KIEM_TRA", label: "Đã kiểm tra" },
+  { value: "DA_THANH_LY", label: "Đã thanh lý" },
+  { value: "HUY", label: "Đã hủy" },
 ];
 
-export const SALE_MENU = [
-  { id: "dashboard", label: "Dashboard", path: "/sale/dashboard" },
-  { id: "requests", label: "Yêu cầu thuê", path: "/sale/rental-requests" },
-  { id: "customers", label: "Khách hàng", path: "/sale/customers" },
-  { id: "contracts", label: "Hợp đồng", path: "/sale/contracts" },
-  { id: "checkout", label: "Yêu cầu trả phòng", path: "/sale/checkout-requests" },
+export const CHECKOUT_REASON_OPTIONS = [
+  { value: "Hết nhu cầu lưu trú", label: "Hết nhu cầu lưu trú" },
+  { value: "Chuyển chỗ ở", label: "Chuyển chỗ ở" },
+  { value: "Kết thúc kỳ học / công tác", label: "Kết thúc kỳ học / công tác" },
+  { value: "Vấn đề tài chính", label: "Vấn đề tài chính" },
+  { value: "Lý do khác", label: "Lý do khác" },
 ];

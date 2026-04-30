@@ -6,7 +6,7 @@ import {
   CONTRACT_STATUS_OPTIONS,
   RENTAL_TYPE_OPTIONS,
 } from "../../constants/sale.constants";
-import SaleStatusBadge from "../../components/sale/SaleStatusBadge.jsx";
+import SaleStatusBadge from "../../components/sale/SaleStatusBadge";
 
 export default function SaleContractsPage() {
   const [data, setData] = useState([]);

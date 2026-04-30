@@ -313,6 +313,7 @@ async processRentalRequest(id, { action, ghi_chu, ngay_vao_o, ngay_ket_thuc, ma_
       .from("hop_dong")
       .select(`
         ma_hop_dong, trang_thai, loai_muc_tieu, ngay_vao_o,
+        ma_ho_so_khach_hang,
         gia_thue_co_ban_thang, so_tien_dat_coc_bao_dam, created_at,
         ho_so!hop_dong_ma_ho_so_khach_hang_fkey ( ho_ten, so_dien_thoai ),
         phong ( ma_phong_hien_thi ),

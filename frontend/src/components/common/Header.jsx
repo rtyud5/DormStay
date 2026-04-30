@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getDefaultRouteByRole } from "../../lib/authRedirect";
 
 function Header() {
   const { user, profile, logout, isAuthenticated } = useAuth();
@@ -91,7 +92,7 @@ function Header() {
                     <p className="text-[13px] font-bold text-[#0F172A] truncate">{user?.email}</p>
                   </div>
                   <Link 
-                    to="/dashboard" 
+                    to={getDefaultRouteByRole(profile?.vai_tro)} 
                     className="flex items-center gap-3 px-4 py-2.5 text-[14px] font-bold text-[#475569] hover:bg-slate-50 hover:text-[#0052CC] transition-all"
                     onClick={() => setIsDropdownOpen(false)}
                   >

@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Filter, Plus, Clock } from "lucide-react";
 import {
   getSaleCheckoutRequests,
   updateCheckoutRequestTime,
 } from "../../services/sale.service";
 import { CHECKOUT_STATUS, CHECKOUT_STATUS_OPTIONS } from "../../constants/sale.constants";
-import SaleStatusBadge from "../../components/sale/SaleStatusBadge.jsx";
+import SaleStatusBadge from "../../components/sale/SaleStatusBadge";
+import { SALE_ROUTES } from "../../constants/sale.constants";
 
 export default function SaleCheckoutRequestsPage() {
+  const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -51,11 +54,19 @@ export default function SaleCheckoutRequestsPage() {
 
   return (
     <div className="p-8 lg:p-10 max-w-[1500px] mx-auto bg-[#f9fafb] min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-[2rem] font-extrabold text-[#1a3a5c] tracking-tight mb-2">
-          Yêu cầu trả phòng
-        </h1>
-        <p className="text-gray-500">Quản lý và đổi lịch yêu cầu trả phòng từ khách hàng.</p>
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-[2rem] font-extrabold text-[#1a3a5c] tracking-tight mb-2">
+            Yêu cầu trả phòng
+          </h1>
+          <p className="text-gray-500">Quản lý và đổi lịch yêu cầu trả phòng từ khách hàng.</p>
+        </div>
+        <button
+          onClick={() => navigate(SALE_ROUTES.CHECKOUT_REQUEST_NEW)}
+          className="inline-flex items-center gap-2 px-5 py-3 bg-[#0b2447] text-white rounded-full font-bold hover:bg-[#081a33] transition-colors shadow-md shadow-[#0b2447]/20 self-start"
+        >
+          <Plus className="w-4 h-4" /> Ghi nhận yêu cầu
+        </button>
       </div>
 
       {/* Filters */}

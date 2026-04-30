@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Link } from "react-router-dom";
+import { getDefaultRouteByRole } from "../lib/authRedirect";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import RentalRequestService from "../services/rentalRequest.service";
@@ -13,6 +14,11 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (String(profile?.vai_tro || "").toUpperCase() === "SALE") {
+      setLoading(false);
+      return;
+    }
+
     async function fetchData() {
       try {
         const [reqRes, payRes] = await Promise.all([
@@ -28,7 +34,14 @@ function DashboardPage() {
       }
     }
     fetchData();
-  }, []);
+  }, [profile?.vai_tro]);
+
+  const normalizedRole = String(profile?.vai_tro || "").toUpperCase();
+  const isSaleRole = normalizedRole === "SALE";
+
+  if (isSaleRole) {
+    return <Navigate to={getDefaultRouteByRole(profile?.vai_tro)} replace />;
+  }
 
   if (loading) {
      return (
