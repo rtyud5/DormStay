@@ -6,6 +6,7 @@ import PaymentForm from "../components/forms/PaymentForm";
 import Table from "../components/ui/Table";
 import { formatCurrency } from "../lib/format";
 import ContractService from "../services/contract.service";
+import PaymentService from "../services/payment.service";
 
 function ContractDetailPage() {
   const { id } = useParams();
@@ -39,8 +40,25 @@ function ContractDetailPage() {
   ];
 
   async function handlePayment(payload) {
-    console.log("Contract payment", payload);
-    window.alert("Tính năng thanh toán đang được kết nối với cổng thanh toán. Vui lòng thử lại sau.");
+    try {
+      const fallbackInvoice = (contract.invoices || []).find((invoice) => invoice.trang_thai !== "DA_THANH_TOAN");
+      const invoiceId = payload.invoiceId === "invoice-001" ? fallbackInvoice?.ma_hoa_don : payload.invoiceId;
+      if (!invoiceId) {
+        window.alert("Không có hóa đơn đang chờ thanh toán.");
+        return;
+      }
+      await PaymentService.createPayment({
+        invoiceId,
+        amount: Number(payload.amount || 0),
+        method: "PAYOS",
+      });
+      const res = await ContractService.getDetail(id);
+      setContract(res.data.data);
+      window.alert("Đã ghi nhận thanh toán hóa đơn.");
+    } catch (error) {
+      console.error("Lỗi thanh toán hóa đơn:", error);
+      window.alert(error?.response?.data?.message || "Không ghi nhận được thanh toán. Vui lòng thử lại.");
+    }
   }
 
   if (loading) return <div className="p-8 text-center font-bold">Đang tải chi tiết hợp đồng...</div>;

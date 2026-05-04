@@ -124,7 +124,7 @@ const AccountingBillingPageModel = {
     const { data: contractRows, error } = await supabase
       .from(TABLES.contracts)
       .select("*")
-      .in("trang_thai", ["HIEU_LUC", "DANG_XU_LY", "CHO_HIEU_LUC"])
+      .in("trang_thai", ["CHO_LAP_KHOAN_THU_DAU", "CHO_THANH_TOAN_KY_DAU", "HIEU_LUC", "DANG_XU_LY", "CHO_HIEU_LUC"])
       .order("created_at", { ascending: false })
       .limit(500);
 
@@ -218,7 +218,7 @@ const AccountingBillingPageModel = {
 
     const normalizedContractStatus = normalizeContractStatus(contract);
     if (!["ACTIVE", "PROCESSING"].includes(normalizedContractStatus)) {
-      throw new AppError("Only active or processing contracts can generate initial billing", 409);
+      throw new AppError("Only active or prepared contracts can generate initial billing", 409);
     }
 
     const existingInitialInvoiceSet = await getActiveInitialBillingInvoiceContractIds([contractId]);
@@ -250,6 +250,18 @@ const AccountingBillingPageModel = {
 
     if (invoiceError) {
       throw invoiceError;
+    }
+
+    const { error: contractStatusError } = await supabase
+      .from(TABLES.contracts)
+      .update({
+        trang_thai: "CHO_THANH_TOAN_KY_DAU",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("ma_hop_dong", contractId);
+
+    if (contractStatusError) {
+      throw contractStatusError;
     }
 
     let insertedCharges = [];

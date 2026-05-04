@@ -202,17 +202,100 @@ async processRentalRequest(id, { action, ghi_chu, ngay_vao_o, ngay_ket_thuc, ma_
   // Nếu là DUYET → gọi RPC tạo hợp đồng luôn
   if (action === 'DUYET') {
     if (!ngay_vao_o) throw new Error("Thiếu ngày vào ở");
-    const { data, error } = await supabase.rpc(
-      'approve_rental_request_and_create_contract',
-      {
-        p_ma_yeu_cau_thue:   parseInt(id),
-        p_ma_nhan_vien_sale: ma_ho_so_nguoi_thuc_hien,
-        p_ngay_vao_o:        ngay_vao_o,
-        p_ngay_ket_thuc:     ngay_ket_thuc || null,
+    const { data: request, error: requestError } = await supabase
+      .from('yeu_cau_thue')
+      .select(`
+        *,
+        giu_cho_tam ( ma_giuong, ma_phong, trang_thai )
+      `)
+      .eq('ma_yeu_cau_thue', id)
+      .maybeSingle();
+
+    if (requestError) throw requestError;
+    if (!request) throw new Error("Khong tim thay yeu cau thue");
+
+    const { data: existingContract, error: existingContractError } = await supabase
+      .from('hop_dong')
+      .select('*')
+      .eq('ma_yeu_cau_thue', id)
+      .maybeSingle();
+
+    if (existingContractError) throw existingContractError;
+
+    let contract = existingContract;
+    if (contract) {
+      const { data: updatedContract, error: updateContractError } = await supabase
+        .from('hop_dong')
+        .update({
+          ngay_vao_o,
+          trang_thai: contract.trang_thai === 'HIEU_LUC' ? 'HIEU_LUC' : 'CHO_LAP_KHOAN_THU_DAU',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('ma_hop_dong', contract.ma_hop_dong)
+        .select('*')
+        .single();
+      if (updateContractError) throw updateContractError;
+      contract = updatedContract;
+    } else {
+      const { data: insertedContract, error: insertContractError } = await supabase
+        .from('hop_dong')
+        .insert({
+          ma_yeu_cau_thue: request.ma_yeu_cau_thue,
+          ma_ho_so_khach_hang: request.ma_ho_so_khach_hang,
+          loai_muc_tieu: request.loai_muc_tieu,
+          ma_phong: request.ma_phong,
+          ma_giuong: request.ma_giuong,
+          ngay_vao_o,
+          gia_thue_co_ban_thang: request.gia_thue_thang,
+          so_tien_dat_coc_bao_dam: request.so_tien_dat_coc,
+          trang_thai: 'CHO_LAP_KHOAN_THU_DAU',
+        })
+        .select('*')
+        .single();
+      if (insertContractError) throw insertContractError;
+      contract = insertedContract;
+
+      const allocations = (request.giu_cho_tam || [])
+        .filter((hold) => hold.ma_giuong || hold.ma_phong)
+        .map((hold) => ({
+          ma_hop_dong: contract.ma_hop_dong,
+          loai_muc_tieu: request.loai_muc_tieu,
+          ma_phong: hold.ma_phong || request.ma_phong,
+          ma_giuong: hold.ma_giuong || null,
+          ngay_bat_dau: ngay_vao_o,
+          ngay_ket_thuc: ngay_ket_thuc || null,
+          trang_thai: 'CHO_HIEU_LUC',
+        }));
+
+      if (allocations.length) {
+        const { error: allocationError } = await supabase.from('phan_bo_hop_dong').insert(allocations);
+        if (allocationError) throw allocationError;
       }
-    );
-    if (error) throw error;
-    return data;
+    }
+
+    const { data: current } = await supabase
+      .from('yeu_cau_thue').select('trang_thai')
+      .eq('ma_yeu_cau_thue', id).single();
+
+    const { error: updateRequestError } = await supabase
+      .from('yeu_cau_thue')
+      .update({
+        trang_thai: 'DA_XAC_NHAN',
+        ma_ho_so_nhan_vien_phu_trach: ma_ho_so_nguoi_thuc_hien || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('ma_yeu_cau_thue', id);
+    if (updateRequestError) throw updateRequestError;
+
+    await supabase.from('nhat_ky_yeu_cau_thue').insert({
+      ma_yeu_cau_thue: id,
+      trang_thai_cu: current?.trang_thai || null,
+      trang_thai_moi: 'DA_XAC_NHAN',
+      ma_ho_so_nguoi_thuc_hien: ma_ho_so_nguoi_thuc_hien || request.ma_ho_so_khach_hang,
+      ghi_chu: ghi_chu || 'Sale xac nhan ho so, hop dong cho lap khoan thu dau',
+    });
+
+    return { success: true, trang_thai: 'DA_XAC_NHAN', contract };
   }
 
   // Các action khác: TU_CHOI, TAM_DUNG, YEU_CAU_BO_SUNG

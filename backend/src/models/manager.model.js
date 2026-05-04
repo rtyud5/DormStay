@@ -811,6 +811,38 @@ const ManagerModel = {
       throw new AppError("Đối soát kế toán chưa được chốt", 409);
     }
 
+    if (toNumber(reconciliation.so_tien_can_thanh_toan_them) > 0) {
+      const { data: additionalPaymentVoucher, error: voucherError } = await supabase
+        .from("phieu_thanh_toan_phat_sinh")
+        .select("ma_phieu_tt_phat_sinh, trang_thai")
+        .eq("ma_doi_soat", reconciliation.ma_doi_soat)
+        .maybeSingle();
+
+      if (voucherError) throw voucherError;
+      if (!additionalPaymentVoucher) {
+        throw new AppError("Đối soát thiếu phiếu thanh toán phát sinh", 409);
+      }
+      if (additionalPaymentVoucher.trang_thai !== "DA_THANH_TOAN") {
+        throw new AppError("Khách hàng chưa thanh toán phiếu phát sinh", 409);
+      }
+    }
+
+    if (toNumber(reconciliation.so_tien_hoan_lai) > 0) {
+      const { data: refundVoucher, error: refundError } = await supabase
+        .from("phieu_hoan_coc")
+        .select("ma_phieu_hoan_coc, trang_thai")
+        .eq("ma_doi_soat", reconciliation.ma_doi_soat)
+        .maybeSingle();
+
+      if (refundError) throw refundError;
+      if (!refundVoucher) {
+        throw new AppError("Đối soát thiếu phiếu hoàn cọc", 409);
+      }
+      if (!["DA_HOAN", "HOAN_TAT"].includes(refundVoucher.trang_thai)) {
+        throw new AppError("Phiếu hoàn cọc chưa hoàn tất", 409);
+      }
+    }
+
     const contract = yctp.hop_dong;
     const roomId = contract?.ma_phong || contract?.giuong?.ma_phong || null;
     const bedId = contract?.ma_giuong || null;

@@ -60,6 +60,10 @@ const mapRequestToFrontendFormat = (raw) => {
     trang_thai_hold: h.trang_thai,
     thoi_gian_het_han: h.thoi_gian_het_han,
   }));
+  const holdDeadline = holdRows
+    .map((h) => h.thoi_gian_het_han)
+    .filter(Boolean)
+    .sort()[0] || null;
 
   return {
     ...raw,
@@ -71,6 +75,7 @@ const mapRequestToFrontendFormat = (raw) => {
     date,
     amount: formatPrice(raw.so_tien_dat_coc),
     deadline: "--/--/----",
+    thoi_gian_het_han: holdDeadline,
     actionLink: `/rental-requests/${raw.ma_yeu_cau_thue}`,
     actionLabel,
     actionStyle,

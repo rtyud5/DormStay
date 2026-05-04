@@ -171,7 +171,7 @@ create table public.giu_cho_tam (
     (loai_muc_tieu = 'PHONG' and ma_phong is not null)
     or
     (loai_muc_tieu = 'GIUONG' and ma_giuong is not null)
-  )
+  ),
   checkoutUrl text,
   paymentLinkid text
 );
@@ -190,14 +190,14 @@ create table public.hop_dong (
   ngay_vao_o date not null,
   gia_thue_co_ban_thang numeric(14,2) not null default 0 check (gia_thue_co_ban_thang >= 0),
   so_tien_dat_coc_bao_dam numeric(14,2) not null default 0 check (so_tien_dat_coc_bao_dam >= 0),
-  trang_thai varchar(50) not null default 'HIEU_LUC',
+  trang_thai varchar(50) not null default 'CHO_LAP_KHOAN_THU_DAU',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint chk_hop_dong_loai_muc_tieu check (loai_muc_tieu in ('PHONG', 'GIUONG')),
   constraint chk_hop_dong_target check (
     (loai_muc_tieu = 'PHONG' and ma_phong is not null)
     or
-    (loai_muc_tieu = 'GIUONG' and ma_giuong is not null)
+    (loai_muc_tieu = 'GIUONG' and (ma_giuong is not null or ma_phong is not null))
   )
 );
 

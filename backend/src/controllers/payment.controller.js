@@ -18,8 +18,8 @@ const create = asyncHandler(async (req, res) => {
 });
 
 const createPayOSPayment = asyncHandler(async (req, res) => {
-  const { amount, description, returnUrl, cancelUrl } = req.body;
-  const result = await PaymentService.createPayOSPayment({ amount, description, returnUrl, cancelUrl });
+  const { amount, description, returnUrl, cancelUrl, expiredAt } = req.body;
+  const result = await PaymentService.createPayOSPayment({ amount, description, returnUrl, cancelUrl, expiredAt });
   return sendSuccess(res, result, "Create PayOS payment successful", 201);
 });
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import RentalRequestService from "../services/rentalRequest.service";
 import PaymentService from "../services/payment.service";
-import BedService from "../services/bed.service";
 import { formatCurrency } from "../utils/accounting.utils";
 import PayOS from "./PayOS";
 import { useAuth } from "../context/AuthContext";
@@ -85,26 +84,15 @@ function RequestDetailPage() {
         // 1. Xác nhận thanh toán với backend
         await PaymentService.confirmPayment(request.paymentLinkId);
         
-        // 2. Lấy danh sách ma_giuong từ request.selectedBeds và gọi API cập nhật trạng thái
-        if (request?.selectedBeds && request.selectedBeds.length > 0) {
-          // Dùng Promise.all để gửi tất cả request đổi trạng thái cùng lúc
-          await Promise.all(
-            request.selectedBeds.map((bed) => 
-              BedService.updateBedStatusToRented(bed.ma_giuong)
-            )
-          );
-          console.log("Đã cập nhật toàn bộ giường sang trạng thái DA_THUE");
-        }
-
-        // 3. Đóng giao diện QR Code
+        // 2. Đóng giao diện QR Code
         setShowPayment(false);
         
-        // 4. Refetch lại data để giao diện cập nhật trạng thái mới nhất
+        // 3. Refetch lại data để giao diện cập nhật trạng thái mới nhất
         const res = await RentalRequestService.getDetail(id);
         setRequest(res.data.data);
-        alert("Thanh toán thành công! Hồ sơ của bạn đã được duyệt và giường đã được khóa.");
+        alert("Thanh toán cọc thành công! Hợp đồng đã được tạo sẵn và đang chờ lập khoản thu kỳ đầu.");
       } catch (err) {
-        console.error("Lỗi xác nhận thanh toán hoặc cập nhật giường:", err);
+        console.error("Lỗi xác nhận thanh toán:", err);
         alert("Thanh toán đã ghi nhận. Trang sẽ tải lại để cập nhật.");
         window.location.reload();
       }
@@ -341,7 +329,7 @@ const handlePaymentCancel = async () => {
                 </div>
                 
                 <PayOS 
-                  amount={request.so_tien_dat_coc/1000} 
+                  amount={request.so_tien_dat_coc} 
                   description={`Thanh toan phong id ${id}`} 
                   existingCheckoutUrl={request.checkoutUrl} 
                   onPaymentLinkCreated={handlePaymentLinkCreated}
