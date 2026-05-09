@@ -46,6 +46,15 @@ function roundMoney(value) {
   return Math.round((toNumber(value) + Number.EPSILON) * 100) / 100;
 }
 
+function deriveMonthlyRentFromContract(contract) {
+  const depositAmount = toNumber(contract?.so_tien_dat_coc_bao_dam);
+  if (depositAmount > 0) {
+    return roundMoney(depositAmount / 2);
+  }
+
+  return toNumber(contract?.gia_thue_co_ban_thang);
+}
+
 function includesAny(rawValue, candidates = []) {
   const value = String(rawValue || "").toUpperCase();
   return candidates.some((candidate) => value.includes(candidate));
@@ -500,7 +509,7 @@ async function getReconciliationDetailPayload(reconciliationId) {
       bedId: bed?.ma_giuong || null,
       bedDisplay,
       depositAmount: toNumber(contract.so_tien_dat_coc_bao_dam),
-      baseRent: toNumber(contract.gia_thue_co_ban_thang),
+      baseRent: deriveMonthlyRentFromContract(contract),
     },
     raw: reconciliation,
   };
@@ -666,7 +675,7 @@ const AccountingReconciliationPageModel = {
           roomDisplay,
           bedDisplay,
           depositAmount: toNumber(contract.so_tien_dat_coc_bao_dam),
-          baseRent: toNumber(contract.gia_thue_co_ban_thang),
+          baseRent: deriveMonthlyRentFromContract(contract),
         },
       };
     }

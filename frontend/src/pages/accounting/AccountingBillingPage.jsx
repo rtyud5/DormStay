@@ -30,6 +30,16 @@ export default function AccountingBillingPage() {
     [contracts, selectedContractId],
   );
 
+  const parseMoneyInput = (value) => {
+    const normalized = String(value ?? "")
+      .trim()
+      .replace(/\./g, "")
+      .replace(/,/g, "")
+      .replace(/\s+/g, "");
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
   useEffect(() => {
     const fetchContracts = async () => {
       setLoadingContracts(true);
@@ -82,7 +92,7 @@ export default function AccountingBillingPage() {
   }, [selectedContractId]);
 
   const handleAddExtraCharge = () => {
-    setExtraCharges((prev) => [...prev, { id: Date.now(), name: "", amount: 0 }]);
+    setExtraCharges((prev) => [...prev, { id: Date.now(), name: "", amount: "" }]);
   };
 
   const handleRemoveExtraCharge = (id) => {
@@ -98,14 +108,14 @@ export default function AccountingBillingPage() {
 
         return {
           ...item,
-          [field]: field === "amount" ? Number(value || 0) : value,
+          [field]: value,
         };
       }),
     );
   };
 
   const rentAmount = Number(preview?.summary?.rentAmount || 0);
-  const totalExtra = extraCharges.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalExtra = extraCharges.reduce((sum, item) => sum + parseMoneyInput(item.amount), 0);
   const grandTotal = rentAmount + totalExtra;
 
   const handleCreateInvoice = async () => {
@@ -121,8 +131,8 @@ export default function AccountingBillingPage() {
       const payload = {
         dueDate: dueDate || undefined,
         extraCharges: extraCharges
-          .filter((item) => item.name && Number(item.amount) > 0)
-          .map((item) => ({ name: item.name, amount: Number(item.amount) })),
+          .filter((item) => item.name && parseMoneyInput(item.amount) > 0)
+          .map((item) => ({ name: item.name, amount: parseMoneyInput(item.amount) })),
       };
 
       const response = await createInitialBillingInvoice(selectedContractId, payload);
@@ -324,9 +334,11 @@ export default function AccountingBillingPage() {
                   />
                   <div className="flex items-center bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200">
                     <input
-                      type="number"
+                      type="text"
                       value={charge.amount}
                       onChange={(event) => handleUpdateExtraCharge(charge.id, "amount", event.target.value)}
+                      inputMode="numeric"
+                      placeholder="Nhap so tien"
                       className="w-28 bg-transparent border-none outline-none text-right font-extrabold text-[15px] text-gray-900"
                     />
                     <span className="ml-2 text-xs font-bold text-gray-500 uppercase">VND</span>

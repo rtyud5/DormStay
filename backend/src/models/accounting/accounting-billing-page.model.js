@@ -14,6 +14,7 @@ const {
   mapContractRow,
   loadInvoiceContext,
   mapInvoiceRow,
+  deriveMonthlyRentFromContract,
   getDaysInMonth,
   buildChargePayloads,
   buildInvoiceItemPayloads,
@@ -69,7 +70,7 @@ function mapExtraChargeLineItems(extraCharges = []) {
 }
 
 function buildInitialRentLineItem(contract) {
-  const monthlyRent = roundMoney(toNumber(contract.gia_thue_co_ban_thang));
+  const monthlyRent = roundMoney(deriveMonthlyRentFromContract(contract));
   const startDate = contract.ngay_vao_o ? new Date(contract.ngay_vao_o) : null;
   const daysInMonth = contract.ngay_vao_o ? getDaysInMonth(contract.ngay_vao_o) : 30;
   const rentDays = startDate ? Math.max(daysInMonth - startDate.getDate() + 1, 1) : daysInMonth;

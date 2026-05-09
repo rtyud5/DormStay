@@ -207,14 +207,22 @@ function mapReconciliationStatusToDb(status) {
   return "CHO_CHOT";
 }
 
+function deriveMonthlyRentFromContract(contract, fallbackMonthlyRent = 0) {
+  const depositAmount = toNumber(contract?.so_tien_dat_coc_bao_dam);
+  if (depositAmount > 0) {
+    return roundMoney(depositAmount / 2);
+  }
+
+  return toNumber(contract?.gia_thue_co_ban_thang || fallbackMonthlyRent);
+}
+
 function calculateDepositFormula(contract, room) {
-  const monthlyRent = toNumber(contract.gia_thue_co_ban_thang || room?.gia_thang);
+  const monthlyRent = deriveMonthlyRentFromContract(contract, room?.gia_thang);
   const roomCapacity = Math.max(toNumber(room?.suc_chua), 1);
   // TODO: For full multi-bed accounting, bedCount should come from phan_bo_hop_dong rows
   // For now, use so_luong_giuong_dat if available, else fallback to legacy logic
-  const bedCount = contract.loai_muc_tieu === "PHONG"
-    ? roomCapacity
-    : Math.max(toNumber(contract.so_luong_giuong_dat), 1);
+  const bedCount =
+    contract.loai_muc_tieu === "PHONG" ? roomCapacity : Math.max(toNumber(contract.so_luong_giuong_dat), 1);
   const monthlyRentPerBed = contract.loai_muc_tieu === "PHONG" ? roundMoney(monthlyRent / roomCapacity) : monthlyRent;
 
   return {
@@ -249,9 +257,7 @@ function mapContractRow(contract, context) {
 
   // TODO: Full multi-bed accounting — bedNumber should list all allocated beds
   const allocations = context.allocationGroup?.[contract.ma_hop_dong] || [];
-  const allocationBedNumbers = allocations.length > 0
-    ? allocations.map(a => a.ma_giuong).filter(Boolean)
-    : [];
+  const allocationBedNumbers = allocations.length > 0 ? allocations.map((a) => a.ma_giuong).filter(Boolean) : [];
 
   return {
     id: contract.ma_hop_dong,
@@ -262,7 +268,7 @@ function mapContractRow(contract, context) {
     bedNumber: bed?.ma_giuong_hien_thi || "",
     rentalType: contract.loai_muc_tieu,
     startDate: contract.ngay_vao_o,
-    baseRent: toNumber(contract.gia_thue_co_ban_thang),
+    baseRent: deriveMonthlyRentFromContract(contract),
     securityDeposit: deposit.totalDeposit,
     bedCount: deposit.bedCount,
     allocations: allocations,
@@ -510,6 +516,7 @@ module.exports = {
   mapPaymentStatusToDb,
   mapRefundStatusToDb,
   mapReconciliationStatusToDb,
+  deriveMonthlyRentFromContract,
   calculateDepositFormula,
   calculateProratedFirstRent,
   mapContractRow,
