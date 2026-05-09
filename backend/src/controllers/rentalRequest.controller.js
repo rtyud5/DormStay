@@ -78,6 +78,9 @@ const create = asyncHandler(async (req, res) => {
 
   console.log('RentalRequest RPC Payload:', rpcPayload);
 
+  // Expire any stale bed holds before creating a new rental request.
+  await RentalRequestService.expireStaleHolds();
+
   const result = await RentalRequestService.create(rpcPayload);
   return sendSuccess(res, result, "Create rental request successful", 201);
 });

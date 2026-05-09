@@ -141,13 +141,21 @@ BEGIN
     END LOOP;
   END IF;
 
-  -- 5) Validate no active holds exist for these beds
+  -- 5) Expire stale holds before validating active bed holds
   IF v_bed_count > 0 THEN
+    UPDATE public.giu_cho_tam
+    SET trang_thai = 'HET_HAN',
+        updated_at = NOW()
+    WHERE trang_thai = 'DANG_GIU'
+      AND thoi_gian_het_han IS NOT NULL
+      AND thoi_gian_het_han < NOW()
+      AND ma_giuong = ANY(p_selected_beds);
+
     SELECT count(*) INTO v_conflict_count
     FROM public.giu_cho_tam
     WHERE ma_giuong = ANY(p_selected_beds)
       AND trang_thai IN ('DANG_GIU', 'DA_XAC_NHAN_COC')
-      AND thoi_gian_het_han > NOW();
+      AND (thoi_gian_het_han IS NULL OR thoi_gian_het_han > NOW());
     IF v_conflict_count > 0 THEN
       RAISE EXCEPTION 'One or more beds already have active holds (% conflicts)', v_conflict_count;
     END IF;

@@ -308,30 +308,64 @@ const PaymentModel = {
     const allocatedBedIds = [...new Set((allocations || []).map((item) => item.ma_giuong).filter(Boolean))];
     const allocatedRoomIds = [...new Set((allocations || []).map((item) => item.ma_phong).filter(Boolean))];
 
+    // Track rooms that had beds updated (for trigger to handle status)
+    const roomsWithBedsUpdated = new Set();
+
     if (allocatedBedIds.length) {
       const { error: bedError } = await supabase
         .from("giuong")
         .update({ trang_thai: "DA_THUE", updated_at: new Date().toISOString() })
         .in("ma_giuong", allocatedBedIds);
       if (bedError) throw bedError;
+
+      // Track which rooms had beds updated
+      for (const bedId of allocatedBedIds) {
+        const { data: bed } = await supabase
+          .from("giuong")
+          .select("ma_phong")
+          .eq("ma_giuong", bedId)
+          .maybeSingle();
+        if (bed?.ma_phong) roomsWithBedsUpdated.add(bed.ma_phong);
+      }
     } else if (contract.loai_muc_tieu === "GIUONG" && contract.ma_giuong) {
       const { error: bedError } = await supabase
         .from("giuong")
         .update({ trang_thai: "DA_THUE", updated_at: new Date().toISOString() })
         .eq("ma_giuong", contract.ma_giuong);
       if (bedError) throw bedError;
+
+      // Track the room
+      const { data: bed } = await supabase
+        .from("giuong")
+        .select("ma_phong")
+        .eq("ma_giuong", contract.ma_giuong)
+        .maybeSingle();
+      if (bed?.ma_phong) roomsWithBedsUpdated.add(bed.ma_phong);
     }
 
-    if (contract.ma_phong || allocatedRoomIds.length) {
-      const { error: roomError } = await supabase
-        .from("phong")
-        .update({
-          trang_thai: contract.loai_muc_tieu === "PHONG" ? "DAY" : "SAP_DAY",
-          updated_at: new Date().toISOString(),
-        })
-        .in("ma_phong", contract.ma_phong ? [contract.ma_phong] : allocatedRoomIds);
-      if (roomError) throw roomError;
+    // Handle room status updates
+    // For whole room rentals (loai_muc_tieu === "PHONG")
+    if (contract.loai_muc_tieu === "PHONG" && contract.ma_phong) {
+      // Check if room has beds
+      const { data: bedCount, error: bedCountError } = await supabase
+        .from("giuong")
+        .select("ma_giuong", { count: "exact" })
+        .eq("ma_phong", contract.ma_phong);
+
+      if (!bedCountError) {
+        // If room has no beds, mark as DAY (whole room rental)
+        // If room has beds, trigger will handle status update
+        if ((bedCount?.length || 0) === 0) {
+          const { error: roomError } = await supabase
+            .from("phong")
+            .update({ trang_thai: "DAY", updated_at: new Date().toISOString() })
+            .eq("ma_phong", contract.ma_phong);
+          if (roomError) throw roomError;
+        }
+      }
     }
+    // For bed rentals (loai_muc_tieu === "GIUONG"), let the trigger handle status
+    // The trigger will mark room as DAY when all beds are rented, or SAP_DAY if partial
 
     await createSystemLog({
       tableName: "hop_dong",
