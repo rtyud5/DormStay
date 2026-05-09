@@ -170,7 +170,7 @@ const ManagerModel = {
       totalRooms: totalRooms || 0,
       occupiedRooms: roomsOverview.stats?.occupied || 0,
       emptyRooms: roomsOverview.stats?.empty || 0,
-      maintenanceRooms: 0,
+      maintenanceRooms: maintenanceRooms || 0,
       pendingCheckoutRequests: pendingCheckoutRequests || 0,
       checkoutRequestsThisWeek: checkoutRequestsThisWeek || 0,
       totalResidents,
@@ -533,8 +533,32 @@ const ManagerModel = {
   },
 
   async createInspection(payload) {
+    // 0. Validate: yêu cầu trả phòng phải tồn tại
     const { data: yctp } = await supabase.from('yeu_cau_tra_phong').select('*').eq('ma_yeu_cau_tra_phong', payload.checkoutRequestId).single();
-    if (!yctp) throw new Error("Yêu cầu trả phòng không tồn tại");
+    if (!yctp) throw new AppError("Yêu cầu trả phòng không tồn tại", 404);
+
+    // 0a. Validate: trạng thái YCTP phải là CHO_XU_LY hoặc DANG_KIEM_TRA
+    const ALLOWED_STATUSES = ['CHO_XU_LY', 'DANG_KIEM_TRA'];
+    if (!ALLOWED_STATUSES.includes(yctp.trang_thai)) {
+      throw new AppError(
+        `Không thể tạo biên bản kiểm tra khi yêu cầu đang ở trạng thái '${yctp.trang_thai}'`,
+        409
+      );
+    }
+
+    // 0b. Validate: chưa có biên bản kiểm tra nào cho YCTP này
+    const { count: existingCount } = await supabase
+      .from('bien_ban_kiem_tra')
+      .select('*', { count: 'exact', head: true })
+      .eq('ma_yeu_cau_tra_phong', payload.checkoutRequestId);
+    if (existingCount > 0) {
+      throw new AppError("Yêu cầu trả phòng này đã có biên bản kiểm tra", 409);
+    }
+
+    // 0c. Validate: inspectorProfileId phải được cung cấp
+    if (!payload.inspectorProfileId) {
+      throw new AppError("Thiếu thông tin người kiểm tra", 400);
+    }
 
     const totalDeduction = payload.totalDeduction || payload.items.reduce((sum, i) => sum + (Number(i.compensation) || 0), 0);
 
@@ -542,7 +566,7 @@ const ManagerModel = {
     const { data: bbkt, error: errBbkt } = await supabase.from('bien_ban_kiem_tra').insert({
       ma_yeu_cau_tra_phong: payload.checkoutRequestId,
       ma_hop_dong: yctp.ma_hop_dong,
-      ma_ho_so_nguoi_kiem_tra: payload.inspectorProfileId || 1,
+      ma_ho_so_nguoi_kiem_tra: payload.inspectorProfileId,
       tong_uoc_tinh_khau_tru: totalDeduction,
       trang_thai: 'DA_KIEM_TRA'
     }).select().single();
@@ -888,6 +912,15 @@ const ManagerModel = {
       .update({ trang_thai: 'HOAN_TAT' })
       .eq('ma_yeu_cau_tra_phong', id);
     if (checkoutError) throw checkoutError;
+
+    // Ghi nhật ký hệ thống
+    await supabase.from('nhat_ky_he_thong').insert({
+      ten_bang: 'hop_dong',
+      ma_ban_ghi: yctp.ma_hop_dong,
+      hanh_dong: 'THANH_LY_HOP_DONG',
+      ma_ho_so_nguoi_thuc_hien: payload?.performedByProfileId || null,
+      ghi_chu: `Manager thanh ly hop dong HD-${yctp.ma_hop_dong}. Doi soat #${reconciliation.ma_doi_soat}. Hoan ${toNumber(reconciliation.so_tien_hoan_lai)}d, phat sinh ${toNumber(reconciliation.so_tien_can_thanh_toan_them)}d. Phong/giuong da tra ve TRONG.`,
+    });
 
     return {
       checkoutRequestId: yctp.ma_yeu_cau_tra_phong,

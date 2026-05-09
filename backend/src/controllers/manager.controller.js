@@ -33,7 +33,10 @@ const getInspectionDetail = asyncHandler(async (req, res) => {
 });
 
 const createInspection = asyncHandler(async (req, res) => {
-  const result = await ManagerService.createInspection(req.body);
+  const result = await ManagerService.createInspection({
+    ...req.body,
+    inspectorProfileId: req.user.profileId,
+  });
   return sendSuccess(res, result, "Create inspection report successful", 201);
 });
 
@@ -48,7 +51,10 @@ const getLiquidationDetail = asyncHandler(async (req, res) => {
 });
 
 const performLiquidation = asyncHandler(async (req, res) => {
-  const result = await ManagerService.performLiquidation(req.params.id, req.body);
+  const result = await ManagerService.performLiquidation(req.params.id, {
+    ...req.body,
+    performedByProfileId: req.user.profileId,
+  });
   return sendSuccess(res, result, "Perform liquidation successful", 200);
 });
 
