@@ -2,16 +2,17 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/common/PageHeader";
-import PaymentForm from "../components/forms/PaymentForm";
 import Table from "../components/ui/Table";
 import { formatCurrency } from "../lib/format";
 import ContractService from "../services/contract.service";
 import PaymentService from "../services/payment.service";
+import PayOS from "./PayOS";
 
 function ContractDetailPage() {
   const { id } = useParams();
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPayment, setShowPayment] = useState(false);
 
   useEffect(() => {
     async function fetchDetail() {
@@ -39,27 +40,74 @@ function ContractDetailPage() {
     )},
   ];
 
-  async function handlePayment(payload) {
+  // Tìm hóa đơn đang chờ thanh toán
+  const pendingInvoice = (contract?.invoices || []).find(inv => inv.trang_thai !== "DA_THANH_TOAN");
+
+  const handlePaymentLinkCreated = async (paymentLinkData) => {
     try {
-      const fallbackInvoice = (contract.invoices || []).find((invoice) => invoice.trang_thai !== "DA_THANH_TOAN");
-      const invoiceId = payload.invoiceId === "invoice-001" ? fallbackInvoice?.ma_hoa_don : payload.invoiceId;
-      if (!invoiceId) {
-        window.alert("Không có hóa đơn đang chờ thanh toán.");
-        return;
+      // Lưu PayOS info vào database ngay khi payment link được tạo mới
+      if (paymentLinkData?.checkoutUrl && paymentLinkData?.paymentLinkId) {
+        console.log("Đã tạo payment link thành công");
+        setContract(prev => ({
+          ...prev,
+          checkoutUrl: paymentLinkData.checkoutUrl,
+          paymentLinkId: paymentLinkData.paymentLinkId
+        }));
       }
-      await PaymentService.createPayment({
-        invoiceId,
-        amount: Number(payload.amount || 0),
-        method: "PAYOS",
-      });
+    } catch (err) {
+      console.error("Lỗi khi lưu PayOS info:", err);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    try {
+      // Nếu có hóa đơn đang chờ, record lại thanh toán để backend kích hoạt hợp đồng
+      if (pendingInvoice) {
+        await PaymentService.payInvoice({
+          ma_hoa_don: pendingInvoice.ma_hoa_don,
+          so_tien: pendingInvoice.tong_so_tien,
+          phuong_thuc: "PAYOS",
+          trang_thai: "DA_XAC_NHAN",
+        });
+      }
+      
+      // Đóng giao diện QR Code
+      setShowPayment(false);
+      
+      // Refetch lại data - hợp đồng sẽ có trạng thái HIEU_LUC nếu là kỳ đầu
       const res = await ContractService.getDetail(id);
       setContract(res.data.data);
-      window.alert("Đã ghi nhận thanh toán hóa đơn.");
-    } catch (error) {
-      console.error("Lỗi thanh toán hóa đơn:", error);
-      window.alert(error?.response?.data?.message || "Không ghi nhận được thanh toán. Vui lòng thử lại.");
+      alert("Thanh toán thành công! Hợp đồng đã được kích hoạt.");
+    } catch (err) {
+      console.error("Lỗi xác nhận thanh toán:", err);
+      alert("Thanh toán đã ghi nhận. Trang sẽ tải lại để cập nhật.");
+      window.location.reload();
     }
-  }
+  };
+
+  const handlePaymentCancel = async () => {
+    try {
+      // Nếu không có ID thì chỉ cần đóng giao diện là xong, không gọi API
+      if (!contract?.paymentLinkId) {
+        setShowPayment(false);
+        return;
+      }
+
+      console.log("Hủy thanh toán với paymentLinkId:", contract.paymentLinkId);
+      await PaymentService.cancelPayment(contract.paymentLinkId);
+      
+      setShowPayment(false);
+      
+      const res = await ContractService.getDetail(id);
+      setContract(res.data.data);
+    } catch (err) {
+      console.error("Lỗi khi hủy thanh toán:", err);
+      const res = await ContractService.getDetail(id);
+      if (res?.data?.data) {
+        setContract(res.data.data);
+      }
+    }
+  };
 
   if (loading) return <div className="p-8 text-center font-bold">Đang tải chi tiết hợp đồng...</div>;
   if (!contract) return <div className="p-8 text-center font-bold text-red-500">Không tìm thấy thông tin hợp đồng.</div>;
@@ -109,9 +157,50 @@ function ContractDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <Card title="Thanh toán hóa đơn" description="Nhập số tiền hoặc chọn hóa đơn cần thanh toán.">
-            <PaymentForm onSubmit={handlePayment} />
-          </Card>
+          {!showPayment ? (
+            <Card title="Thanh toán hóa đơn" description={pendingInvoice ? `Mã hóa đơn: ${pendingInvoice.ma_hoa_don}` : "Không có hóa đơn đang chờ"}>
+              {pendingInvoice ? (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="text-xs font-bold text-blue-600 uppercase mb-1">Số tiền thanh toán</div>
+                    <div className="text-2xl font-black text-blue-900">
+                      {formatCurrency(pendingInvoice.tong_so_tien)}
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowPayment(true)} 
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 rounded-lg font-bold text-sm transition-all shadow-md"
+                  >
+                    THANH TOÁN NGAY
+                  </button>
+                </div>
+              ) : (
+                <p className="py-6 text-center text-slate-400 text-sm">Tất cả hóa đơn đã được thanh toán</p>
+              )}
+            </Card>
+          ) : (
+            <Card title="Mã QR Thanh toán" description="Quét mã QR để hoàn tất thanh toán">
+              <div className="flex items-center justify-between mb-4 pb-4 border-b">
+                <span className="font-semibold text-slate-900">Chuyển khoản qua PayOS</span>
+                <button 
+                  onClick={handlePaymentCancel}
+                  className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                  title="Hủy thanh toán"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              <PayOS 
+                amount={pendingInvoice?.tong_so_tien/1000 || 0}
+                description={`Thanh toan hoa don ${pendingInvoice?.ma_hoa_don || id}`} 
+                existingCheckoutUrl={contract.checkoutUrl} 
+                onPaymentLinkCreated={handlePaymentLinkCreated}
+                onSuccess={handlePaymentSuccess} 
+                onCancel={handlePaymentCancel} 
+              />
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -12,7 +12,13 @@ const getDetail = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch contract detail successful");
 });
 
+const getInvoices = asyncHandler(async (req, res) => {
+  const result = await ContractService.getInvoices(req.params.id, req.user.id);
+  return sendSuccess(res, result, "Fetch contract invoices successful");
+});
+
 module.exports = {
   getList,
   getDetail,
+  getInvoices,
 };

@@ -35,6 +35,7 @@ const ContractModel = {
       .select(`
         *,
         phong ( ma_phong_hien_thi ),
+        ho_so ( ma_nguoi_dung_xac_thuc ),
         phan_bo_hop_dong (
           ma_phan_bo,
           loai_muc_tieu,

@@ -7,6 +7,9 @@ const ContractService = {
   getDetail(id) {
     return api.get(`/contracts/${id}`);
   },
+  getInvoices(id) {
+    return api.get(`/contracts/${id}/invoices`);
+  },
 };
 
 export default ContractService;

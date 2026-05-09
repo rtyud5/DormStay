@@ -18,6 +18,9 @@ const PaymentService = {
   },
   confirmPayment: (paymentLinkId) => {
     return api.put(`/payments/confirm/${paymentLinkId}`);
+  },
+  payInvoice: (payload) => {
+    return api.post("/payments/pay-invoice", payload);
   }
 };
 

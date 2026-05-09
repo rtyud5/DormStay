@@ -8,15 +8,18 @@ const ContractService = {
 
   async getDetail(id, userId) {
     const contract = await ContractModel.getById(id);
-    if (!contract) return null;
+    if (!contract || contract.ho_so?.ma_nguoi_dung_xac_thuc !== userId) return null;
 
-    // Check if the contract belongs to the user (optional check here since model should handle it)
-    const invoices = await InvoiceModel.listByUserId(userId);
+    const invoices = await InvoiceModel.listByContractId(id, userId);
 
     return {
       ...contract,
-      invoices: invoices.filter((item) => item.ma_hop_dong === id),
+      invoices,
     };
+  },
+
+  async getInvoices(contractId, userId) {
+    return InvoiceModel.listByContractId(contractId);
   },
 };
 
