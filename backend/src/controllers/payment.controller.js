@@ -35,11 +35,17 @@ const confirmPayment = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Confirm payment successful");
 });
 
+const payInvoice = asyncHandler(async (req, res) => {
+  const result = await PaymentService.payInvoice(req.body);
+  return sendSuccess(res, result, "Pay invoice successful");
+});
+
 module.exports = {
   getInvoices,
   getHistory,
   create,
   createPayOSPayment,
   cancelPayment,
-  confirmPayment
+  confirmPayment,
+  payInvoice
 };

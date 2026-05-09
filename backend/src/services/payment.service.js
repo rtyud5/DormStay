@@ -22,6 +22,10 @@ const PaymentService = {
   },
   async confirmPayment(paymentLinkId) {
     return PaymentModel.confirmPayment(paymentLinkId);
+  },
+
+  async payInvoice(payload) {
+    return PaymentModel.processPaymentForInvoice(payload);
   }
 };
 

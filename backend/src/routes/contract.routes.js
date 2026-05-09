@@ -6,5 +6,6 @@ const router = express.Router();
 
 router.get("/", authMiddleware, ContractController.getList);
 router.get("/:id", authMiddleware, ContractController.getDetail);
+router.get("/:id/invoices", authMiddleware, ContractController.getInvoices);
 
 module.exports = router;
