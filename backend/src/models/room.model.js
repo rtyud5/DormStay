@@ -14,12 +14,13 @@ const formatPrice = (price) => {
 async function getActiveHoldsForRoom(roomId) {
   if (!supabase) return {};
 
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("giu_cho_tam")
     .select("ma_giuong, ma_phong, loai_muc_tieu, trang_thai, thoi_gian_het_han")
     .eq("ma_phong", roomId)
     .in("trang_thai", ["DANG_GIU", "DA_XAC_NHAN_COC"])
-    .gt("thoi_gian_het_han", new Date().toISOString());
+    .or(`thoi_gian_het_han.is.null,thoi_gian_het_han.gt.${now}`);
 
   if (error) {
     console.error("Error fetching active holds:", error);
@@ -204,12 +205,13 @@ const RoomModel = {
     const roomIds = (data || []).map(r => r.ma_phong);
     let allHoldsMap = {};
     if (roomIds.length > 0) {
+      const now = new Date().toISOString();
       const { data: holdsData } = await supabase
         .from("giu_cho_tam")
         .select("ma_giuong, ma_phong, trang_thai, thoi_gian_het_han")
         .in("ma_phong", roomIds)
         .in("trang_thai", ["DANG_GIU", "DA_XAC_NHAN_COC"])
-        .gt("thoi_gian_het_han", new Date().toISOString());
+        .or(`thoi_gian_het_han.is.null,thoi_gian_het_han.gt.${now}`);
       
       for (const hold of (holdsData || [])) {
         if (hold.ma_giuong) {

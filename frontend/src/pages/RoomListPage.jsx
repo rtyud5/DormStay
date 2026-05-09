@@ -458,9 +458,15 @@ const handleSliderChange = (e, type) => {
                            <Link to={`/rooms/${room.id}`} className="flex-1">
                               <button className="w-full bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-slate-50 text-[#0F172A] py-2.5 rounded-xl font-bold text-[14px] transition-all cursor-pointer">Chi tiết</button>
                            </Link>
-                           <Link to={`/booking/${room.id}`} className="flex-1">
-                              <button className="w-full bg-[#0A192F] hover:bg-[#112240] text-white py-2.5 rounded-xl font-bold text-[14px] transition-all shadow-sm cursor-pointer">Đặt cọc ngay</button>
-                           </Link>
+                           {room.status === 'ĐÃ ĐẦY' ? (
+                              <div className="flex-1">
+                                 <button className="w-full bg-gray-300 text-gray-500 py-2.5 rounded-xl font-bold text-[14px] cursor-not-allowed">Phòng đã đầy</button>
+                              </div>
+                           ) : (
+                              <Link to={`/booking/${room.id}`} className="flex-1">
+                                 <button className="w-full bg-[#0A192F] hover:bg-[#112240] text-white py-2.5 rounded-xl font-bold text-[14px] transition-all shadow-sm cursor-pointer">Đặt cọc ngay</button>
+                              </Link>
+                           )}
                         </div>
                      </div>
                   </div>

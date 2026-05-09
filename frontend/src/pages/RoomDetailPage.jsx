@@ -246,9 +246,16 @@ function RoomDetailPage() {
                    </div>
                 </div>
 
-                <Link to={`/booking/${room.id}`} className="block text-center w-full bg-[#0A192F] hover:bg-[#112240] text-white py-4 rounded-2xl font-bold text-[15px] transition-colors shadow-lg hover:shadow-xl mb-4">
-                   Đặt cọc giữ chỗ ngay
-                </Link>
+                {/* Kiểm tra trạng thái phòng để hiển thị nút đặt cọc */}
+                {room.status === 'ĐÃ ĐẦY' ? (
+                   <div className="block text-center w-full bg-gray-300 text-gray-500 py-4 rounded-2xl font-bold text-[15px] mb-4 cursor-not-allowed">
+                      Phòng đã đầy
+                   </div>
+                ) : (
+                   <Link to={`/booking/${room.id}`} className="block text-center w-full bg-[#0A192F] hover:bg-[#112240] text-white py-4 rounded-2xl font-bold text-[15px] transition-colors shadow-lg hover:shadow-xl mb-4">
+                      Đặt cọc giữ chỗ ngay
+                   </Link>
+                )}
 
                 <div className="flex gap-4 mb-6">
                    <button className="flex-1 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#0F172A] py-3 rounded-xl font-bold text-[14px] flex items-center justify-center gap-2 transition-all">
