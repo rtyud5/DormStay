@@ -43,6 +43,6 @@ router.post(
   AccountingController.confirmAdditionalPaymentVouchersCash,
 );
 
-router.use(AccountingController.accountingApisTemporarilyDisabled);
+//router.use(AccountingController.accountingApisTemporarilyDisabled);
 
 module.exports = router;
