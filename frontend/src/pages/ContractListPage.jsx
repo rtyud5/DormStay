@@ -10,7 +10,6 @@ function ContractListPage() {
     async function fetchContracts() {
       try {
         const res = await ContractService.getList();
-        // Assuming the backend returns standard Supabase response { data: { data: [...] } }
         setContracts(res.data.data || []);
       } catch (err) {
         console.error("Lỗi khi lấy danh sách hợp đồng:", err);
@@ -22,7 +21,7 @@ function ContractListPage() {
   }, []);
 
   const activeContractsCount = contracts.filter(c => c.trang_thai === 'HIEU_LUC').length;
-  const expiringContractsCount = 0; // Logic for expiring can be added later
+  const expiringContractsCount = 0;
 
   if (loading) {
     return (
@@ -61,7 +60,7 @@ function ContractListPage() {
         </div>
       ) : (
         <>
-          {/* Stats row */}
+          {/* Stats row - unchanged */}
           <div className="grid md:grid-cols-3 gap-6 mb-10">
             <div className="bg-white rounded-3xl p-7 flex items-center gap-6 shadow-[0_4px_25px_rgb(0,0,0,0.03)] border border-slate-50 ring-1 ring-slate-100/50">
                 <div className="w-16 h-16 rounded-2xl bg-[#E6F0FF] flex items-center justify-center text-[#0052CC] shadow-inner">
@@ -92,50 +91,61 @@ function ContractListPage() {
             </div>
           </div>
 
+          {/* Contract Cards - FIXED overflow issue */}
           <div className="grid lg:grid-cols-2 gap-8 mb-12">
             {contracts.map((contract) => (
-              <div key={contract.ma_hop_dong} className="bg-white rounded-[40px] p-6 pr-8 shadow-[0_4px_30px_rgb(0,0,0,0.04)] border border-slate-50 flex flex-col sm:flex-row gap-8 relative overflow-hidden group hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all">
-                <div className="w-full sm:w-[220px] shrink-0 h-[260px] sm:h-full relative rounded-[32px] overflow-hidden">
-                  <img 
-                    src={contract.phong?.hinh_anh_bia || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80"} 
-                    alt="Room" 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+              <div 
+                key={contract.ma_hop_dong} 
+                className="bg-white rounded-[40px] p-6 pr-8 shadow-[0_4px_30px_rgb(0,0,0,0.04)] border border-slate-50 flex flex-col sm:flex-row gap-8 relative group hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all overflow-hidden"
+              >
+                {/* Image container - fixed height on mobile, auto on desktop */}
+                <div className="w-full sm:w-[220px] shrink-0 h-[220px] sm:h-auto sm:min-h-[260px] relative rounded-[32px] overflow-hidden">
+                  <img
+                    src={contract.phong?.hinh_anh_bia || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80"}
+                    alt="Room"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0A192F]/60 via-transparent to-transparent"></div>
-                  <div className="absolute top-4 left-4">
-                    <span className={`px-4 py-2 text-white text-[11px] font-black tracking-widest rounded-full flex items-center gap-2 shadow-lg backdrop-blur-md ${contract.trang_thai === 'HIEU_LUC' ? 'bg-[#22A06B]/90' : 'bg-[#64748B]/90'}`}>
+                  <div className="absolute top-4 left-4 z-10">
+                    <span className={`px-4 py-2 text-white text-[11px] font-black tracking-widest rounded-full flex items-center gap-2 shadow-lg backdrop-blur-md whitespace-nowrap ${contract.trang_thai === 'HIEU_LUC' ? 'bg-[#22A06B]/90' : 'bg-[#64748B]/90'}`}>
                       <div className={`w-1.5 h-1.5 rounded-full bg-white ${contract.trang_thai === 'HIEU_LUC' ? 'animate-pulse' : ''}`}></div>
                       {contract.trang_thai === 'HIEU_LUC' ? 'ĐANG HIỆU LỰC' : 'TẠM NGƯNG'}
                     </span>
                   </div>
                 </div>
-                <div className="flex-1 py-6 flex flex-col justify-center">
-                  <h2 className="text-[26px] font-black text-[#0F172A] leading-tight mb-1 uppercase">
+
+                {/* Content area - with min-w-0 to allow truncation */}
+                <div className="flex-1 py-6 flex flex-col justify-center relative z-10 min-w-0">
+                  <h2 className="text-[26px] font-black text-[#0F172A] leading-tight mb-1 uppercase break-words line-clamp-2">
                     P. {contract.phong?.ma_phong_hien_thi || 'N/A'}
-                    {/* Multi-bed: show from phan_bo_hop_dong */}
-                    {contract.phan_bo_hop_dong && contract.phan_bo_hop_dong.length > 0
-                      ? ` - ${contract.phan_bo_hop_dong.map(a => a.giuong?.ma_giuong_hien_thi || `B${a.ma_giuong}`).join(', ')}`
-                      : contract.ma_giuong ? ` - B${contract.ma_giuong}` : ''}
+                    {/* Multi-bed info with safe truncation */}
+                    <span className="inline-block">
+                      {contract.phan_bo_hop_dong && contract.phan_bo_hop_dong.length > 0
+                        ? ` - ${contract.phan_bo_hop_dong.map(a => a.giuong?.ma_giuong_hien_thi || `B${a.ma_giuong}`).join(', ')}`
+                        : contract.ma_giuong ? ` - B${contract.ma_giuong}` : ''}
+                    </span>
                   </h2>
-                  <p className="text-[#64748B] text-[13px] font-bold tracking-tight mb-8">Mã hđ: #{contract.ma_hop_dong}</p>
-                  
-                  <div className="flex gap-10 mb-8">
+                  <p className="text-[#64748B] text-[13px] font-bold tracking-tight mb-8 break-words">
+                    Mã hđ: #{contract.ma_hop_dong}
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 mb-8">
                     <div>
                       <div className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest mb-1.5">NGÀY BẮT ĐẦU</div>
                       <div className="text-[15px] font-extrabold text-[#0F172A]">{new Date(contract.ngay_vao_o).toLocaleDateString('vi-VN')}</div>
                     </div>
-                    <div>
+                    {/* <div>
                       <div className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest mb-1.5">Dự kiến kết thúc</div>
                       <div className="text-[15px] font-extrabold text-[#0F172A]">Chưa xác định</div>
-                    </div>
+                    </div> */}
                   </div>
 
-                  <div className="flex items-end justify-between mt-auto">
+                  <div className="flex items-end justify-between mt-auto flex-wrap gap-4">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-[24px] font-black text-[#0F172A]">{new Intl.NumberFormat('vi-VN').format(contract.gia_thue_co_ban_thang || 0)}đ</span>
+                      <span className="text-[24px] font-black text-[#0F172A] whitespace-nowrap">{new Intl.NumberFormat('vi-VN').format(contract.gia_thue_co_ban_thang || 0)}đ</span>
                       <span className="text-[13px] text-[#64748B] font-bold">/tháng</span>
                     </div>
-                    <Link to={`/contracts/${contract.ma_hop_dong}`} className="w-16 h-16 rounded-[24px] bg-[#0A192F] hover:bg-[#0052CC] text-white flex flex-col items-center justify-center transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
+                    <Link to={`/contracts/${contract.ma_hop_dong}`} className="w-16 h-16 rounded-[24px] bg-[#0A192F] hover:bg-[#0052CC] text-white flex flex-col items-center justify-center transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 relative z-20 shrink-0">
                       <span className="text-[11px] font-black mb-0.5">XEM</span>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                     </Link>
@@ -147,7 +157,7 @@ function ContractListPage() {
         </>
       )}
 
-      {/* Info Banner */}
+      {/* Info Banner - unchanged */}
       <div className="bg-[#1E293B] rounded-[48px] p-10 md:p-14 text-white flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden shadow-2xl border border-slate-800">
          <div className="absolute top-0 right-0 w-1/3 h-full bg-[#0052CC] filter blur-[120px] opacity-20 -mr-20"></div>
          <div className="relative z-10 w-full md:w-3/5">
