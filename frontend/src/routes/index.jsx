@@ -23,6 +23,13 @@ import ProfilePage from "../pages/ProfilePage";
 import BookingPage from "../pages/BookingPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import LiquidationPage from "../pages/LiquidationPage";
+import DepositPage from "../pages/DepositPage";
+import TermsPage from "../pages/TermsPage";
+import PrivacyPage from "../pages/PrivacyPage";
+import ContactPage from "../pages/ContactPage";
+import SitemapPage from "../pages/SitemapPage";
+import DocumentsPage from "../pages/DocumentsPage";
+import SettingsPage from "../pages/SettingsPage";
 
 // [ACCOUNTING] imports
 import AccountingLayout from "../components/accounting/AccountingLayout";
@@ -64,6 +71,11 @@ const router = createBrowserRouter([
       { path: "about", element: <AboutPage /> },
       { path: "rooms", element: <RoomListPage /> },
       { path: "rooms/:id", element: <RoomDetailPage /> },
+      { path: "deposit", element: <DepositPage /> },
+      { path: "terms", element: <TermsPage /> },
+      { path: "privacy", element: <PrivacyPage /> },
+      { path: "contact", element: <ContactPage /> },
+      { path: "sitemap", element: <SitemapPage /> },
     ],
   },
   {
@@ -99,6 +111,8 @@ const router = createBrowserRouter([
           { path: "/contracts", element: <ContractListPage /> },
           { path: "/liquidations", element: <LiquidationPage /> },
           { path: "/contracts/:id", element: <ContractDetailPage /> },
+          { path: "/settings", element: <SettingsPage /> },
+          { path: "/documents", element: <DocumentsPage /> },
         ],
       },
       {
