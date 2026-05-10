@@ -17,16 +17,6 @@ const getRentalRequestDetail = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch rental request detail successful");
 });
 
-const processRentalRequest = asyncHandler(async (req, res) => {
-  // Lấy ma_ho_so của nhân viên sale đang đăng nhập
-  const ma_ho_so_nguoi_thuc_hien = req.user.profileId;
-  const result = await SaleService.processRentalRequest(req.params.id, {
-    ...req.body,
-    ma_ho_so_nguoi_thuc_hien,
-  });
-  return sendSuccess(res, result, "Process rental request successful");
-});
-
 const getCustomers = asyncHandler(async (req, res) => {
   const result = await SaleService.getCustomers(req.query);
   return sendSuccess(res, result, "Fetch customers successful");
@@ -66,7 +56,6 @@ module.exports = {
   getDashboard,
   getRentalRequests,
   getRentalRequestDetail,
-  processRentalRequest,
   getCustomers,
   getCustomerDetail,
   getContracts,

@@ -111,10 +111,9 @@ erDiagram
 - `CHO_THANH_TOAN`
 - `DA_COC`
 - `DA_XAC_NHAN`
-- `TU_CHOI`
-- `TAM_DUNG`
 - `QUA_HAN`
-- `DA_DUYET` la gia tri legacy trong sample data / migration sample
+- `TU_CHOI`, `TAM_DUNG` la legacy read-only status tu flow sale cu
+- `DA_DUYET` la legacy alias, khong con duoc ghi moi
 
 ### `hop_dong.trang_thai`
 - `CHO_LAP_KHOAN_THU_DAU`
@@ -597,3 +596,4 @@ Quan he: doi soat la hop tac giua checkout inspection va cac voucher tai chinh.
 - `chi_tiet_doi_soat_tai_chinh` va `nhat_ky_he_thong` la polymorphic log, nen doc theo `ten_bang` + `ma_ban_ghi`.
 - `paymentLinkid` trong `giu_cho_tam` la cot legacy/typo, code hien tai khong dung; `paymentLinkId` o `yeu_cau_thue` moi la cot active cho luong PayOS.
 - `so_luong_giuong_dat` la cot quan trong de doc multi-bed booking va tinh deposit.
+- Flow sale khong con duyet/tam dung/tu cho yeu cau thue; sale chi xem yeu cau va tao yeu cau tra phong.

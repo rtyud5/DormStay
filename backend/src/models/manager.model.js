@@ -4,7 +4,7 @@ const { AppError } = require("../utils/errors");
 const ACTIVE_CONTRACT_STATUSES = ["HIEU_LUC", "DANG_HIEU_LUC"];
 const CLOSED_CONTRACT_STATUSES = ["HET_HAN", "DA_KET_THUC"];
 const ACTIVE_CHECKOUT_STATUSES = ["CHO_XU_LY", "DANG_KIEM_TRA"];
-const COMPLETED_CHECKOUT_STATUSES = ["HOAN_TAT", "DA_THANH_LY"];
+const COMPLETED_CHECKOUT_STATUSES = ["DA_THANH_LY", "HOAN_TAT"];
 const OCCUPIED_BED_STATUSES = ["DA_THUE", "DANG_O", "DANG_SU_DUNG", "DA_THUE_HET"];
 const EMPTY_BED_STATUSES = ["CON_TRONG", "TRONG"];
 
@@ -903,7 +903,7 @@ const ManagerModel = {
 
     const { error: checkoutError } = await supabase
       .from('yeu_cau_tra_phong')
-      .update({ trang_thai: 'HOAN_TAT' })
+      .update({ trang_thai: 'DA_THANH_LY' })
       .eq('ma_yeu_cau_tra_phong', id);
     if (checkoutError) throw checkoutError;
 
@@ -925,7 +925,7 @@ const ManagerModel = {
       roomId,
       bedId,
       contractStatus: 'HET_HAN',
-      checkoutStatus: 'HOAN_TAT',
+      checkoutStatus: 'DA_THANH_LY',
     };
   },
 

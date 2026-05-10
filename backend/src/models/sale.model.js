@@ -1,4 +1,5 @@
 const { supabase } = require("../config/supabase");
+const { AppError } = require("../utils/errors");
 
 const getInitials = (name) => {
   if (!name) return "";
@@ -24,8 +25,8 @@ const SaleModel = {
       { count: activeContracts },
       { count: pendingCheckouts },
       { count: totalRequests },
-      { count: approvedThisMonth },
-      { count: rejectedThisMonth },
+      { count: depositConfirmedThisMonth },
+      { count: checkoutRequestsThisMonth },
     ] = await Promise.all([
       supabase.from("yeu_cau_thue").select("*", { count: "exact", head: true })
         .in("trang_thai", ["DANG_XU_LY", "MOI_TAO", "CHO_THANH_TOAN"]),
@@ -37,13 +38,13 @@ const SaleModel = {
         .eq("trang_thai", "CHO_XU_LY"),
       supabase.from("yeu_cau_thue").select("*", { count: "exact", head: true }),
       supabase.from("yeu_cau_thue").select("*", { count: "exact", head: true })
-        .eq("trang_thai", "DA_XAC_NHAN").gte("created_at", firstOfMonth),
-      supabase.from("yeu_cau_thue").select("*", { count: "exact", head: true })
-        .eq("trang_thai", "TU_CHOI").gte("created_at", firstOfMonth),
+        .eq("trang_thai", "DA_COC").gte("created_at", firstOfMonth),
+      supabase.from("yeu_cau_tra_phong").select("*", { count: "exact", head: true })
+        .gte("created_at", firstOfMonth),
     ]);
 
     // Status breakdown
-    const statuses = ["DANG_XU_LY", "CHO_THANH_TOAN", "DA_XAC_NHAN", "TU_CHOI"];
+    const statuses = ["MOI_TAO", "DANG_XU_LY", "CHO_THANH_TOAN", "DA_COC", "DA_XAC_NHAN"];
     const statusBreakdown = {};
     await Promise.all(
       statuses.map(async (s) => {
@@ -81,8 +82,8 @@ const SaleModel = {
         activeContracts: activeContracts || 0,
         pendingCheckouts: pendingCheckouts || 0,
         totalRequests: totalRequests || 0,
-        approvedThisMonth: approvedThisMonth || 0,
-        rejectedThisMonth: rejectedThisMonth || 0,
+        depositConfirmedThisMonth: depositConfirmedThisMonth || 0,
+        checkoutRequestsThisMonth: checkoutRequestsThisMonth || 0,
         requestsByStatus: statusBreakdown,
       },
       recentRequests,
@@ -197,134 +198,6 @@ const SaleModel = {
         })),
     };
   },
-
-async processRentalRequest(id, { action, ghi_chu, ngay_vao_o, ngay_ket_thuc, ma_ho_so_nguoi_thuc_hien }) {
-  // Nếu là DUYET → gọi RPC tạo hợp đồng luôn
-  if (action === 'DUYET') {
-    if (!ngay_vao_o) throw new Error("Thiếu ngày vào ở");
-    const { data: request, error: requestError } = await supabase
-      .from('yeu_cau_thue')
-      .select(`
-        *,
-        giu_cho_tam ( ma_giuong, ma_phong, trang_thai )
-      `)
-      .eq('ma_yeu_cau_thue', id)
-      .maybeSingle();
-
-    if (requestError) throw requestError;
-    if (!request) throw new Error("Khong tim thay yeu cau thue");
-
-    const { data: existingContract, error: existingContractError } = await supabase
-      .from('hop_dong')
-      .select('*')
-      .eq('ma_yeu_cau_thue', id)
-      .maybeSingle();
-
-    if (existingContractError) throw existingContractError;
-
-    let contract = existingContract;
-    if (contract) {
-      const { data: updatedContract, error: updateContractError } = await supabase
-        .from('hop_dong')
-        .update({
-          ngay_vao_o,
-          trang_thai: contract.trang_thai === 'HIEU_LUC' ? 'HIEU_LUC' : 'CHO_LAP_KHOAN_THU_DAU',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('ma_hop_dong', contract.ma_hop_dong)
-        .select('*')
-        .single();
-      if (updateContractError) throw updateContractError;
-      contract = updatedContract;
-    } else {
-      const { data: insertedContract, error: insertContractError } = await supabase
-        .from('hop_dong')
-        .insert({
-          ma_yeu_cau_thue: request.ma_yeu_cau_thue,
-          ma_ho_so_khach_hang: request.ma_ho_so_khach_hang,
-          loai_muc_tieu: request.loai_muc_tieu,
-          ma_phong: request.ma_phong,
-          ma_giuong: request.ma_giuong,
-          ngay_vao_o,
-          gia_thue_co_ban_thang: request.gia_thue_thang,
-          so_tien_dat_coc_bao_dam: request.so_tien_dat_coc,
-          trang_thai: 'CHO_LAP_KHOAN_THU_DAU',
-        })
-        .select('*')
-        .single();
-      if (insertContractError) throw insertContractError;
-      contract = insertedContract;
-
-      const allocations = (request.giu_cho_tam || [])
-        .filter((hold) => hold.ma_giuong || hold.ma_phong)
-        .map((hold) => ({
-          ma_hop_dong: contract.ma_hop_dong,
-          loai_muc_tieu: request.loai_muc_tieu,
-          ma_phong: hold.ma_phong || request.ma_phong,
-          ma_giuong: hold.ma_giuong || null,
-          ngay_bat_dau: ngay_vao_o,
-          ngay_ket_thuc: ngay_ket_thuc || null,
-          trang_thai: 'CHO_HIEU_LUC',
-        }));
-
-      if (allocations.length) {
-        const { error: allocationError } = await supabase.from('phan_bo_hop_dong').insert(allocations);
-        if (allocationError) throw allocationError;
-      }
-    }
-
-    const { data: current } = await supabase
-      .from('yeu_cau_thue').select('trang_thai')
-      .eq('ma_yeu_cau_thue', id).single();
-
-    const { error: updateRequestError } = await supabase
-      .from('yeu_cau_thue')
-      .update({
-        trang_thai: 'DA_XAC_NHAN',
-        ma_ho_so_nhan_vien_phu_trach: ma_ho_so_nguoi_thuc_hien || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('ma_yeu_cau_thue', id);
-    if (updateRequestError) throw updateRequestError;
-
-    await supabase.from('nhat_ky_yeu_cau_thue').insert({
-      ma_yeu_cau_thue: id,
-      trang_thai_cu: current?.trang_thai || null,
-      trang_thai_moi: 'DA_XAC_NHAN',
-      ma_ho_so_nguoi_thuc_hien: ma_ho_so_nguoi_thuc_hien || request.ma_ho_so_khach_hang,
-      ghi_chu: ghi_chu || 'Sale xac nhan ho so, hop dong cho lap khoan thu dau',
-    });
-
-    return { success: true, trang_thai: 'DA_XAC_NHAN', contract };
-  }
-
-  // Các action khác: TU_CHOI, TAM_DUNG, YEU_CAU_BO_SUNG
-  const STATUS_MAP = {
-    TU_CHOI:         'TU_CHOI',
-    TAM_DUNG:        'TAM_DUNG',
-    YEU_CAU_BO_SUNG: 'DANG_XU_LY',
-  };
-  const trangThaiMoi = STATUS_MAP[action];
-  if (!trangThaiMoi) throw new Error("Action không hợp lệ");
-
-  const { data: current } = await supabase
-    .from('yeu_cau_thue').select('trang_thai')
-    .eq('ma_yeu_cau_thue', id).single();
-
-  const { error } = await supabase.from('yeu_cau_thue')
-    .update({ trang_thai: trangThaiMoi }).eq('ma_yeu_cau_thue', id);
-  if (error) throw error;
-
-  await supabase.from('nhat_ky_yeu_cau_thue').insert({
-    ma_yeu_cau_thue: id,
-    trang_thai_cu: current?.trang_thai || null,
-    trang_thai_moi: trangThaiMoi,
-    ma_ho_so_nguoi_thuc_hien,
-    ghi_chu: ghi_chu || null,
-  });
-
-  return { success: true, trang_thai: trangThaiMoi };
-},
 
   // ============================================================
   // CUSTOMERS
@@ -522,11 +395,39 @@ async processRentalRequest(id, { action, ghi_chu, ngay_vao_o, ngay_ket_thuc, ma_
   },
 
   async createCheckoutRequest(payload) {
+    if (!payload.ma_hop_dong || !payload.ngay_yeu_cau_tra_phong) {
+      throw new AppError("ma_hop_dong and ngay_yeu_cau_tra_phong are required", 400);
+    }
+
+    const { data: contract, error: contractError } = await supabase
+      .from("hop_dong")
+      .select("ma_hop_dong, ma_ho_so_khach_hang, trang_thai")
+      .eq("ma_hop_dong", payload.ma_hop_dong)
+      .maybeSingle();
+
+    if (contractError) throw contractError;
+    if (!contract) throw new AppError("Contract not found", 404);
+    if (contract.trang_thai !== "HIEU_LUC") {
+      throw new AppError("Only active contracts can create checkout requests", 409);
+    }
+
+    const { data: existingRequest, error: existingError } = await supabase
+      .from("yeu_cau_tra_phong")
+      .select("ma_yeu_cau_tra_phong, trang_thai")
+      .eq("ma_hop_dong", contract.ma_hop_dong)
+      .in("trang_thai", ["CHO_XU_LY", "DANG_KIEM_TRA", "DA_KIEM_TRA"])
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (existingRequest) {
+      throw new AppError("Contract already has an open checkout request", 409);
+    }
+
     const { data, error } = await supabase
       .from("yeu_cau_tra_phong")
       .insert({
-        ma_hop_dong: payload.ma_hop_dong,
-        ma_ho_so_khach_hang: payload.ma_ho_so_khach_hang,
+        ma_hop_dong: contract.ma_hop_dong,
+        ma_ho_so_khach_hang: contract.ma_ho_so_khach_hang,
         ngay_yeu_cau_tra_phong: payload.ngay_yeu_cau_tra_phong,
         gio_ban_giao: payload.gio_ban_giao || null,
         ly_do: payload.ly_do || null,

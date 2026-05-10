@@ -399,12 +399,12 @@ const PaymentModel = {
     // For bed rentals (loai_muc_tieu === "GIUONG"), let the trigger handle status
     // The trigger will mark room as DAY when all beds are rented, or SAP_DAY if partial
 
-    // Update rental request status to DA_DUYET after contract activation
+    // Update rental request status to DA_XAC_NHAN after contract activation
     if (contract.ma_yeu_cau_thue) {
       const { error: rentalRequestError } = await supabase
         .from("yeu_cau_thue")
         .update({
-          trang_thai: "DA_DUYET",
+          trang_thai: "DA_XAC_NHAN",
           updated_at: new Date().toISOString(),
         })
         .eq("ma_yeu_cau_thue", contract.ma_yeu_cau_thue);
@@ -414,13 +414,13 @@ const PaymentModel = {
         throw rentalRequestError;
       }
 
-      console.log("Rental request status updated to DA_DUYET");
+      console.log("Rental request status updated to DA_XAC_NHAN");
 
       await createSystemLog({
         tableName: "yeu_cau_thue",
         recordId: contract.ma_yeu_cau_thue,
-        action: "DUYET_YEU_CAU",
-        note: `Yeu cau thue duoc duyet sau khi thanh toan ky dau hop dong HD-${contractId}.`,
+        action: "XAC_NHAN_YEU_CAU",
+        note: `Yeu cau thue duoc xac nhan sau khi thanh toan ky dau hop dong HD-${contractId}.`,
       });
     }
 

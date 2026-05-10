@@ -28,11 +28,6 @@ export async function getSaleRentalRequestDetail(id) {
   return { data: unwrap(response) };
 }
 
-export async function processSaleRentalRequest(id, payload) {
-  const response = await api.post(`/sale/rental-requests/${id}/process`, payload);
-  return { data: unwrap(response) };
-}
-
 export async function getSaleCustomers(filters = {}) {
   const response = await api.get("/sale/customers", { params: filters });
   return listPayload(unwrap(response));

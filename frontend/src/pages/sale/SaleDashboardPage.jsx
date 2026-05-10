@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ArrowUpRight, Clock3, Users, FileText, DoorOpen, BadgeCheck } from "lucide-react";
+import { Clock3, Users, FileText, DoorOpen, BadgeCheck, CircleCheckBig } from "lucide-react";
 import { getSaleDashboard } from "../../services/sale.service";
 
 const cards = [
@@ -7,8 +7,8 @@ const cards = [
   { key: "totalCustomers", label: "Khách hàng", icon: Users },
   { key: "activeContracts", label: "Hợp đồng hiệu lực", icon: BadgeCheck },
   { key: "pendingCheckouts", label: "Yêu cầu trả phòng", icon: DoorOpen },
-  { key: "approvedThisMonth", label: "Đã duyệt trong tháng", icon: ArrowUpRight },
-  { key: "rejectedThisMonth", label: "Từ chối trong tháng", icon: Clock3 },
+  { key: "depositConfirmedThisMonth", label: "Đã cọc trong tháng", icon: CircleCheckBig },
+  { key: "checkoutRequestsThisMonth", label: "Trả phòng mới", icon: Clock3 },
 ];
 
 export default function SaleDashboardPage() {

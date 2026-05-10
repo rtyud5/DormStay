@@ -10,6 +10,7 @@ export const RENTAL_REQUEST_STATUS = {
   DA_XAC_NHAN: makeStatus("Đã xác nhận", "bg-emerald-100 text-emerald-700 ring-emerald-200"),
   TU_CHOI: makeStatus("Từ chối", "bg-rose-100 text-rose-700 ring-rose-200"),
   TAM_DUNG: makeStatus("Tạm dừng", "bg-slate-100 text-slate-700 ring-slate-200"),
+  QUA_HAN: makeStatus("Quá hạn", "bg-red-100 text-red-700 ring-red-200"),
 };
 
 export const RENTAL_REQUEST_STATUS_OPTIONS = [
@@ -19,8 +20,7 @@ export const RENTAL_REQUEST_STATUS_OPTIONS = [
   { value: "CHO_THANH_TOAN", label: RENTAL_REQUEST_STATUS.CHO_THANH_TOAN.label },
   { value: "DA_COC", label: RENTAL_REQUEST_STATUS.DA_COC.label },
   { value: "DA_XAC_NHAN", label: RENTAL_REQUEST_STATUS.DA_XAC_NHAN.label },
-  { value: "TU_CHOI", label: RENTAL_REQUEST_STATUS.TU_CHOI.label },
-  { value: "TAM_DUNG", label: RENTAL_REQUEST_STATUS.TAM_DUNG.label },
+  { value: "QUA_HAN", label: RENTAL_REQUEST_STATUS.QUA_HAN.label },
 ];
 
 export const RENTAL_TYPE_OPTIONS = [

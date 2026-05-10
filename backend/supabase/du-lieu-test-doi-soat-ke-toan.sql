@@ -335,7 +335,7 @@ inserted_request as (
     so_tien_dat_coc,
     trang_thai
   )
-  select customer.ma_ho_so, 'GIUONG', bed.ma_giuong, date '2025-08-15', 3000000, 6000000, 'DA_DUYET'
+  select customer.ma_ho_so, 'GIUONG', bed.ma_giuong, date '2025-08-15', 3000000, 6000000, 'DA_XAC_NHAN'
   from customer, bed
   returning ma_yeu_cau_thue, ma_ho_so_khach_hang
 ),
@@ -430,7 +430,7 @@ inserted_request as (
     so_tien_dat_coc,
     trang_thai
   )
-  select customer.ma_ho_so, 'GIUONG', bed.ma_giuong, date '2024-10-01', 2500000, 5000000, 'DA_DUYET'
+  select customer.ma_ho_so, 'GIUONG', bed.ma_giuong, date '2024-10-01', 2500000, 5000000, 'DA_XAC_NHAN'
   from customer, bed
   returning ma_yeu_cau_thue, ma_ho_so_khach_hang
 ),
@@ -529,7 +529,7 @@ inserted_request as (
     so_tien_dat_coc,
     trang_thai
   )
-  select customer.ma_ho_so, 'GIUONG', bed.ma_giuong, date '2025-12-10', 3000000, 3000000, 'DA_DUYET'
+  select customer.ma_ho_so, 'GIUONG', bed.ma_giuong, date '2025-12-10', 3000000, 3000000, 'DA_XAC_NHAN'
   from customer, bed
   returning ma_yeu_cau_thue, ma_ho_so_khach_hang
 ),
@@ -655,7 +655,7 @@ inserted_request as (
     so_tien_dat_coc,
     trang_thai
   )
-  select customer.ma_ho_so, 'GIUONG', bed.ma_giuong, date '2024-04-01', 3500000, 7000000, 'DA_DUYET'
+  select customer.ma_ho_so, 'GIUONG', bed.ma_giuong, date '2024-04-01', 3500000, 7000000, 'DA_XAC_NHAN'
   from customer, bed
   returning ma_yeu_cau_thue, ma_ho_so_khach_hang
 ),

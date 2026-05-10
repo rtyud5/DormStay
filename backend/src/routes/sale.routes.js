@@ -11,7 +11,6 @@ router.get("/dashboard", saleController.getDashboard);
 
 router.get("/rental-requests", saleController.getRentalRequests);
 router.get("/rental-requests/:id", saleController.getRentalRequestDetail);
-router.post("/rental-requests/:id/process", saleController.processRentalRequest);
 
 router.get("/customers", saleController.getCustomers);
 router.get("/customers/:id", saleController.getCustomerDetail);

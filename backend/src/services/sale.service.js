@@ -10,9 +10,6 @@ const SaleService = {
   async getRentalRequestDetail(id) {
     return SaleModel.getRentalRequestDetail(id);
   },
-  async processRentalRequest(id, payload) {
-    return SaleModel.processRentalRequest(id, payload);
-  },
   async getCustomers(filters) {
     return SaleModel.getCustomers(filters);
   },
