@@ -46,8 +46,6 @@ export default function AccountingTransactionPage() {
     loadTransactions();
   }, []);
 
-  const totalVariance = transactions.reduce((sum, item) => sum + Math.abs(item.variance || 0), 0);
-
   return (
     <div className="p-8 lg:p-10 max-w-375 mx-auto bg-[#f9fafb] min-h-screen space-y-8">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
@@ -76,7 +74,7 @@ export default function AccountingTransactionPage() {
         <StatCard label="Tổng giao dịch" value={transactions.length} accent="text-gray-900" />
         <StatCard label="Đã xác nhận" value={stats.confirmed} accent="text-[#22a654]" />
         <StatCard label="Đang chờ" value={stats.pending} accent="text-[#1a56db]" />
-        <StatCard label="Tổng chênh lệch" value={formatCurrency(totalVariance)} accent="text-[#e02424]" />
+        <StatCard label="Thất bại" value={stats.failed} accent="text-[#e02424]" />
       </div>
 
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-end">
