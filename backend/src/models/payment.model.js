@@ -260,7 +260,19 @@ const PaymentModel = {
 
     if (updateInvoiceError) throw updateInvoiceError;
 
+    // // Debug logging
+    // console.log("Payment created:", {
+    //   invoiceId,
+    //   amount,
+    //   nextPaidAmount,
+    //   isFullyPaid,
+    //   invoiceContractId: invoice.ma_hop_dong,
+    //   invoiceType: invoice.loai_hoa_don,
+    //   shouldActivate: isFullyPaid && invoice.ma_hop_dong && String(invoice.loai_hoa_don || "").toUpperCase().includes("KY_DAU")
+    // });
+
     if (isFullyPaid && invoice.ma_hop_dong && String(invoice.loai_hoa_don || "").toUpperCase().includes("KY_DAU")) {
+      // console.log("Activating contract after initial payment:", invoice.ma_hop_dong);
       await this.activateContractAfterInitialPayment(invoice.ma_hop_dong);
     }
 
@@ -268,14 +280,24 @@ const PaymentModel = {
   },
 
   async activateContractAfterInitialPayment(contractId) {
+    // console.log("Starting contract activation for:", contractId);
+
     const { data: contract, error: contractError } = await supabase
       .from("hop_dong")
-      .select("ma_hop_dong, loai_muc_tieu, ma_phong, ma_giuong")
+      .select("ma_hop_dong, loai_muc_tieu, ma_phong, ma_giuong, trang_thai, ma_yeu_cau_thue")
       .eq("ma_hop_dong", contractId)
       .maybeSingle();
 
-    if (contractError) throw contractError;
-    if (!contract) return null;
+    if (contractError) {
+      console.error("Error fetching contract:", contractError);
+      throw contractError;
+    }
+    if (!contract) {
+      console.log("Contract not found:", contractId);
+      return null;
+    }
+
+    // console.log("Contract current status:", contract.trang_thai);
 
     const { error: updateContractError } = await supabase
       .from("hop_dong")
@@ -285,7 +307,12 @@ const PaymentModel = {
       })
       .eq("ma_hop_dong", contractId);
 
-    if (updateContractError) throw updateContractError;
+    if (updateContractError) {
+      console.error("Error updating contract status:", updateContractError);
+      throw updateContractError;
+    }
+
+    console.log("Contract status updated to HIEU_LUC");
 
     const { error: allocationError } = await supabase
       .from("phan_bo_hop_dong")
@@ -296,7 +323,12 @@ const PaymentModel = {
       .eq("ma_hop_dong", contractId)
       .in("trang_thai", ["CHO_HIEU_LUC", "CHO_LAP_KHOAN_THU_DAU"]);
 
-    if (allocationError) throw allocationError;
+    if (allocationError) {
+      console.error("Error updating allocations:", allocationError);
+      throw allocationError;
+    }
+
+    // console.log("Allocations updated to HIEU_LUC");
 
     const { data: allocations, error: allocationsQueryError } = await supabase
       .from("phan_bo_hop_dong")
@@ -366,6 +398,31 @@ const PaymentModel = {
     }
     // For bed rentals (loai_muc_tieu === "GIUONG"), let the trigger handle status
     // The trigger will mark room as DAY when all beds are rented, or SAP_DAY if partial
+
+    // Update rental request status to DA_DUYET after contract activation
+    if (contract.ma_yeu_cau_thue) {
+      const { error: rentalRequestError } = await supabase
+        .from("yeu_cau_thue")
+        .update({
+          trang_thai: "DA_DUYET",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("ma_yeu_cau_thue", contract.ma_yeu_cau_thue);
+
+      if (rentalRequestError) {
+        console.error("Error updating rental request status:", rentalRequestError);
+        throw rentalRequestError;
+      }
+
+      console.log("Rental request status updated to DA_DUYET");
+
+      await createSystemLog({
+        tableName: "yeu_cau_thue",
+        recordId: contract.ma_yeu_cau_thue,
+        action: "DUYET_YEU_CAU",
+        note: `Yeu cau thue duoc duyet sau khi thanh toan ky dau hop dong HD-${contractId}.`,
+      });
+    }
 
     await createSystemLog({
       tableName: "hop_dong",
@@ -462,6 +519,10 @@ const PaymentModel = {
         contract,
       },
     };
+  },
+
+  async processPaymentForInvoice(payload) {
+    return this.create(payload);
   },
 };
 
