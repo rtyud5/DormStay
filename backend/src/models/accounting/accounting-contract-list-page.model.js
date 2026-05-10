@@ -30,10 +30,7 @@ function matchStatus(contract, status) {
     return true;
   }
 
-  return (
-    String(contract.status || "").toUpperCase() === normalized ||
-    includesAny(contract.rawStatus, [normalized])
-  );
+  return String(contract.status || "").toUpperCase() === normalized || includesAny(contract.rawStatus, [normalized]);
 }
 
 function matchKeyword(contract, keyword) {
