@@ -419,7 +419,9 @@ export default function AccountingInvoiceListPage() {
             Hiển thị <span className="text-gray-900 font-bold">{invoices.length}</span> /{" "}
             <span className="text-gray-900 font-bold">{totalInvoices}</span> phiếu thu
             {filterState !== "all" && (
-              <span className="text-gray-600 ml-2">(lọc: {filterState.charAt(0).toUpperCase() + filterState.slice(1)})</span>
+              <span className="text-gray-600 ml-2">
+                (lọc: {filterState.charAt(0).toUpperCase() + filterState.slice(1)})
+              </span>
             )}
           </p>
           <div className="flex items-center gap-2">
