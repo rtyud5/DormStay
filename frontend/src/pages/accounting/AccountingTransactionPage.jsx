@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Download, RefreshCw, Search, AlertTriangle, CheckCircle2, Clock, Eye, Landmark } from "lucide-react";
-import { getTransactions, getTransactionDetail, resolveTransaction } from "../../services/accounting.service";
+import { getTransactions, getTransactionDetail } from "../../services/accounting.service";
 import { formatCurrency } from "../../utils/accounting.utils";
 
 const STATUS_OPTIONS = ["all", "CONFIRMED", "PENDING", "FAILED"];
@@ -11,7 +11,6 @@ export default function AccountingTransactionPage() {
   const [stats, setStats] = useState({ confirmed: 0, failed: 0, pending: 0 });
   const [filters, setFilters] = useState({ search: "", status: "all" });
   const [loading, setLoading] = useState(true);
-  const [resolvingId, setResolvingId] = useState(null);
 
   const loadTransactions = async (nextFilters = filters, selectedId = null) => {
     try {
@@ -46,19 +45,6 @@ export default function AccountingTransactionPage() {
   useEffect(() => {
     loadTransactions();
   }, []);
-
-  const handleResolve = async (transaction, status = "CONFIRMED") => {
-    try {
-      setResolvingId(transaction.id);
-      await resolveTransaction(transaction.id, { status });
-      await loadTransactions(filters, transaction.id);
-    } catch (error) {
-      console.error("Error resolving transaction:", error);
-      window.alert("Không thể xử lý giao dịch. Kiểm tra console để xem chi tiết.");
-    } finally {
-      setResolvingId(null);
-    }
-  };
 
   const totalVariance = transactions.reduce((sum, item) => sum + Math.abs(item.variance || 0), 0);
 
@@ -198,33 +184,13 @@ export default function AccountingTransactionPage() {
                         {transaction.dueDate ? new Date(transaction.dueDate).toLocaleDateString("vi-VN") : "--"}
                       </td>
                       <td className="py-5 px-6">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => loadTransactions(filters, transaction.id)}
-                            className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {transaction.status === "PENDING" && (
-                            <button
-                              onClick={() => handleResolve(transaction, "CONFIRMED")}
-                              disabled={resolvingId === transaction.id}
-                              className="px-3 py-2 rounded-full bg-[#0b2447] text-white text-[11px] font-black uppercase tracking-widest disabled:opacity-60"
-                            >
-                              Xác nhận
-                            </button>
-                          )}
-                          {transaction.status === "FAILED" && (
-                            <button
-                              onClick={() => handleResolve(transaction, "CONFIRMED")}
-                              disabled={resolvingId === transaction.id}
-                              className="px-3 py-2 rounded-full bg-[#ea580c] text-white text-[11px] font-black uppercase tracking-widest disabled:opacity-60"
-                            >
-                              Xác nhận lại
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => loadTransactions(filters, transaction.id)}
+                          className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
