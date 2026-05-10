@@ -41,13 +41,17 @@ async function getActiveHoldsForRoom(roomId) {
  * Returns one of: CON_TRONG | DANG_GIU | DA_THUE
  */
 function normalizeBedStatus(rawStatus, holdInfo) {
-  // If there's an active hold, it's held
-  if (holdInfo) return "DANG_GIU";
-
-  // Normalize the various DB status strings
+  // Normalize the various DB status strings first
   const s = String(rawStatus || "").toUpperCase();
-  if (s === "CON_TRONG" || s === "TRONG") return "CON_TRONG";
-  if (s === "DA_THUE" || s === "DA_THUE_HET") return "DA_THUE";
+  if (s === "DA_THUE" || s === "DA_THUE_HET" || s === "DANG_O" || s === "DANG_SU_DUNG") {
+    return "DA_THUE";
+  }
+  if (holdInfo) {
+    return "DANG_GIU";
+  }
+  if (s === "CON_TRONG" || s === "TRONG") {
+    return "CON_TRONG";
+  }
 
   // Default: if unknown, treat as available
   return "CON_TRONG";
@@ -75,10 +79,13 @@ const mapRoomToFrontendFormat = (raw, holdMap = {}) => {
 
   const availableBeds = mappedBeds.filter(b => b.status === 'CON_TRONG').length;
   
-  // Status Mapping
+  // Status Mapping: derive room level status from bed availability when possible
   let status = "CÒN TRỐNG";
   let statusColor = "text-emerald-700 bg-emerald-100";
-  if (raw.trang_thai === 'SAP_DAY') {
+  if (availableBeds === 0 && totalBeds > 0) {
+    status = "ĐÃ ĐẦY";
+    statusColor = "text-red-600 bg-red-100";
+  } else if (raw.trang_thai === 'SAP_DAY' || (availableBeds > 0 && availableBeds <= 1 && totalBeds > 1)) {
     status = "SẮP ĐẦY";
     statusColor = "text-orange-600 bg-orange-100";
   } else if (raw.trang_thai === 'DA_THUE_HET' || raw.trang_thai === 'DAY') {
