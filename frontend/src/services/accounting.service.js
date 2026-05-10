@@ -90,12 +90,38 @@ const mapAdditionalPaymentVoucherUiFields = (voucher) => ({
   statusText: voucher.statusText || voucher.status,
 });
 
+const normalizeRefundStatus = (rawStatus) => {
+  const value = String(rawStatus || "").toUpperCase();
+
+  if (["COMPLETED", "DA_HOAN", "HOAN_TAT"].some((item) => value.includes(item))) return "COMPLETED";
+  if (["PROCESSING", "DANG_XU_LY"].some((item) => value.includes(item))) return "PROCESSING";
+  if (["FAILED", "THAT_BAI", "HUY"].some((item) => value.includes(item))) return "FAILED";
+  return "PENDING";
+};
+
+const mapRefundStatusText = (normalizedStatus) => {
+  if (normalizedStatus === "COMPLETED") return "Hoàn tất";
+  if (normalizedStatus === "PROCESSING") return "Đang xử lý";
+  if (normalizedStatus === "FAILED") return "Thất bại";
+  return "Chờ xử lý";
+};
+
+const mapRefundUiFieldsNormalized = (refund) => {
+  const normalizedStatus = normalizeRefundStatus(refund?.status);
+
+  return mapRefundUiFields({
+    ...refund,
+    status: normalizedStatus,
+    statusText: refund?.statusText || mapRefundStatusText(normalizedStatus),
+  });
+};
+
 const buildRefundStatusSummary = (items = []) => ({
   total: items.length,
-  pending: items.filter((item) => item.status === "PENDING").length,
-  processing: items.filter((item) => item.status === "PROCESSING").length,
-  completed: items.filter((item) => item.status === "COMPLETED").length,
-  failed: items.filter((item) => item.status === "FAILED").length,
+  pending: items.filter((item) => normalizeRefundStatus(item.status) === "PENDING").length,
+  processing: items.filter((item) => normalizeRefundStatus(item.status) === "PROCESSING").length,
+  completed: items.filter((item) => normalizeRefundStatus(item.status) === "COMPLETED").length,
+  failed: items.filter((item) => normalizeRefundStatus(item.status) === "FAILED").length,
 });
 
 const getRefundsFromReconciliationFallback = async (filters = {}) => {
@@ -128,7 +154,7 @@ const getRefundsFromReconciliationFallback = async (filters = {}) => {
         const totalCharges = Number(detail.totalCharges || 0);
         const totalAdjustments = Number(detail.totalAdjustments || 0);
 
-        return mapRefundUiFields({
+        return mapRefundUiFieldsNormalized({
           ...voucher,
           customerId: item.customerId || "",
           originalDeposit,
@@ -149,7 +175,7 @@ const getRefundsFromReconciliationFallback = async (filters = {}) => {
   let filtered = detailRows.filter(Boolean);
 
   if (status && status !== "ALL") {
-    filtered = filtered.filter((item) => item.status === status);
+    filtered = filtered.filter((item) => normalizeRefundStatus(item.status) === status);
   }
 
   if (search) {
@@ -166,7 +192,7 @@ const getRefundsFromReconciliationFallback = async (filters = {}) => {
 
   return {
     success: true,
-    data: paged,
+    data: paged.map(mapRefundUiFieldsNormalized),
     total: filtered.length,
     page,
     limit,
@@ -738,7 +764,7 @@ export const getRefunds = async (filters = {}) => {
 
     return {
       success: true,
-      data: paged.map(mapRefundUiFields),
+      data: paged.map(mapRefundUiFieldsNormalized),
       total: filtered.length,
       page,
       limit,
@@ -758,7 +784,7 @@ export const getRefunds = async (filters = {}) => {
 
     return {
       success: unwrapSuccess(response),
-      data: (payload.items || []).map(mapRefundUiFields),
+      data: (payload.items || []).map(mapRefundUiFieldsNormalized),
       total: payload.total || 0,
       page: payload.page || Number(filters.page || 1),
       limit: payload.limit || Number(filters.limit || 10),
@@ -799,7 +825,7 @@ export const getRefundDetail = async (refundId) => {
 
   return {
     ...normalized,
-    data: normalized.data ? mapRefundUiFields(normalized.data) : null,
+    data: normalized.data ? mapRefundUiFieldsNormalized(normalized.data) : null,
   };
 };
 
@@ -854,7 +880,7 @@ export const updateRefund = async (refundId, refundData = {}) => {
 
     return {
       ...normalized,
-      data: normalized.data ? mapRefundUiFields(normalized.data) : null,
+      data: normalized.data ? mapRefundUiFieldsNormalized(normalized.data) : null,
     };
   } catch (error) {
     if (error?.response?.status === 404) {

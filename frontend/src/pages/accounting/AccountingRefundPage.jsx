@@ -186,16 +186,33 @@ export default function AccountingRefundPage() {
       setError("");
       setProcessing(true);
 
-      const responses = await Promise.all(
-        selectedIds.map((refundId) => updateRefund(refundId, { status: "COMPLETED" })),
+      const updates = await Promise.all(
+        selectedIds.map(async (refundId) => ({
+          refundId,
+          response: await updateRefund(refundId, { status: "COMPLETED" }),
+        })),
       );
 
-      const failed = responses.filter((response) => !response?.success).length;
-      if (failed > 0) {
-        setError(`Có ${failed} phiếu chưa cập nhật được trạng thái hoàn tất.`);
+      const failedUpdates = updates.filter((item) => !item.response?.success);
+      const successUpdates = updates.filter((item) => item.response?.success);
+
+      if (failedUpdates.length === updates.length) {
+        setError(failedUpdates[0]?.response?.message || "Không thể cập nhật trạng thái phiếu hoàn cọc.");
+        return;
       }
 
-      setSelectedIds([]);
+      if (failedUpdates.length > 0) {
+        setError(
+          failedUpdates[0]?.response?.message ||
+            `Có ${failedUpdates.length} phiếu chưa cập nhật được trạng thái hoàn tất.`,
+        );
+      }
+
+      setSelectedIds(failedUpdates.map((item) => item.refundId));
+      if (successUpdates.length === 0) {
+        return;
+      }
+
       await loadRefunds(true);
     } catch (err) {
       console.error("Failed to mark refunds completed", err);
