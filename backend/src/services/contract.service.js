@@ -6,6 +6,10 @@ const ContractService = {
     return ContractModel.listByUserId(userId);
   },
 
+  async getLiquidations(userId) {
+    return ContractModel.listLiquidationsByUserId(userId);
+  },
+
   async getDetail(id, userId) {
     const contract = await ContractModel.getById(id);
     if (!contract || contract.ho_so?.ma_nguoi_dung_xac_thuc !== userId) return null;

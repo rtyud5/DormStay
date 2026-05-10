@@ -61,19 +61,6 @@ function getRoomDisplay(contract) {
   return beds ? `P. ${room} - ${beds}` : `P. ${room}`;
 }
 
-function getPendingSettlement(contract) {
-  return (contract?.settlementVouchers || []).find(
-    (voucher) => String(voucher.status || voucher.trang_thai || "").toUpperCase() !== "DA_THANH_TOAN",
-  );
-}
-
-function getRefundTotal(contract) {
-  return (contract?.refundVouchers || []).reduce(
-    (total, voucher) => total + Number(voucher.refundAmount ?? voucher.so_tien_hoan ?? 0),
-    0,
-  );
-}
-
 function ContractListPage() {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,13 +83,11 @@ function ContractListPage() {
   const stats = useMemo(() => {
     const active = contracts.filter((contract) => ACTIVE_STATUSES.has(String(contract.trang_thai || "").toUpperCase()));
     const ended = contracts.filter((contract) => ENDED_STATUSES.has(String(contract.trang_thai || "").toUpperCase()));
-    const pendingSettlement = contracts.filter((contract) => getPendingSettlement(contract));
 
     return {
       total: contracts.length,
       active: active.length,
       ended: ended.length,
-      pendingSettlement: pendingSettlement.length,
     };
   }, [contracts]);
 
@@ -122,7 +107,7 @@ function ContractListPage() {
       <div className="mb-10 pt-2">
         <h1 className="mb-2 text-[28px] font-extrabold uppercase tracking-tight">Hợp đồng của tôi</h1>
         <p className="max-w-2xl text-[15px] font-medium leading-relaxed text-[#64748B]">
-          Quản lý hợp đồng cư trú, trạng thái hiệu lực, hóa đơn và kết quả đối soát trả phòng.
+          Xem danh sách hợp đồng cư trú, trạng thái hiệu lực và hóa đơn gắn với từng hợp đồng.
         </p>
       </div>
 
@@ -143,12 +128,11 @@ function ContractListPage() {
         </div>
       ) : (
         <>
-          <div className="mb-10 grid gap-6 md:grid-cols-4">
+          <div className="mb-10 grid gap-6 md:grid-cols-3">
             {[
               { label: "Tổng hợp đồng", value: stats.total, color: "text-slate-900", bg: "bg-slate-100" },
               { label: "Đang hiệu lực", value: stats.active, color: "text-emerald-700", bg: "bg-emerald-100" },
               { label: "Hết hiệu lực", value: stats.ended, color: "text-slate-700", bg: "bg-slate-200" },
-              { label: "Chờ phát sinh", value: stats.pendingSettlement, color: "text-amber-700", bg: "bg-amber-100" },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-5 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
                 <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${item.bg} ${item.color}`}>
@@ -167,8 +151,6 @@ function ContractListPage() {
           <div className="mb-12 grid gap-8 lg:grid-cols-2">
             {contracts.map((contract) => {
               const statusMeta = getStatusMeta(contract.trang_thai);
-              const pendingSettlement = getPendingSettlement(contract);
-              const refundTotal = getRefundTotal(contract);
 
               return (
                 <div
@@ -207,22 +189,6 @@ function ContractListPage() {
                       </div>
                     </div>
 
-                    {(pendingSettlement || refundTotal > 0) && (
-                      <div className="mb-6 space-y-2">
-                        {pendingSettlement && (
-                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
-                            Phát sinh cần thanh toán:{" "}
-                            {formatCurrency(pendingSettlement.amount ?? pendingSettlement.so_tien_thanh_toan ?? 0)}
-                          </div>
-                        )}
-                        {refundTotal > 0 && (
-                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
-                            Hoàn cọc dự kiến: {formatCurrency(refundTotal)}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     <div className="mt-auto flex items-end justify-between gap-4">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Tiền cọc</p>
@@ -251,8 +217,8 @@ function ContractListPage() {
         <div className="grid gap-4 md:grid-cols-3">
           {[
             "Thanh toán tiền phòng đúng hạn theo thông báo trên từng hóa đơn.",
-            "Khi hợp đồng hết hiệu lực, kiểm tra mục quyết toán để xử lý phát sinh hoặc hoàn cọc.",
-            "Thông tin hoàn cọc cần xác nhận qua Zalo DormStay trước khi nhận tiền.",
+            "Khi hợp đồng hết hiệu lực, xem trang Thanh lý hợp đồng để đọc khoản khấu hao, % được hoàn và trạng thái phiếu.",
+            "Thanh toán phát sinh làm trực tiếp trên trang Thanh lý hợp đồng, còn phiếu hoàn cọc chỉ cần kiểm tra số tiền và liên hệ Zalo DormStay.",
           ].map((text) => (
             <div key={text} className="rounded-2xl bg-white/5 p-4 text-sm font-medium leading-relaxed text-slate-200 ring-1 ring-white/10">
               {text}

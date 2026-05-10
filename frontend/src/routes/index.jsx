@@ -22,6 +22,7 @@ import DashboardPage from "../pages/DashboardPage";
 import ProfilePage from "../pages/ProfilePage";
 import BookingPage from "../pages/BookingPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
+import LiquidationPage from "../pages/LiquidationPage";
 
 // [ACCOUNTING] imports
 import AccountingLayout from "../components/accounting/AccountingLayout";
@@ -96,6 +97,7 @@ const router = createBrowserRouter([
           { path: "/deposits", element: <RentalRequestListPage /> },
           { path: "/rental-requests/:id", element: <RequestDetailPage /> },
           { path: "/contracts", element: <ContractListPage /> },
+          { path: "/liquidations", element: <LiquidationPage /> },
           { path: "/contracts/:id", element: <ContractDetailPage /> },
         ],
       },

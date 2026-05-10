@@ -4,6 +4,9 @@ const ContractService = {
   getList() {
     return api.get("/contracts");
   },
+  getLiquidations() {
+    return api.get("/contracts/liquidations");
+  },
   getDetail(id) {
     return api.get(`/contracts/${id}`);
   },

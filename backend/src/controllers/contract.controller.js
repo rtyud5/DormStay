@@ -7,6 +7,11 @@ const getList = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Fetch contracts successful");
 });
 
+const getLiquidations = asyncHandler(async (req, res) => {
+  const result = await ContractService.getLiquidations(req.user.id);
+  return sendSuccess(res, result, "Fetch liquidations successful");
+});
+
 const getDetail = asyncHandler(async (req, res) => {
   const result = await ContractService.getDetail(req.params.id, req.user.id);
   return sendSuccess(res, result, "Fetch contract detail successful");
@@ -19,6 +24,7 @@ const getInvoices = asyncHandler(async (req, res) => {
 
 module.exports = {
   getList,
+  getLiquidations,
   getDetail,
   getInvoices,
 };
