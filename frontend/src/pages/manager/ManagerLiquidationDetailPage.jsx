@@ -226,6 +226,118 @@ export default function ManagerLiquidationDetailPage() {
             </div>
           </div>
 
+          {/* Reconciliation Details */}
+          {d.reconciliationItems && d.reconciliationItems.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-blue-500" />
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chi tiết đối soát tài chính</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {d.reconciliationIdDisplay && (
+                    <span className="text-[10px] font-bold text-gray-400 bg-gray-100 rounded-full px-2.5 py-1">{d.reconciliationIdDisplay}</span>
+                  )}
+                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                    d.reconciliationStatus === "DA_CHOT"
+                      ? "bg-green-100 text-green-700"
+                      : d.reconciliationStatus === "DANG_LAP"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}>
+                    {d.reconciliationStatus === "DA_CHOT" ? "Đã chốt" : d.reconciliationStatus === "DANG_LAP" ? "Đang lập" : d.reconciliationStatus === "CHO_CHOT" ? "Chờ chốt" : d.reconciliationStatus || "—"}
+                  </span>
+                </div>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-gray-100">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[#f8fafc] border-b border-gray-100">
+                      <th className="text-left px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Hạng mục</th>
+                      <th className="text-left px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Hướng</th>
+                      <th className="text-right px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Số tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.reconciliationItems.map((item) => (
+                      <tr key={item.id} className="border-b border-gray-50 last:border-0">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-gray-800 text-xs">{item.category?.replace(/_/g, " ") || "—"}</p>
+                          {item.description && <p className="text-[11px] text-gray-400 mt-0.5">{item.description}</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            item.direction === "THU" ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"
+                          }`}>
+                            {item.direction === "THU" ? "↑ Thu" : "↓ Chi"}
+                          </span>
+                        </td>
+                        <td className={`px-4 py-3 text-right font-bold text-xs ${
+                          item.direction === "THU" ? "text-red-600" : "text-green-600"
+                        }`}>
+                          {item.direction === "THU" ? "-" : "+"}{item.amount.toLocaleString("vi-VN")}đ
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Reconciliation not available notice */}
+          {!d.reconciliationId && d.inspectionDone && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-yellow-700 mb-1">Chờ đối soát kế toán</p>
+                  <p className="text-xs text-yellow-600 leading-relaxed">
+                    Biên bản kiểm tra đã hoàn tất. Đang chờ bộ phận kế toán lập và chốt đối soát tài chính cho hợp đồng này.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Inspection Items Detail */}
+          {d.inspectionItems && d.inspectionItems.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <Shield className="w-4 h-4 text-orange-500" />
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chi tiết biên bản kiểm tra</p>
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-gray-100">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[#f8fafc] border-b border-gray-100">
+                      <th className="text-left px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tài sản</th>
+                      <th className="text-left px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tình trạng</th>
+                      <th className="text-right px-4 py-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Bồi thường</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.inspectionItems.map((item) => (
+                      <tr key={item.id} className="border-b border-gray-50 last:border-0">
+                        <td className="px-4 py-3 font-bold text-gray-800 text-xs">{item.assetName}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{item.condition || "—"}</td>
+                        <td className="px-4 py-3 text-right font-bold text-xs text-red-600">
+                          {item.compensation > 0 ? `-${item.compensation.toLocaleString("vi-VN")}đ` : "0đ"}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-[#f8fafc]">
+                      <td colSpan={2} className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest">Tổng khấu trừ</td>
+                      <td className="px-4 py-3 text-right font-extrabold text-sm text-red-600">
+                        -{(d.inspectionDeduction || 0).toLocaleString("vi-VN")}đ
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Warning */}
           <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
             <div className="flex items-start gap-3">
@@ -245,11 +357,32 @@ export default function ManagerLiquidationDetailPage() {
           {/* Financial Summary */}
           <div className="bg-gradient-to-br from-[#0b2447] to-blue-800 rounded-3xl p-6 text-white shadow-xl shadow-blue-900/20">
             <p className="text-[10px] font-black text-blue-200/80 uppercase tracking-widest mb-4">Tổng kết tài chính</p>
+
+            {/* Refund Policy Badge */}
+            {d.refundPolicy && (
+              <div className="bg-white/10 rounded-2xl px-4 py-3 mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-black text-blue-200/70 uppercase tracking-widest">Chính sách hoàn cọc</span>
+                  <span className="text-xs font-extrabold text-yellow-300">{d.refundPolicy.ratio}%</span>
+                </div>
+                <p className="text-[11px] text-blue-100/80">{d.refundPolicy.label}</p>
+                {d.stayMonths != null && (
+                  <p className="text-[10px] text-blue-200/50 mt-1">Thời gian lưu trú: {d.stayMonths} tháng</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-blue-200/80">Tiền cọc giữ chỗ:</span>
                 <span className="font-bold">{(d.depositAmount || 0).toLocaleString("vi-VN")}đ</span>
               </div>
+              {d.refundPolicy && d.refundPolicy.ratio < 100 && (
+                <div className="flex justify-between">
+                  <span className="text-blue-200/80">Hoàn cọc {d.refundPolicy.ratio}%:</span>
+                  <span className="font-bold text-yellow-300">{(d.baseRefund || 0).toLocaleString("vi-VN")}đ</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-blue-200/80">Công nợ tồn đọng:</span>
                 <span className="font-bold text-red-300">-{(d.unpaidAmount || 0).toLocaleString("vi-VN")}đ</span>

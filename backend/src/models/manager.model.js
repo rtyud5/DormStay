@@ -41,6 +41,29 @@ const toNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const getRefundPolicy = (refundReason) => {
+  const policyMap = {
+    NO_CONTRACT: { reason: "NO_CONTRACT", ratio: 80, label: "Đặt cọc nhưng chưa ký hợp đồng" },
+    EARLY_TERMINATION_SHORT_STAY: { reason: "EARLY_TERMINATION_SHORT_STAY", ratio: 50, label: "Đã ký hợp đồng, lưu trú dưới 6 tháng" },
+    EARLY_TERMINATION_LONG_STAY: { reason: "EARLY_TERMINATION_LONG_STAY", ratio: 70, label: "Đã ký hợp đồng, lưu trú từ 6 tháng trở lên" },
+    NORMAL_COMPLETION: { reason: "NORMAL_COMPLETION", ratio: 100, label: "Hết hạn hợp đồng" },
+  };
+  return policyMap[refundReason] || policyMap.EARLY_TERMINATION_LONG_STAY;
+};
+
+const getSuggestedRefundReason = (stayMonths) => {
+  if (stayMonths < 6) return "EARLY_TERMINATION_SHORT_STAY";
+  return "EARLY_TERMINATION_LONG_STAY";
+};
+
+const calculateStayMonths = (moveInDate, checkoutDate) => {
+  if (!moveInDate || !checkoutDate) return 0;
+  const start = new Date(moveInDate);
+  const end = new Date(checkoutDate);
+  const diffDays = Math.max(Math.ceil((end - start) / (1000 * 60 * 60 * 24)), 0);
+  return Math.max(Math.floor(diffDays / 30), 0);
+};
+
 const getLatestByContract = async (table, contractIds, select = "*") => {
   if (!contractIds.length) return {};
   const { data, error } = await supabase
@@ -710,12 +733,36 @@ const ManagerModel = {
     );
     const reconciliation = reconciliationByContract[hd?.ma_hop_dong] || null;
 
+    // Fetch reconciliation line items if available
+    let reconciliationItems = [];
+    if (reconciliation?.ma_doi_soat) {
+      const { data: chiTiet } = await supabase
+        .from('chi_tiet_doi_soat_tai_chinh')
+        .select('ma_chi_tiet_doi_soat, danh_muc, huong_giao_dich, loai_nguon, so_tien, mo_ta')
+        .eq('ma_doi_soat', reconciliation.ma_doi_soat)
+        .order('ma_chi_tiet_doi_soat', { ascending: true });
+      reconciliationItems = (chiTiet || []).map(ct => ({
+        id: ct.ma_chi_tiet_doi_soat,
+        category: ct.danh_muc,
+        direction: ct.huong_giao_dich,
+        sourceType: ct.loai_nguon,
+        amount: toNumber(ct.so_tien),
+        description: ct.mo_ta || '',
+      }));
+    }
+
     const activeAlloc = hd?.phan_bo_hop_dong?.find(a => ACTIVE_CONTRACT_STATUSES.includes(a.trang_thai));
     const contractStartDate = hd?.ngay_vao_o || activeAlloc?.ngay_bat_dau;
     const contractEndDate = activeAlloc?.ngay_ket_thuc || data.ngay_yeu_cau_tra_phong;
 
+    // Refund policy calculation (same logic as accounting)
+    const stayMonths = calculateStayMonths(hd?.ngay_vao_o, data.ngay_yeu_cau_tra_phong);
+    const refundReason = getSuggestedRefundReason(stayMonths);
+    const refundPolicy = getRefundPolicy(refundReason);
+
     let totalDeposit = toNumber(reconciliation?.so_tien_dat_coc_ban_dau || hd?.so_tien_dat_coc_bao_dam);
     let inspectionFee = toNumber(data.bien_ban_kiem_tra?.[0]?.tong_uoc_tinh_khau_tru);
+    const baseRefund = Math.round((totalDeposit * (refundPolicy.ratio / 100) + Number.EPSILON) * 100) / 100;
 
     // Check unpaid invoices
     let unpaidAmount = 0;
@@ -730,7 +777,7 @@ const ManagerModel = {
 
     let finalRefundAmount = reconciliation
       ? toNumber(reconciliation.so_tien_hoan_lai)
-      : totalDeposit - inspectionFee - unpaidAmount;
+      : baseRefund - inspectionFee - unpaidAmount;
     let additionalPaymentAmount = reconciliation
       ? toNumber(reconciliation.so_tien_can_thanh_toan_them)
       : 0;
@@ -771,13 +818,20 @@ const ManagerModel = {
       checkoutStatus: data.trang_thai,
       contractStatus: normalizeContractStatus(hd?.trang_thai),
       reconciliationId: reconciliation?.ma_doi_soat || null,
+      reconciliationIdDisplay: reconciliation ? `DS-${reconciliation.ma_doi_soat}` : null,
       reconciliationStatus: reconciliation?.trang_thai || null,
+      reconciliationItems,
       liquidationReady,
       // Financial
       depositAmount: totalDeposit,
       unpaidAmount,
       inspectionDeduction: inspectionFee,
+      baseRefund,
       finalRefundAmount,
+      // Refund policy
+      stayMonths,
+      refundReason,
+      refundPolicy,
       additionalPaymentAmount,
       // Process steps
       auditDone,
