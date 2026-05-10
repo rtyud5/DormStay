@@ -71,8 +71,8 @@ const mapRoomToFrontendFormat = (raw, holdMap = {}) => {
       id: bed.ma_giuong,
       code: bed.ma_giuong_hien_thi,
       label: bed.nhan_giuong,
-      price: formatPrice(bed.gia_thang),
-      rawPrice: bed.gia_thang,
+      price: formatPrice(raw.gia_thang),
+      rawPrice: raw.gia_thang,
       status,
     };
   });
@@ -268,7 +268,10 @@ const RoomModel = {
     
     const { data, error } = await supabase
       .from("giuong")
-      .select("*")
+      .select(`
+        *,
+        phong ( gia_thang )
+      `)
       .eq("ma_phong", roomId);
       
     if (error) throw error;
@@ -283,8 +286,8 @@ const RoomModel = {
         id: bed.ma_giuong,
         code: bed.ma_giuong_hien_thi,
         label: bed.nhan_giuong,
-        price: formatPrice(bed.gia_thang),
-        rawPrice: bed.gia_thang,
+        price: formatPrice(bed.phong?.gia_thang || bed.gia_thang),
+        rawPrice: bed.phong?.gia_thang || bed.gia_thang,
         status,
       };
     }) : [];

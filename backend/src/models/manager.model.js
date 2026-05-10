@@ -980,7 +980,7 @@ const ManagerModel = {
         display: g.nhan_giuong || g.ma_giuong_hien_thi || `Giường ${g.ma_giuong}`,
         status: normalizeBedStatus(g.trang_thai),
         tenant: tenantByBed[g.ma_giuong] || null,
-        price: toNumber(g.gia_thang)
+        price: toNumber(p.gia_thang)
       }));
       const occupied = mappedBeds.filter(g => g.status === 'DA_THUE').length;
       const reserved = 0;
