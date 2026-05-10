@@ -192,9 +192,8 @@ export default function ManagerInspectionDetailPage() {
                 const isDamaged = item.condition !== "Bình thường";
                 return (
                   <div key={item._key} className={`rounded-2xl border ${isDamaged ? "border-red-200 bg-red-50/30" : "border-gray-100 bg-white"} p-5 transition-all`}>
-                    <div className="flex flex-col md:flex-row gap-4">
-                      {/* Icon + Name */}
-                      <div className="flex items-start gap-3 flex-1">
+                    <div className="grid gap-4">
+                      <div className="flex items-start gap-3">
                         <div className={`w-12 h-12 rounded-xl ${isDamaged ? "bg-red-100 text-red-600" : "bg-blue-50 text-blue-600"} flex items-center justify-center flex-shrink-0`}>
                           {item.category === "Điện" ? <Wrench className="w-5 h-5" /> : <Package className="w-5 h-5" />}
                         </div>
@@ -205,70 +204,73 @@ export default function ManagerInspectionDetailPage() {
                               {item.assetCode && <p className="text-xs text-gray-400">Mã TS: {item.assetCode}</p>}
                             </>
                           ) : (
-                            <input
-                              value={item.assetName}
-                              onChange={(e) => updateItem(item._key, "assetName", e.target.value)}
-                              placeholder="Tên tài sản"
-                              className="w-full px-3 py-2 bg-[#f4f7fa] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+                            <div className="space-y-2">
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tên tài sản</span>
+                              <input
+                                value={item.assetName}
+                                onChange={(e) => updateItem(item._key, "assetName", e.target.value)}
+                                placeholder="Nhập tên tài sản"
+                                className="h-14 w-full rounded-2xl bg-[#f4f7fa] px-4 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
                           )}
                         </div>
                       </div>
 
-                      {/* Condition buttons */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {CONDITION_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.value}
-                            disabled={isReadOnly}
-                            onClick={() => updateItem(item._key, "condition", opt.value)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                              item.condition === opt.value
-                                ? `${opt.color} text-white shadow-md`
-                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                            } ${isReadOnly ? "cursor-default" : "cursor-pointer"}`}
-                          >
-                            {opt.value}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Compensation */}
-                      <div className="flex items-center gap-3">
-                        <div>
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Phí bồi thường</span>
-                          {isReadOnly ? (
-                            <p className={`text-base font-extrabold ${item.compensation > 0 ? "text-red-600" : "text-gray-800"}`}>
-                              {(item.compensation || 0).toLocaleString("vi-VN")}
-                            </p>
-                          ) : (
-                            <input
-                              type="number"
-                              value={item.compensation}
-                              onChange={(e) => updateItem(item._key, "compensation", Number(e.target.value))}
-                              className="w-28 px-3 py-2 bg-[#f4f7fa] rounded-xl text-sm font-bold text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          )}
+                      <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-end">
+                        <div className="flex flex-wrap gap-2">
+                          {CONDITION_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              disabled={isReadOnly}
+                              onClick={() => updateItem(item._key, "condition", opt.value)}
+                              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                item.condition === opt.value
+                                  ? `${opt.color} text-white shadow-md`
+                                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                              } ${isReadOnly ? "cursor-default" : "cursor-pointer"}`}
+                            >
+                              {opt.value}
+                            </button>
+                          ))}
                         </div>
-                        {!isReadOnly && (
-                          <button onClick={() => removeItem(item._key)} className="text-red-400 hover:text-red-600 transition-colors mt-4">
+
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Phí bồi thường</span>
+                            {isReadOnly ? (
+                              <p className={`text-base font-extrabold ${item.compensation > 0 ? "text-red-600" : "text-gray-800"}`}>
+                                {(item.compensation || 0).toLocaleString("vi-VN")}
+                              </p>
+                            ) : (
+                              <input
+                                type="number"
+                                value={item.compensation}
+                                onChange={(e) => updateItem(item._key, "compensation", Number(e.target.value))}
+                                className="h-12 w-32 rounded-2xl bg-[#f4f7fa] px-4 text-sm font-bold text-right text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {!isReadOnly ? (
+                          <button onClick={() => removeItem(item._key)} className="justify-self-end text-red-400 hover:text-red-600 transition-colors">
                             <Trash2 className="w-4 h-4" />
                           </button>
-                        )}
+                        ) : null}
                       </div>
-                    </div>
 
-                    {/* Note row */}
-                    {!isReadOnly && (
-                      <div className="mt-3 flex items-center gap-4">
-                        <input
-                          value={item.note || ""}
-                          onChange={(e) => updateItem(item._key, "note", e.target.value)}
-                          placeholder="Ghi chú chi tiết..."
-                          className="flex-1 px-3 py-2 bg-[#f4f7fa] rounded-xl text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    )}
+                      {!isReadOnly && (
+                        <div>
+                          <input
+                            value={item.note || ""}
+                            onChange={(e) => updateItem(item._key, "note", e.target.value)}
+                            placeholder="Ghi chú chi tiết..."
+                            className="h-12 w-full rounded-2xl bg-[#f4f7fa] px-4 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
