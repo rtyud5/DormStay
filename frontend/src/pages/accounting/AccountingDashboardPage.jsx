@@ -285,10 +285,10 @@ export default function AccountingDashboardPage() {
 
               <button
                 onClick={() => navigate(ACCOUNTING_ROUTES.RECONCILIATION)}
-                className="bg-white hover:bg-gray-100 transition-colors rounded-2xl p-4 flex flex-col items-center justify-center gap-3 text-[#0b2447] group shadow-lg"
+                className="bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-colors rounded-2xl p-4 flex flex-col items-center justify-center gap-3 text-white group"
               >
-                <div className="w-10 h-10 rounded-full bg-[#0b2447]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Scale className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-full bg-indigo-400/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Scale className="w-5 h-5 text-indigo-300" />
                 </div>
                 <span className="text-[11px] font-black uppercase tracking-widest">Đối soát</span>
               </button>
