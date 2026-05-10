@@ -12,8 +12,10 @@ const TABLES = {
 
 function normalizeTransactionStatus(rawStatus) {
   const value = String(rawStatus || "").toUpperCase();
-  if (includesAny(value, ["DA_XAC_NHAN", "CONFIRMED", "DA_THANH_TOAN"])) return "CONFIRMED";
-  if (includesAny(value, ["CHO_XAC_NHAN", "CHO_THANH_TOAN", "PENDING"])) return "PENDING";
+  if (includesAny(value, ["DA_XAC_NHAN", "CONFIRMED", "DA_THANH_TOAN", "DA_HOAN", "HOAN_TAT", "COMPLETED", "DA_NHAN"]))
+    return "CONFIRMED";
+  if (includesAny(value, ["CHO_XAC_NHAN", "CHO_THANH_TOAN", "PENDING", "CHO_HOAN", "DANG_XU_LY", "PROCESS"]))
+    return "PENDING";
   if (includesAny(value, ["THAT_BAI", "FAILED", "HUY", "CANCEL"])) return "FAILED";
   return "PENDING";
 }
@@ -21,8 +23,9 @@ function normalizeTransactionStatus(rawStatus) {
 function mapStatusFilter(filterStatus) {
   if (!filterStatus || filterStatus === "all" || filterStatus === "ALL") return null;
   const value = String(filterStatus).toUpperCase();
-  if (value === "CONFIRMED") return ["DA_XAC_NHAN", "CONFIRMED", "DA_THANH_TOAN"];
-  if (value === "PENDING") return ["CHO_XAC_NHAN", "CHO_THANH_TOAN", "PENDING"];
+  if (value === "CONFIRMED")
+    return ["DA_XAC_NHAN", "CONFIRMED", "DA_THANH_TOAN", "DA_HOAN", "HOAN_TAT", "COMPLETED", "DA_NHAN"];
+  if (value === "PENDING") return ["CHO_XAC_NHAN", "CHO_THANH_TOAN", "PENDING", "CHO_HOAN", "DANG_XU_LY", "PROCESSING"];
   if (value === "FAILED") return ["THAT_BAI", "FAILED", "HUY", "CANCEL"];
   return null;
 }
@@ -205,7 +208,7 @@ const AccountingTransactionPageModel = {
 
     // Apply filters
     if (statusFilter) {
-      allTransactions = allTransactions.filter((tx) => statusFilter.includes(tx.statusRaw));
+      allTransactions = allTransactions.filter((tx) => statusFilter.includes(String(tx.statusRaw || "").toUpperCase()));
     }
 
     if (search) {
