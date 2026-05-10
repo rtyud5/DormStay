@@ -90,6 +90,91 @@ const mapAdditionalPaymentVoucherUiFields = (voucher) => ({
   statusText: voucher.statusText || voucher.status,
 });
 
+const buildRefundStatusSummary = (items = []) => ({
+  total: items.length,
+  pending: items.filter((item) => item.status === "PENDING").length,
+  processing: items.filter((item) => item.status === "PROCESSING").length,
+  completed: items.filter((item) => item.status === "COMPLETED").length,
+  failed: items.filter((item) => item.status === "FAILED").length,
+});
+
+const getRefundsFromReconciliationFallback = async (filters = {}) => {
+  const limit = Number(filters.limit || 10);
+  const page = Number(filters.page || 1);
+  const scanLimit = Math.max(limit * 20, 200);
+
+  const listResponse = await api.get("/accounting/reconciliation/work-items", {
+    params: {
+      status: "ALL",
+      search: filters.search || "",
+      page: 1,
+      limit: scanLimit,
+    },
+  });
+
+  const listPayload = unwrapPayload(listResponse) || {};
+  const workItems = listPayload.items || [];
+  const withVoucher = workItems.filter((item) => item?.hasRefundVoucher && item?.reconciliationId);
+
+  const detailRows = await Promise.all(
+    withVoucher.map(async (item) => {
+      try {
+        const detailResponse = await api.get(`/accounting/reconciliation/${item.reconciliationId}`);
+        const detail = unwrapPayload(detailResponse) || {};
+        const voucher = detail.refundVoucher;
+        if (!voucher) return null;
+
+        const originalDeposit = Number(detail.depositAmount || item.depositAmount || 0);
+        const totalCharges = Number(detail.totalCharges || 0);
+        const totalAdjustments = Number(detail.totalAdjustments || 0);
+
+        return mapRefundUiFields({
+          ...voucher,
+          customerId: item.customerId || "",
+          originalDeposit,
+          deductedAmount: Math.max(totalCharges - totalAdjustments, 0),
+          issuedDate: voucher.createdAt || detail.createdAt || null,
+        });
+      } catch (error) {
+        return null;
+      }
+    }),
+  );
+
+  const status = String(filters.status || "").toUpperCase();
+  const search = String(filters.search || "")
+    .trim()
+    .toLowerCase();
+
+  let filtered = detailRows.filter(Boolean);
+
+  if (status && status !== "ALL") {
+    filtered = filtered.filter((item) => item.status === status);
+  }
+
+  if (search) {
+    filtered = filtered.filter((item) =>
+      [item.id, item.contractId, item.customerName, item.customerId, item.reconciliationId]
+        .map((value) => String(value || "").toLowerCase())
+        .some((value) => value.includes(search)),
+    );
+  }
+
+  const from = (page - 1) * limit;
+  const to = from + limit;
+  const paged = filtered.slice(from, to);
+
+  return {
+    success: true,
+    data: paged,
+    total: filtered.length,
+    page,
+    limit,
+    statusSummary: buildRefundStatusSummary(filtered),
+    message: "Danh sach phieu hoan coc duoc lay tu doi soat vi API refunds chua mo.",
+  };
+};
+
 // ==================== CONTRACTS ====================
 
 /**
@@ -608,31 +693,91 @@ export const getRefunds = async (filters = {}) => {
   if (USE_MOCK_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    let filtered = [...mockRefunds];
+    const mapped = mockRefunds.map((item) => ({
+      ...item,
+      issuedDate: item.issuedDate || item.createdAt || new Date().toISOString(),
+      status: item.status || "PENDING",
+    }));
 
-    if (filters.status) {
-      filtered = filtered.filter((ref) => ref.status === filters.status);
+    let filtered = [...mapped];
+
+    const status = String(filters.status || "").toUpperCase();
+    const search = String(filters.search || "")
+      .trim()
+      .toLowerCase();
+
+    if (status && status !== "ALL") {
+      filtered = filtered.filter((ref) => ref.status === status);
     }
 
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
+    if (search) {
       filtered = filtered.filter(
         (ref) =>
-          ref.customerName.toLowerCase().includes(search) ||
-          ref.contractId.toLowerCase().includes(search) ||
-          ref.id.toLowerCase().includes(search),
+          String(ref.customerName || "")
+            .toLowerCase()
+            .includes(search) ||
+          String(ref.contractId || "")
+            .toLowerCase()
+            .includes(search) ||
+          String(ref.id || "")
+            .toLowerCase()
+            .includes(search),
       );
     }
 
+    const page = Number(filters.page || 1);
+    const limit = Number(filters.limit || 10);
+    const from = (page - 1) * limit;
+    const to = from + limit;
+    const paged = filtered.slice(from, to);
+
+    const pending = filtered.filter((ref) => ref.status === "PENDING").length;
+    const processing = filtered.filter((ref) => ref.status === "PROCESSING").length;
+    const completed = filtered.filter((ref) => ref.status === "COMPLETED").length;
+    const failed = filtered.filter((ref) => ref.status === "FAILED").length;
+
     return {
       success: true,
-      data: filtered,
+      data: paged.map(mapRefundUiFields),
       total: filtered.length,
+      page,
+      limit,
+      statusSummary: {
+        total: filtered.length,
+        pending,
+        processing,
+        completed,
+        failed,
+      },
     };
   }
 
-  const response = await api.get("/accounting/refunds", { params: filters });
-  return mapListResponse(response);
+  try {
+    const response = await api.get("/accounting/refunds", { params: filters });
+    const payload = unwrapPayload(response) || {};
+
+    return {
+      success: unwrapSuccess(response),
+      data: (payload.items || []).map(mapRefundUiFields),
+      total: payload.total || 0,
+      page: payload.page || Number(filters.page || 1),
+      limit: payload.limit || Number(filters.limit || 10),
+      statusSummary: payload.statusSummary || {
+        total: payload.total || 0,
+        pending: 0,
+        processing: 0,
+        completed: 0,
+        failed: 0,
+      },
+      message: unwrapMessage(response),
+    };
+  } catch (error) {
+    const statusCode = error?.response?.status;
+    if (statusCode === 404) {
+      return getRefundsFromReconciliationFallback(filters);
+    }
+    throw error;
+  }
 };
 
 /**
@@ -703,13 +848,24 @@ export const updateRefund = async (refundId, refundData = {}) => {
     };
   }
 
-  const response = await api.put(`/accounting/refunds/${refundId}`, refundData);
-  const normalized = mapDetailResponse(response);
+  try {
+    const response = await api.put(`/accounting/refunds/${refundId}`, refundData);
+    const normalized = mapDetailResponse(response);
 
-  return {
-    ...normalized,
-    data: normalized.data ? mapRefundUiFields(normalized.data) : null,
-  };
+    return {
+      ...normalized,
+      data: normalized.data ? mapRefundUiFields(normalized.data) : null,
+    };
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      return {
+        success: false,
+        data: null,
+        message: "API cap nhat phieu hoan coc chua duoc mo tren backend.",
+      };
+    }
+    throw error;
+  }
 };
 
 /**
