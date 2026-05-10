@@ -102,6 +102,26 @@ const confirmAdditionalPaymentVouchersCash = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Confirm additional payment vouchers by cash successful");
 });
 
+const getRefunds = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getRefunds(req.query);
+  return sendSuccess(res, result, "Fetch refund vouchers successful");
+});
+
+const getRefundDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getRefundDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch refund voucher detail successful");
+});
+
+const createRefund = asyncHandler(async (req, res) => {
+  const result = await AccountingService.createRefund(req.body);
+  return sendSuccess(res, result, "Create refund voucher successful", 201);
+});
+
+const updateRefund = asyncHandler(async (req, res) => {
+  const result = await AccountingService.updateRefund(req.params.id, req.body);
+  return sendSuccess(res, result, "Update refund voucher successful");
+});
+
 const accountingApisTemporarilyDisabled = (req, res) => {
   const result = AccountingService.getApiResetStatus();
 
@@ -133,5 +153,9 @@ module.exports = {
   getAdditionalPaymentVouchers,
   getAdditionalPaymentVoucherDetail,
   confirmAdditionalPaymentVouchersCash,
+  getRefunds,
+  getRefundDetail,
+  createRefund,
+  updateRefund,
   accountingApisTemporarilyDisabled,
 };

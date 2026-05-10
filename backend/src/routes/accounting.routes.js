@@ -47,6 +47,11 @@ router.post(
   AccountingController.confirmAdditionalPaymentVouchersCash,
 );
 
+router.get("/refunds", AccountingController.getRefunds);
+router.get("/refunds/:id", AccountingController.getRefundDetail);
+router.post("/refunds", validate(["reconciliationId"]), AccountingController.createRefund);
+router.put("/refunds/:id", AccountingController.updateRefund);
+
 //router.use(AccountingController.accountingApisTemporarilyDisabled);
 
 module.exports = router;
