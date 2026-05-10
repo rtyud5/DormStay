@@ -27,6 +27,7 @@ function RentalRequestListPage() {
       case 'DANG_XU_LY': return { label: 'CHỜ THANH TOÁN', color: 'bg-amber-100 text-amber-700', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' };
       case 'CHO_THANH_TOAN': return { label: 'CHỜ CỌC', color: 'bg-amber-100 text-amber-700', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' };
       case 'DA_COC': return { label: 'CHỜ DUYỆT CỌC', color: 'bg-indigo-100 text-indigo-700', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' };
+      case 'DA_DUYET': return { label: 'ĐÃ DUYỆT', color: 'bg-emerald-100 text-emerald-700', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' };
       case 'DA_XAC_NHAN': return { label: 'ĐÃ XÁC NHẬN', color: 'bg-green-100 text-green-700', icon: 'M5 13l4 4L19 7' };
       case 'TU_CHOI': return { label: 'TỪ CHỐI', color: 'bg-red-100 text-red-700', icon: 'M6 18L18 6M6 6l12 12' };
       case 'QUA_HAN': return { label: 'QUÁ HẠN', color: 'bg-red-100 text-red-700', icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' };
@@ -74,7 +75,10 @@ function RentalRequestListPage() {
               TẤT CẢ ({requests.length})
             </button>
             <button className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-[#64748B] text-[13px] font-bold uppercase tracking-tighter hover:border-[#0052CC] hover:text-[#0052CC] transition-all">
-              ĐANG CHỜ ({requests.filter(r => r.trang_thai === 'MOI_TAO' || r.trang_thai === 'CHO_THANH_TOAN').length})
+              ĐANG CHỜ ({requests.filter(r => ['MOI_TAO', 'CHO_THANH_TOAN', 'DA_COC'].includes(r.trang_thai)).length})
+            </button>
+            <button className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-[#64748B] text-[13px] font-bold uppercase tracking-tighter hover:border-[#22A06B] hover:text-[#22A06B] transition-all">
+              ĐÃ DUYỆT ({requests.filter(r => ['DA_DUYET', 'DA_XAC_NHAN'].includes(r.trang_thai)).length})
             </button>
           </div>
 
