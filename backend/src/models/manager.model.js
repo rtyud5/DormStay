@@ -6,7 +6,7 @@ const CLOSED_CONTRACT_STATUSES = ["HET_HAN", "DA_KET_THUC"];
 const ACTIVE_CHECKOUT_STATUSES = ["CHO_XU_LY", "DANG_KIEM_TRA"];
 const COMPLETED_CHECKOUT_STATUSES = ["HOAN_TAT", "DA_THANH_LY"];
 const OCCUPIED_BED_STATUSES = ["DA_THUE", "DANG_O", "DANG_SU_DUNG", "DA_THUE_HET"];
-const EMPTY_BED_STATUSES = ["TRONG", "CON_TRONG"];
+const EMPTY_BED_STATUSES = ["CON_TRONG", "TRONG"];
 
 const normalizeContractStatus = (status) => {
   const value = String(status || "").toUpperCase();
@@ -123,7 +123,7 @@ const ManagerModel = {
     // Đang ở = Số hợp đồng hiệu lực
     const { count: activeContracts } = await supabase.from('hop_dong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'HIEU_LUC');
 
-    const { count: emptyRooms } = await supabase.from('phong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'TRONG');
+    const { count: emptyRooms } = await supabase.from('phong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'CON_TRONG');
 
     // Bảo trì
     const { count: maintenanceRooms } = await supabase.from('phong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'BAO_TRI');
@@ -846,9 +846,6 @@ const ManagerModel = {
       if (!additionalPaymentVoucher) {
         throw new AppError("Đối soát thiếu phiếu thanh toán phát sinh", 409);
       }
-      if (additionalPaymentVoucher.trang_thai !== "DA_THANH_TOAN") {
-        throw new AppError("Khách hàng chưa thanh toán phiếu phát sinh", 409);
-      }
     }
 
     if (toNumber(reconciliation.so_tien_hoan_lai) > 0) {
@@ -861,9 +858,6 @@ const ManagerModel = {
       if (refundError) throw refundError;
       if (!refundVoucher) {
         throw new AppError("Đối soát thiếu phiếu hoàn cọc", 409);
-      }
-      if (!["DA_HOAN", "HOAN_TAT"].includes(refundVoucher.trang_thai)) {
-        throw new AppError("Phiếu hoàn cọc chưa hoàn tất", 409);
       }
     }
 
@@ -889,20 +883,20 @@ const ManagerModel = {
     if (contract?.loai_muc_tieu === 'GIUONG' && bedId) {
       const { error: bedError } = await supabase
         .from('giuong')
-        .update({ trang_thai: 'TRONG' })
+        .update({ trang_thai: 'CON_TRONG' })
         .eq('ma_giuong', bedId);
       if (bedError) throw bedError;
       await refreshRoomAvailabilityStatus(roomId);
     } else if (roomId) {
       const { error: bedsError } = await supabase
         .from('giuong')
-        .update({ trang_thai: 'TRONG' })
+        .update({ trang_thai: 'CON_TRONG' })
         .eq('ma_phong', roomId);
       if (bedsError) throw bedsError;
 
       const { error: roomError } = await supabase
         .from('phong')
-        .update({ trang_thai: 'TRONG' })
+        .update({ trang_thai: 'CON_TRONG' })
         .eq('ma_phong', roomId);
       if (roomError) throw roomError;
     }
@@ -919,7 +913,7 @@ const ManagerModel = {
       ma_ban_ghi: yctp.ma_hop_dong,
       hanh_dong: 'THANH_LY_HOP_DONG',
       ma_ho_so_nguoi_thuc_hien: payload?.performedByProfileId || null,
-      ghi_chu: `Manager thanh ly hop dong HD-${yctp.ma_hop_dong}. Doi soat #${reconciliation.ma_doi_soat}. Hoan ${toNumber(reconciliation.so_tien_hoan_lai)}d, phat sinh ${toNumber(reconciliation.so_tien_can_thanh_toan_them)}d. Phong/giuong da tra ve TRONG.`,
+      ghi_chu: `Manager thanh ly hop dong HD-${yctp.ma_hop_dong}. Doi soat #${reconciliation.ma_doi_soat}. Hoan ${toNumber(reconciliation.so_tien_hoan_lai)}d, phat sinh ${toNumber(reconciliation.so_tien_can_thanh_toan_them)}d. Phong/giuong da tra ve CON_TRONG.`,
     });
 
     return {
@@ -990,7 +984,7 @@ const ManagerModel = {
       }));
       const occupied = mappedBeds.filter(g => g.status === 'DA_THUE').length;
       const reserved = 0;
-      const empty = mappedBeds.filter(g => g.status === 'TRONG').length;
+      const empty = mappedBeds.filter(g => g.status === 'CON_TRONG').length;
       const total = beds.length;
       const capacity = Number(p.suc_chua) || total || 1;
       const hasRoomTenant = !!tenantByRoom[p.ma_phong];
@@ -1032,7 +1026,7 @@ const ManagerModel = {
       total: count || 0,
       occupied: formatData.filter(r => r.status === 'SAP_DAY' || r.status === 'DAY' || r.occupiedCount > 0).length,
       reserved: formatData.filter(r => r.reservedCount > 0).length,
-      empty: formatData.filter(r => r.status === 'TRONG').length,
+      empty: formatData.filter(r => r.status === 'CON_TRONG').length,
       maintenance: 0,
     };
 

@@ -175,7 +175,7 @@ const RoomModel = {
     }
 
     if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
-      const dbStatus = filters.status.map(s => s === 'CON_TRONG' ? 'TRONG' : s);
+      const dbStatus = filters.status;
       query = query.in('trang_thai', dbStatus);
     }
 

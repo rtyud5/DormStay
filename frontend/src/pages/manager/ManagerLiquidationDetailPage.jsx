@@ -47,8 +47,14 @@ export default function ManagerLiquidationDetailPage() {
       setSubmitting(true);
       const res = await performLiquidation(Number(id), {});
       if (res.success) {
+        window.alert("Thanh lý hợp đồng thành công!");
         navigate(-1);
+      } else {
+        window.alert(res.message || "Thanh lý thất bại, vui lòng kiểm tra lại.");
       }
+    } catch (err) {
+      console.error(err);
+      window.alert(err?.response?.data?.message || err.message || "Đã xảy ra lỗi khi thanh lý.");
     } finally {
       setSubmitting(false);
     }
