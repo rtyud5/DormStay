@@ -146,7 +146,7 @@ function RoomDetailPage() {
                         </div>
                         <div className="text-right">
                            <div className={`text-[16px] font-extrabold ${bed.status === 'DA_THUE' || bed.status === 'DANG_GIU' ? ' text-[#94A3B8]' : 'text-[#0052CC]'}`}>
-                              {bed.price}
+                              {room.price}
                            </div>
                            <div className={`text-[12px] uppercase tracking-wide ${bed.status === 'DA_THUE' || bed.status === 'DANG_GIU' ? 'text-[#94A3B8]' : 'text-[#475569]'}`}>
                               {/* 4. Render biến text đã được dịch ra đây */}
