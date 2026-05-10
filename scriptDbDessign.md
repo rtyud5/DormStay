@@ -1,6 +1,6 @@
 # scriptDbDessign
 
-Tai lieu nay gom schema chinh trong `backend/supabase/scripts.sql`, 4 migration SQL, va cach code runtime dang dung DB. Muc tieu: doc 1 lan la thay duong di cua du lieu, khong bi lo bang phu hay status legacy.
+Tai lieu nay gom schema chinh trong `backend/supabase/scripts.sql`, 5 migration SQL, va cach code runtime dang dung DB. Muc tieu: doc 1 lan la thay duong di cua du lieu, khong bi lo bang phu hay status legacy.
 
 ## 1. Quy uoc chung
 
@@ -154,6 +154,16 @@ erDiagram
 - `DA_THANH_TOAN`
 - `THAT_BAI`
 
+### `yeu_cau_tra_phong.trang_thai`
+- `CHO_XU_LY`
+- `DANG_KIEM_TRA`
+- `DA_KIEM_TRA`
+- `DA_THANH_LY`
+- `HOAN_TAT` la legacy alias, da duoc cleanup ve `DA_THANH_LY`
+
+### `bien_ban_kiem_tra.trang_thai`
+- `DA_KIEM_TRA`
+
 ### `doi_soat_tai_chinh.trang_thai`
 - `CHO_CHOT`
 - `DANG_LAP`
@@ -168,6 +178,8 @@ erDiagram
 - `TAO_SAN_SAU_COC`
 - `KICH_HOAT_HOP_DONG`
 - `THANH_TOAN_COC_THANH_CONG`
+- `THANH_TOAN_PAYOS_THANH_CONG`
+- `XAC_NHAN_YEU_CAU`
 - `THANH_LY_HOP_DONG`
 
 ## 4. Bang va cot
@@ -597,3 +609,226 @@ Quan he: doi soat la hop tac giua checkout inspection va cac voucher tai chinh.
 - `paymentLinkid` trong `giu_cho_tam` la cot legacy/typo, code hien tai khong dung; `paymentLinkId` o `yeu_cau_thue` moi la cot active cho luong PayOS.
 - `so_luong_giuong_dat` la cot quan trong de doc multi-bed booking va tinh deposit.
 - Flow sale khong con duyet/tam dung/tu cho yeu cau thue; sale chi xem yeu cau va tao yeu cau tra phong.
+- Migration `2026051000_cleanup_sale_checkout_statuses.sql` chuan hoa `DA_DUYET` -> `DA_XAC_NHAN` va `HOAN_TAT` -> `DA_THANH_LY`.
+- `yeu_cau_tra_phong` chot thanh `DA_THANH_LY`; `HOAN_TAT` chi la alias cu trong data legacy.
+- `thong_bao` hien chua co bang rieng trong DB; sequence xem nhu app side-effect / UI state / service notify.
+
+## 7. Class diagram 3 layer
+
+Quy uoc doc nhanh: `*Portal` va `FE_*Service` la tang giao dien, `*Service` la tang nghiep vu backend, `*Model` va cac bang snake_case la tang du lieu.
+
+```mermaid
+classDiagram
+direction LR
+
+class CustomerPortal
+class SalePortal
+class AccountingPortal
+class ManagerPortal
+class AuthPortal
+
+class FE_RoomService
+class FE_RentalRequestService
+class FE_PaymentService
+class FE_ContractService
+class FE_SaleService
+class FE_AccountingService
+class FE_ManagerService
+class FE_AuthService
+
+class RoomService
+class RentalRequestService
+class PaymentService
+class ContractService
+class SaleService
+class AccountingService
+class ManagerService
+class AuthService
+
+class RoomModel
+class RentalRequestModel
+class PaymentModel
+class ContractModel
+class SaleModel
+class AccountingPageModels
+class ManagerModel
+class UserModel
+
+class ho_so
+class phong
+class giuong
+class giu_cho_tam
+class yeu_cau_thue
+class hop_dong
+class phan_bo_hop_dong
+class hoa_don
+class thanh_toan
+class yeu_cau_tra_phong
+class bien_ban_kiem_tra
+class chi_tiet_kiem_tra
+class doi_soat_tai_chinh
+class chi_tiet_doi_soat_tai_chinh
+class phieu_hoan_coc
+class phieu_thanh_toan_phat_sinh
+
+CustomerPortal --> FE_RoomService
+CustomerPortal --> FE_RentalRequestService
+CustomerPortal --> FE_PaymentService
+CustomerPortal --> FE_ContractService
+SalePortal --> FE_SaleService
+AccountingPortal --> FE_AccountingService
+ManagerPortal --> FE_ManagerService
+AuthPortal --> FE_AuthService
+
+FE_RoomService --> RoomService
+FE_RentalRequestService --> RentalRequestService
+FE_PaymentService --> PaymentService
+FE_ContractService --> ContractService
+FE_SaleService --> SaleService
+FE_AccountingService --> AccountingService
+FE_ManagerService --> ManagerService
+FE_AuthService --> AuthService
+
+RoomService --> RoomModel
+RentalRequestService --> RentalRequestModel
+PaymentService --> PaymentModel
+ContractService --> ContractModel
+SaleService --> SaleModel
+AccountingService --> AccountingPageModels
+ManagerService --> ManagerModel
+AuthService --> UserModel
+
+RoomModel --> phong
+RoomModel --> giuong
+RentalRequestModel --> yeu_cau_thue
+RentalRequestModel --> ho_so
+RentalRequestModel --> giu_cho_tam
+PaymentModel --> hoa_don
+PaymentModel --> thanh_toan
+PaymentModel --> hop_dong
+PaymentModel --> phan_bo_hop_dong
+PaymentModel --> phieu_thanh_toan_phat_sinh
+ContractModel --> hop_dong
+ContractModel --> phan_bo_hop_dong
+ContractModel --> yeu_cau_tra_phong
+ContractModel --> doi_soat_tai_chinh
+ContractModel --> phieu_hoan_coc
+ContractModel --> phieu_thanh_toan_phat_sinh
+SaleModel --> yeu_cau_thue
+SaleModel --> hop_dong
+SaleModel --> yeu_cau_tra_phong
+AccountingPageModels --> hoa_don
+AccountingPageModels --> thanh_toan
+AccountingPageModels --> doi_soat_tai_chinh
+AccountingPageModels --> chi_tiet_doi_soat_tai_chinh
+AccountingPageModels --> phieu_hoan_coc
+AccountingPageModels --> phieu_thanh_toan_phat_sinh
+ManagerModel --> yeu_cau_tra_phong
+ManagerModel --> bien_ban_kiem_tra
+ManagerModel --> chi_tiet_kiem_tra
+ManagerModel --> doi_soat_tai_chinh
+ManagerModel --> phieu_hoan_coc
+ManagerModel --> phieu_thanh_toan_phat_sinh
+UserModel --> ho_so
+```
+
+## 8. Sequence diagrams
+
+### Flow 1 - Dat phong/giuong -> coc -> hop dong -> khoan thu dau -> kich hoat
+
+```mermaid
+sequenceDiagram
+autonumber
+actor KH as Khach hang
+actor ACC as Ke toan
+participant FE as Frontend
+participant API as Backend API
+participant DB as Supabase DB
+participant PAYOS as PayOS
+participant JOB as System job
+
+KH->>FE: Chon phong/giuong, gui form dat coc
+FE->>API: POST /rental-requests
+API->>DB: Tao yeu_cau_thue + giu_cho_tam
+DB-->>API: request da tao
+API-->>FE: Request detail
+
+FE->>PAYOS: Tao checkoutUrl + paymentLinkId
+PAYOS-->>FE: Link thanh toan
+FE->>API: POST /rental-requests/save-payos-info
+API->>DB: Luu checkoutUrl/paymentLinkId
+
+KH->>PAYOS: Thanh toan coc
+PAYOS-->>API: webhook / confirm
+API->>DB: Cap nhat yeu_cau_thue = DA_COC
+API->>DB: Ghi hoa_don DAT_COC, thanh_toan, hop_dong, phan_bo_hop_dong
+API-->>ACC: Thong bao hop dong cho lap khoan thu dau
+
+ACC->>API: POST /accounting/billing/contracts/{id}/invoice
+API->>DB: Tao hoa_don TIEN_THUE_KY_DAU
+API-->>KH: Hien khoan thu dau trong tab Hop dong
+
+alt khach thanh toan dung han
+  KH->>PAYOS: Thanh toan khoan thu dau
+  PAYOS-->>API: confirm payment
+  API->>DB: Update hoa_don = DA_THANH_TOAN
+  API->>DB: Update hop_dong = HIEU_LUC
+  API->>DB: Update phan_bo_hop_dong, giuong/phong, yeu_cau_thue
+  API-->>ACC: Cap nhat trang thai da thu
+else qua han khoan thu dau
+  JOB->>API: Tao phieu hoan coc theo chinh sach
+  API->>DB: Mark hoa_don = QUA_HAN, insert phieu_hoan_coc
+  API-->>ACC: Thong bao hoan coc
+end
+```
+
+### Flow 2 - Tra phong -> kiem tra -> doi soat -> thanh ly -> thanh toan/hoan coc
+
+```mermaid
+sequenceDiagram
+autonumber
+actor SALE as Sale
+actor MGR as Manager
+actor KH as Khach hang
+actor ACC as Ke toan
+participant FE as Frontend
+participant API as Backend API
+participant DB as Supabase DB
+participant PAYOS as PayOS
+
+SALE->>FE: Tao yeu cau tra phong
+FE->>API: POST /sale/checkout-requests
+API->>DB: Tao yeu_cau_tra_phong = CHO_XU_LY
+
+MGR->>FE: Lap bien ban kiem tra
+FE->>API: POST /manager/inspections
+API->>DB: Insert bien_ban_kiem_tra + chi_tiet_kiem_tra
+API->>DB: Update yeu_cau_tra_phong = DA_KIEM_TRA
+
+ACC->>FE: Mo ban doi soat
+FE->>API: POST /accounting/reconciliation
+API->>DB: Tao doi_soat_tai_chinh + chi_tiet_doi_soat_tai_chinh
+ACC->>FE: Chot doi soat
+FE->>API: POST /accounting/reconciliation/{id}/finalize
+API->>DB: Update doi_soat_tai_chinh = DA_CHOT
+API->>DB: Auto tao phieu_hoan_coc hoac phieu_thanh_toan_phat_sinh
+
+MGR->>API: POST /manager/liquidations/{id}/perform
+API->>DB: Update hop_dong = HET_HAN
+API->>DB: Update yeu_cau_tra_phong = DA_THANH_LY
+API->>DB: Giai phong phan_bo_hop_dong, phong, giuong
+API-->>ACC: Dong bo trang thai thanh ly
+
+alt du tien
+  API-->>KH: Thong bao thong tin hoan coc
+  ACC->>API: PUT /accounting/refunds/{id}
+  API->>DB: Update phieu_hoan_coc = DA_HOAN
+  API-->>ACC: Trang thai hoan coc da xong
+else thieu tien
+  API-->>KH: Thong bao phieu thanh toan phat sinh
+  KH->>PAYOS: Thanh toan phieu phat sinh
+  PAYOS-->>API: confirm payment
+  API->>DB: Update phieu_thanh_toan_phat_sinh = DA_THANH_TOAN
+  API-->>ACC: Trang thai phieu phat sinh da xong
+end
+```

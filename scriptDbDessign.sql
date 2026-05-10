@@ -1008,3 +1008,33 @@ WHEN (OLD.trang_thai IS DISTINCT FROM NEW.trang_thai)
 EXECUTE FUNCTION public.trigger_update_room_status_on_bed_change();
 
 COMMIT;
+
+-- =========================================================
+-- 10) LEGACY STATUS CLEANUP
+-- =========================================================
+
+BEGIN;
+
+UPDATE public.yeu_cau_thue
+SET trang_thai = 'DA_XAC_NHAN',
+    updated_at = now()
+WHERE trang_thai = 'DA_DUYET';
+
+UPDATE public.nhat_ky_yeu_cau_thue
+SET trang_thai_cu = 'DA_XAC_NHAN'
+WHERE trang_thai_cu = 'DA_DUYET';
+
+UPDATE public.nhat_ky_yeu_cau_thue
+SET trang_thai_moi = 'DA_XAC_NHAN'
+WHERE trang_thai_moi = 'DA_DUYET';
+
+UPDATE public.nhat_ky_he_thong
+SET hanh_dong = 'XAC_NHAN_YEU_CAU'
+WHERE hanh_dong = 'DUYET_YEU_CAU';
+
+UPDATE public.yeu_cau_tra_phong
+SET trang_thai = 'DA_THANH_LY',
+    updated_at = now()
+WHERE trang_thai = 'HOAN_TAT';
+
+COMMIT;
