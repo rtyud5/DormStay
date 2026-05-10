@@ -35,7 +35,15 @@ const PayOSQRDisplay = ({ url, onSuccess, onCancel }) => {
   );
 };
 
-const PayOS = ({ amount, description, onSuccess, onCancel, onPaymentLinkCreated, existingCheckoutUrl }) => {
+const PayOS = ({
+  amount,
+  description,
+  amountLabel = "Tổng tiền thanh toán:",
+  onSuccess,
+  onCancel,
+  onPaymentLinkCreated,
+  existingCheckoutUrl,
+}) => {
   const [activeUrl, setActiveUrl] = useState(existingCheckoutUrl || null);
   const [isCreatingLink, setIsCreatingLink] = useState(false);
   const [message, setMessage] = useState("");
@@ -99,7 +107,7 @@ const PayOS = ({ amount, description, onSuccess, onCancel, onPaymentLinkCreated,
   return (
     <div className="space-y-4">
       <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center border border-slate-100">
-        <span className="text-slate-500 font-medium">Tổng tiền cọc:</span>
+        <span className="text-slate-500 font-medium">{amountLabel}</span>
         <span className="font-bold text-lg text-[#0052CC]">
           {new Intl.NumberFormat("vi-VN").format(amount)} VND
         </span>

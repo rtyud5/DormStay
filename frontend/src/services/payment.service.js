@@ -21,6 +21,9 @@ const PaymentService = {
   },
   payInvoice: (payload) => {
     return api.post("/payments/pay-invoice", payload);
+  },
+  paySettlementVoucher: (payload) => {
+    return api.post("/payments/pay-settlement-voucher", payload);
   }
 };
 

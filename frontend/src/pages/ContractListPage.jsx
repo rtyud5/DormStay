@@ -1,6 +1,78 @@
-import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import ContractService from "../services/contract.service";
+import { formatCurrency, formatDate } from "../lib/format";
+
+const ACTIVE_STATUSES = new Set(["HIEU_LUC", "DANG_HIEU_LUC"]);
+const ENDED_STATUSES = new Set(["HET_HAN", "DA_KET_THUC", "DA_THANH_LY", "HOAN_TAT"]);
+
+const STATUS_META = {
+  HIEU_LUC: {
+    label: "Đang hiệu lực",
+    className: "bg-emerald-600/90 text-white",
+    dotClassName: "bg-white animate-pulse",
+  },
+  DANG_HIEU_LUC: {
+    label: "Đang hiệu lực",
+    className: "bg-emerald-600/90 text-white",
+    dotClassName: "bg-white animate-pulse",
+  },
+  HET_HAN: {
+    label: "Đã hết hiệu lực",
+    className: "bg-slate-700/90 text-white",
+    dotClassName: "bg-slate-200",
+  },
+  DA_KET_THUC: {
+    label: "Đã hết hiệu lực",
+    className: "bg-slate-700/90 text-white",
+    dotClassName: "bg-slate-200",
+  },
+  CHO_LAP_KHOAN_THU_DAU: {
+    label: "Chờ lập khoản thu đầu",
+    className: "bg-blue-600/90 text-white",
+    dotClassName: "bg-white",
+  },
+  CHO_THANH_TOAN_KY_DAU: {
+    label: "Chờ thanh toán",
+    className: "bg-amber-500/90 text-white",
+    dotClassName: "bg-white",
+  },
+};
+
+function getStatusMeta(status) {
+  const value = String(status || "").toUpperCase();
+  return (
+    STATUS_META[value] || {
+      label: value || "Chưa cập nhật",
+      className: "bg-slate-500/90 text-white",
+      dotClassName: "bg-white",
+    }
+  );
+}
+
+function getRoomDisplay(contract) {
+  const room = contract?.phong?.ma_phong_hien_thi;
+  const allocationBeds = (contract?.phan_bo_hop_dong || [])
+    .map((item) => item.giuong?.ma_giuong_hien_thi || (item.ma_giuong ? `B${item.ma_giuong}` : ""))
+    .filter(Boolean);
+  const beds = allocationBeds.length ? allocationBeds.join(", ") : contract?.ma_giuong ? `B${contract.ma_giuong}` : "";
+
+  if (!room) return beds || "Đang cập nhật";
+  return beds ? `P. ${room} - ${beds}` : `P. ${room}`;
+}
+
+function getPendingSettlement(contract) {
+  return (contract?.settlementVouchers || []).find(
+    (voucher) => String(voucher.status || voucher.trang_thai || "").toUpperCase() !== "DA_THANH_TOAN",
+  );
+}
+
+function getRefundTotal(contract) {
+  return (contract?.refundVouchers || []).reduce(
+    (total, voucher) => total + Number(voucher.refundAmount ?? voucher.so_tien_hoan ?? 0),
+    0,
+  );
+}
 
 function ContractListPage() {
   const [contracts, setContracts] = useState([]);
@@ -17,177 +89,176 @@ function ContractListPage() {
         setLoading(false);
       }
     }
+
     fetchContracts();
   }, []);
 
-  const activeContractsCount = contracts.filter(c => c.trang_thai === 'HIEU_LUC').length;
-  const expiringContractsCount = 0;
+  const stats = useMemo(() => {
+    const active = contracts.filter((contract) => ACTIVE_STATUSES.has(String(contract.trang_thai || "").toUpperCase()));
+    const ended = contracts.filter((contract) => ENDED_STATUSES.has(String(contract.trang_thai || "").toUpperCase()));
+    const pendingSettlement = contracts.filter((contract) => getPendingSettlement(contract));
+
+    return {
+      total: contracts.length,
+      active: active.length,
+      ended: ended.length,
+      pendingSettlement: pendingSettlement.length,
+    };
+  }, [contracts]);
 
   if (loading) {
     return (
-      <div className="w-full min-h-[60vh] flex items-center justify-center">
+      <div className="flex min-h-[60vh] w-full items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#0052CC] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[#64748B] font-bold">Đang tải danh sách hợp đồng...</p>
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#0052CC] border-t-transparent" />
+          <p className="font-bold text-[#64748B]">Đang tải danh sách hợp đồng...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full font-sans pb-12 text-[#0F172A]">
+    <div className="w-full pb-12 font-sans text-[#0F172A]">
       <div className="mb-10 pt-2">
-         <h1 className="text-[28px] font-extrabold tracking-tight mb-2 uppercase">Hợp đồng của tôi</h1>
-         <p className="text-[#64748B] text-[15px] font-medium leading-relaxed max-w-2xl">
-           Quản lý và cập nhật thông tin chi tiết về các hợp đồng cư trú cá nhân của bạn tại hệ thống cư trú DormStay.
-         </p>
+        <h1 className="mb-2 text-[28px] font-extrabold uppercase tracking-tight">Hợp đồng của tôi</h1>
+        <p className="max-w-2xl text-[15px] font-medium leading-relaxed text-[#64748B]">
+          Quản lý hợp đồng cư trú, trạng thái hiệu lực, hóa đơn và kết quả đối soát trả phòng.
+        </p>
       </div>
 
       {contracts.length === 0 ? (
-        <div className="bg-white rounded-[48px] p-12 md:p-20 shadow-[0_8px_40px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col items-center text-center">
-          <div className="w-24 h-24 rounded-[32px] bg-[#F1F5F9] flex items-center justify-center text-[#94A3B8] mb-8 ring-8 ring-[#F8FAFC]">
-            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+        <div className="flex flex-col items-center rounded-[32px] border border-slate-100 bg-white p-12 text-center shadow-sm md:p-20">
+          <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[28px] bg-[#F1F5F9] text-[#94A3B8] ring-8 ring-[#F8FAFC]">
+            <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           </div>
-          <h2 className="text-[28px] font-extrabold text-[#1E293B] mb-4">Bạn chưa có hợp đồng nào</h2>
-          <p className="text-[#64748B] text-[16px] font-medium max-w-md mx-auto mb-10 leading-relaxed text-balance">
-            Hiện tại tài khoản chưa ghi nhận dữ liệu hợp đồng cư trú. Hãy tìm và chọn phòng ưng ý để bắt đầu đăng ký cư trú ngay nhé!
+          <h2 className="mb-4 text-[28px] font-extrabold text-[#1E293B]">Bạn chưa có hợp đồng nào</h2>
+          <p className="mx-auto mb-10 max-w-md text-[16px] font-medium leading-relaxed text-[#64748B]">
+            Tài khoản chưa ghi nhận hợp đồng cư trú. Hãy chọn phòng phù hợp để bắt đầu đăng ký.
           </p>
-          <Link to="/rooms">
-            <button className="bg-[#0A192F] hover:bg-[#0052CC] text-white px-10 py-5 rounded-3xl font-extrabold text-[15px] transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
-              Tìm và đặt phòng ngay
-            </button>
+          <Link to="/rooms" className="rounded-2xl bg-[#0A192F] px-8 py-4 text-sm font-extrabold text-white shadow-lg transition hover:bg-[#0052CC]">
+            Tìm và đặt phòng
           </Link>
         </div>
       ) : (
         <>
-          {/* Stats row - unchanged */}
-          <div className="grid md:grid-cols-3 gap-6 mb-10">
-            <div className="bg-white rounded-3xl p-7 flex items-center gap-6 shadow-[0_4px_25px_rgb(0,0,0,0.03)] border border-slate-50 ring-1 ring-slate-100/50">
-                <div className="w-16 h-16 rounded-2xl bg-[#E6F0FF] flex items-center justify-center text-[#0052CC] shadow-inner">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          <div className="mb-10 grid gap-6 md:grid-cols-4">
+            {[
+              { label: "Tổng hợp đồng", value: stats.total, color: "text-slate-900", bg: "bg-slate-100" },
+              { label: "Đang hiệu lực", value: stats.active, color: "text-emerald-700", bg: "bg-emerald-100" },
+              { label: "Hết hiệu lực", value: stats.ended, color: "text-slate-700", bg: "bg-slate-200" },
+              { label: "Chờ phát sinh", value: stats.pendingSettlement, color: "text-amber-700", bg: "bg-amber-100" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-5 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${item.bg} ${item.color}`}>
+                  <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
                 </div>
                 <div>
-                  <div className="text-[12px] font-bold text-[#64748B] mb-1 uppercase tracking-wider">Tổng số hợp đồng</div>
-                  <div className="text-[32px] font-black text-[#0F172A] leading-none">{String(contracts.length).padStart(2, '0')}</div>
-                </div>
-            </div>
-            <div className="bg-white rounded-3xl p-7 flex items-center gap-6 shadow-[0_4px_25px_rgb(0,0,0,0.03)] border border-slate-50 ring-1 ring-slate-100/50">
-                <div className="w-16 h-16 rounded-2xl bg-[#E4F2ED] flex items-center justify-center text-[#22A06B] shadow-inner">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <div>
-                  <div className="text-[12px] font-bold text-[#64748B] mb-1 uppercase tracking-wider uppercase">Đang hiệu lực</div>
-                  <div className="text-[32px] font-black text-[#0F172A] leading-none">{String(activeContractsCount).padStart(2, '0')}</div>
-                </div>
-            </div>
-            <div className="bg-white rounded-3xl p-7 flex items-center gap-6 shadow-[0_4px_25px_rgb(0,0,0,0.03)] border border-slate-50 ring-1 ring-slate-100/50">
-                <div className="w-16 h-16 rounded-2xl bg-[#F8F9FA] flex items-center justify-center text-[#94A3B8] shadow-inner">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                </div>
-                <div>
-                  <div className="text-[12px] font-bold text-[#64748B] mb-1 uppercase tracking-wider">Sắp hết hạn</div>
-                  <div className="text-[32px] font-black text-[#0F172A] leading-none">{String(expiringContractsCount).padStart(2, '0')}</div>
-                </div>
-            </div>
-          </div>
-
-          {/* Contract Cards - FIXED overflow issue */}
-          <div className="grid lg:grid-cols-2 gap-8 mb-12">
-            {contracts.map((contract) => (
-              <div 
-                key={contract.ma_hop_dong} 
-                className="bg-white rounded-[40px] p-6 pr-8 shadow-[0_4px_30px_rgb(0,0,0,0.04)] border border-slate-50 flex flex-col sm:flex-row gap-8 relative group hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all overflow-hidden"
-              >
-                {/* Image container - fixed height on mobile, auto on desktop */}
-                <div className="w-full sm:w-[220px] shrink-0 h-[220px] sm:h-auto sm:min-h-[260px] relative rounded-[32px] overflow-hidden">
-                  <img
-                    src={contract.phong?.hinh_anh_bia || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80"}
-                    alt="Room"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A192F]/60 via-transparent to-transparent"></div>
-                  <div className="absolute top-4 left-4 z-10">
-                    <span className={`px-4 py-2 text-white text-[11px] font-black tracking-widest rounded-full flex items-center gap-2 shadow-lg backdrop-blur-md whitespace-nowrap ${contract.trang_thai === 'HIEU_LUC' ? 'bg-[#22A06B]/90' : 'bg-[#64748B]/90'}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full bg-white ${contract.trang_thai === 'HIEU_LUC' ? 'animate-pulse' : ''}`}></div>
-                      {contract.trang_thai === 'HIEU_LUC' ? 'ĐANG HIỆU LỰC' : 'TẠM NGƯNG'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content area - with min-w-0 to allow truncation */}
-                <div className="flex-1 py-6 flex flex-col justify-center relative z-10 min-w-0">
-                  <h2 className="text-[26px] font-black text-[#0F172A] leading-tight mb-1 uppercase break-words line-clamp-2">
-                    P. {contract.phong?.ma_phong_hien_thi || 'N/A'}
-                    {/* Multi-bed info with safe truncation */}
-                    <span className="inline-block">
-                      {contract.phan_bo_hop_dong && contract.phan_bo_hop_dong.length > 0
-                        ? ` - ${contract.phan_bo_hop_dong.map(a => a.giuong?.ma_giuong_hien_thi || `B${a.ma_giuong}`).join(', ')}`
-                        : contract.ma_giuong ? ` - B${contract.ma_giuong}` : ''}
-                    </span>
-                  </h2>
-                  <p className="text-[#64748B] text-[13px] font-bold tracking-tight mb-8 break-words">
-                    Mã hđ: #{contract.ma_hop_dong}
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 mb-8">
-                    <div>
-                      <div className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest mb-1.5">NGÀY BẮT ĐẦU</div>
-                      <div className="text-[15px] font-extrabold text-[#0F172A]">{new Date(contract.ngay_vao_o).toLocaleDateString('vi-VN')}</div>
-                    </div>
-                    {/* <div>
-                      <div className="text-[10px] font-black text-[#94A3B8] uppercase tracking-widest mb-1.5">Dự kiến kết thúc</div>
-                      <div className="text-[15px] font-extrabold text-[#0F172A]">Chưa xác định</div>
-                    </div> */}
-                  </div>
-
-                  <div className="flex items-end justify-between mt-auto flex-wrap gap-4">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[24px] font-black text-[#0F172A] whitespace-nowrap">{new Intl.NumberFormat('vi-VN').format(contract.gia_thue_co_ban_thang || 0)}đ</span>
-                      <span className="text-[13px] text-[#64748B] font-bold">/tháng</span>
-                    </div>
-                    <Link to={`/contracts/${contract.ma_hop_dong}`} className="w-16 h-16 rounded-[24px] bg-[#0A192F] hover:bg-[#0052CC] text-white flex flex-col items-center justify-center transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 relative z-20 shrink-0">
-                      <span className="text-[11px] font-black mb-0.5">XEM</span>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                    </Link>
-                  </div>
+                  <p className="mb-1 text-[11px] font-black uppercase tracking-widest text-[#64748B]">{item.label}</p>
+                  <p className="text-[30px] font-black leading-none text-[#0F172A]">{String(item.value).padStart(2, "0")}</p>
                 </div>
               </div>
             ))}
           </div>
+
+          <div className="mb-12 grid gap-8 lg:grid-cols-2">
+            {contracts.map((contract) => {
+              const statusMeta = getStatusMeta(contract.trang_thai);
+              const pendingSettlement = getPendingSettlement(contract);
+              const refundTotal = getRefundTotal(contract);
+
+              return (
+                <div
+                  key={contract.ma_hop_dong}
+                  className="group relative flex flex-col gap-6 overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm transition hover:shadow-lg sm:flex-row"
+                >
+                  <div className="relative h-[220px] w-full shrink-0 overflow-hidden rounded-2xl bg-slate-100 sm:h-auto sm:min-h-[250px] sm:w-[210px]">
+                    <img
+                      src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80"
+                      alt="Room"
+                      className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A192F]/65 via-transparent to-transparent" />
+                    <div className="absolute left-4 top-4 z-10">
+                      <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest shadow-lg backdrop-blur-md ${statusMeta.className}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${statusMeta.dotClassName}`} />
+                        {statusMeta.label}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex min-w-0 flex-1 flex-col py-2">
+                    <h2 className="mb-1 text-[26px] font-black uppercase leading-tight text-[#0F172A]">
+                      {getRoomDisplay(contract)}
+                    </h2>
+                    <p className="mb-6 text-[13px] font-bold text-[#64748B]">Mã HĐ: #{contract.ma_hop_dong}</p>
+
+                    <div className="mb-6 grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Ngày bắt đầu</p>
+                        <p className="text-sm font-extrabold text-[#0F172A]">{formatDate(contract.ngay_vao_o)}</p>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Tiền thuê</p>
+                        <p className="text-sm font-extrabold text-[#0F172A]">{formatCurrency(contract.gia_thue_co_ban_thang || 0)}</p>
+                      </div>
+                    </div>
+
+                    {(pendingSettlement || refundTotal > 0) && (
+                      <div className="mb-6 space-y-2">
+                        {pendingSettlement && (
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">
+                            Phát sinh cần thanh toán:{" "}
+                            {formatCurrency(pendingSettlement.amount ?? pendingSettlement.so_tien_thanh_toan ?? 0)}
+                          </div>
+                        )}
+                        {refundTotal > 0 && (
+                          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+                            Hoàn cọc dự kiến: {formatCurrency(refundTotal)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-auto flex items-end justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#94A3B8]">Tiền cọc</p>
+                        <p className="text-xl font-black text-[#0F172A]">{formatCurrency(contract.so_tien_dat_coc_bao_dam || 0)}</p>
+                      </div>
+                      <Link
+                        to={`/contracts/${contract.ma_hop_dong}`}
+                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#0A192F] text-white shadow-lg transition hover:bg-[#0052CC]"
+                        title="Xem chi tiết"
+                      >
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
 
-      {/* Info Banner - unchanged */}
-      <div className="bg-[#1E293B] rounded-[48px] p-10 md:p-14 text-white flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden shadow-2xl border border-slate-800">
-         <div className="absolute top-0 right-0 w-1/3 h-full bg-[#0052CC] filter blur-[120px] opacity-20 -mr-20"></div>
-         <div className="relative z-10 w-full md:w-3/5">
-            <h2 className="text-[32px] font-black mb-8 leading-tight">Quy định và lưu ý cư dân</h2>
-            <ul className="space-y-6">
-               <li className="flex items-start gap-4">
-                  <div className="mt-1 w-6 h-6 rounded-xl bg-[#22A06B] flex items-center justify-center text-white shrink-0 font-bold text-xs">!</div>
-                  <span className="text-[#CBD5E1] text-[15px] font-medium leading-relaxed">
-                    Hợp đồng cần được gia hạn ít nhất **30 ngày** trước khi hết hạn để đảm bảo giữ chỗ tốt nhất.
-                  </span>
-               </li>
-               <li className="flex items-start gap-4">
-                  <div className="mt-1 w-6 h-6 rounded-xl bg-[#22A06B] flex items-center justify-center text-white shrink-0 font-bold text-xs">!</div>
-                  <span className="text-[#CBD5E1] text-[15px] font-medium leading-relaxed">
-                    Mọi thay đổi về thông tin cá nhân cần được cập nhật trong phụ lục hợp đồng tại văn phòng quản lý.
-                  </span>
-               </li>
-               <li className="flex items-start gap-4">
-                  <div className="mt-1 w-6 h-6 rounded-xl bg-[#22A06B] flex items-center justify-center text-white shrink-0 font-bold text-xs">!</div>
-                  <span className="text-[#CBD5E1] text-[15px] font-medium leading-relaxed">
-                    Việc thanh toán tiền phòng cần được thực hiện qua ứng dụng hoặc chuyển khoản trước ngày mùng 5 hàng tháng.
-                  </span>
-               </li>
-            </ul>
-         </div>
-         <div className="relative z-10 shrink-0 w-full md:w-auto">
-            <button className="w-full md:w-auto bg-white hover:bg-slate-50 text-[#0F172A] px-10 py-5 rounded-[24px] font-black text-[15px] shadow-[0_10px_20px_rgba(255,255,255,0.1)] transition-all">
-               Tải nội quy (.PDF)
-            </button>
-         </div>
+      <div className="rounded-[32px] border border-slate-800 bg-[#1E293B] p-8 text-white shadow-2xl md:p-10">
+        <h2 className="mb-4 text-[26px] font-black leading-tight">Lưu ý cư trú</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {[
+            "Thanh toán tiền phòng đúng hạn theo thông báo trên từng hóa đơn.",
+            "Khi hợp đồng hết hiệu lực, kiểm tra mục quyết toán để xử lý phát sinh hoặc hoàn cọc.",
+            "Thông tin hoàn cọc cần xác nhận qua Zalo DormStay trước khi nhận tiền.",
+          ].map((text) => (
+            <div key={text} className="rounded-2xl bg-white/5 p-4 text-sm font-medium leading-relaxed text-slate-200 ring-1 ring-white/10">
+              {text}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

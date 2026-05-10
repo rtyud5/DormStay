@@ -40,6 +40,11 @@ const payInvoice = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Pay invoice successful");
 });
 
+const paySettlementVoucher = asyncHandler(async (req, res) => {
+  const result = await PaymentService.paySettlementVoucher(req.body, req.user.id);
+  return sendSuccess(res, result, "Pay settlement voucher successful");
+});
+
 module.exports = {
   getInvoices,
   getHistory,
@@ -47,5 +52,6 @@ module.exports = {
   createPayOSPayment,
   cancelPayment,
   confirmPayment,
-  payInvoice
+  payInvoice,
+  paySettlementVoucher
 };

@@ -14,8 +14,8 @@ const PaymentService = {
     return PaymentModel.create(payload);
   },
 
-  async createPayOSPayment({ amount, description, returnUrl, cancelUrl }) {
-    return PaymentModel.createPayOSPayment({ amount, description, returnUrl, cancelUrl });
+  async createPayOSPayment({ amount, description, returnUrl, cancelUrl, expiredAt }) {
+    return PaymentModel.createPayOSPayment({ amount, description, returnUrl, cancelUrl, expiredAt });
   },
   async cancelPayment(paymentLinkId) {
     return PaymentModel.cancelPayment(paymentLinkId);
@@ -26,6 +26,10 @@ const PaymentService = {
 
   async payInvoice(payload) {
     return PaymentModel.processPaymentForInvoice(payload);
+  },
+
+  async paySettlementVoucher(payload, userId) {
+    return PaymentModel.paySettlementVoucher(payload, userId);
   }
 };
 

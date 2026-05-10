@@ -329,7 +329,7 @@ const handlePaymentCancel = async () => {
                 </div>
                 
                 <PayOS 
-                  amount={request.so_tien_dat_coc/1000} 
+                amount={request.so_tien_dat_coc || 0}
                   description={`Thanh toan phong id ${id}`} 
                   existingCheckoutUrl={request.checkoutUrl} 
                   onPaymentLinkCreated={handlePaymentLinkCreated}

@@ -1,5 +1,6 @@
 const { supabase } = require("../config/supabase");
 const { payOS } = require("../config/payos");
+const { AppError } = require("../utils/errors");
 
 const TABLE_NAME = "thanh_toan";
 const PAID_PAYOS_STATUSES = new Set(["PAID", "COMPLETED"]);
@@ -190,6 +191,24 @@ async function markRequestDepositPaid(request) {
 
   if (holdError) throw holdError;
   return updatedRequest;
+}
+
+async function loadSettlementVoucherForUser(voucherId, userId) {
+  const { data, error } = await supabase
+    .from("phieu_thanh_toan_phat_sinh")
+    .select(`
+      *,
+      hop_dong!inner (
+        ma_hop_dong,
+        ho_so!inner ( ma_nguoi_dung_xac_thuc )
+      )
+    `)
+    .eq("ma_phieu_tt_phat_sinh", voucherId)
+    .eq("hop_dong.ho_so.ma_nguoi_dung_xac_thuc", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
 }
 
 const PaymentModel = {
@@ -523,6 +542,57 @@ const PaymentModel = {
 
   async processPaymentForInvoice(payload) {
     return this.create(payload);
+  },
+
+  async paySettlementVoucher(payload = {}, userId) {
+    if (!supabase) return null;
+
+    const voucherId = payload.ma_phieu_tt_phat_sinh || payload.voucherId;
+    if (!voucherId) {
+      throw new AppError("voucherId is required", 400);
+    }
+
+    const voucher = await loadSettlementVoucherForUser(voucherId, userId);
+    if (!voucher) {
+      throw new AppError("Phiếu thanh toán phát sinh không tồn tại hoặc không thuộc tài khoản này", 404);
+    }
+
+    if (String(voucher.trang_thai || "").toUpperCase() === "DA_THANH_TOAN") {
+      return {
+        ...voucher,
+        status: "DA_THANH_TOAN",
+        message: "Phiếu thanh toán phát sinh đã được thanh toán trước đó",
+      };
+    }
+
+    const expectedAmount = toNumber(voucher.so_tien_thanh_toan);
+    const paidAmount = toNumber(payload.so_tien || payload.amount || expectedAmount);
+    if (paidAmount <= 0 || paidAmount < expectedAmount) {
+      throw new AppError("Số tiền thanh toán không hợp lệ", 400);
+    }
+
+    const { data: updatedVoucher, error } = await supabase
+      .from("phieu_thanh_toan_phat_sinh")
+      .update({
+        trang_thai: "DA_THANH_TOAN",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("ma_phieu_tt_phat_sinh", voucherId)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+
+    await createSystemLog({
+      tableName: "phieu_thanh_toan_phat_sinh",
+      recordId: voucherId,
+      action: "THANH_TOAN_PAYOS_THANH_CONG",
+      note: `Khach hang thanh toan phieu phat sinh PS-${voucherId} bang PAYOS. Ma PayOS: ${
+        payload.paymentLinkId || "N/A"
+      }.`,
+    });
+
+    return updatedVoucher;
   },
 };
 

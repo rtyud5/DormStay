@@ -11,10 +11,16 @@ const ContractService = {
     if (!contract || contract.ho_so?.ma_nguoi_dung_xac_thuc !== userId) return null;
 
     const invoices = await InvoiceModel.listByContractId(id, userId);
+    const [settlementVouchers, refundVouchers] = await Promise.all([
+      ContractModel.listSettlementVouchersByContractId(id),
+      ContractModel.listRefundVouchersByContractId(id),
+    ]);
 
     return {
       ...contract,
       invoices,
+      settlementVouchers,
+      refundVouchers,
     };
   },
 

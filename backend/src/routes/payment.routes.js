@@ -12,4 +12,5 @@ router.post("/payos", authMiddleware, validate(["amount", "description", "return
 router.put("/cancel/:paymentLinkId", authMiddleware, PaymentController.cancelPayment);
 router.put("/confirm/:paymentLinkId", authMiddleware, PaymentController.confirmPayment);
 router.post("/pay-invoice", authMiddleware, PaymentController.payInvoice);
+router.post("/pay-settlement-voucher", authMiddleware, PaymentController.paySettlementVoucher);
 module.exports = router;
