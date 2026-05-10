@@ -16,7 +16,7 @@ function Table({ columns = [], data = [] }) {
             {data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-6 text-center text-slate-500">
-                  Chua co du lieu.
+                  Chưa có dữ liệu.
                 </td>
               </tr>
             ) : (

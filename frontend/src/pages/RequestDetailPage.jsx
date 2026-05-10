@@ -284,7 +284,7 @@ const handlePaymentCancel = async () => {
                 <div className="relative z-10">
                   <span className="block text-[11px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">TỔNG TIỀN CỌC</span>
                   <div className="text-[40px] font-black tracking-tight mb-8 leading-none">
-                    {formatCurrency(request.so_tien_dat_coc/1000 || 0)}
+                    {formatCurrency(request.so_tien_dat_coc|| 0)}
                   </div>
 
                   {/* <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
