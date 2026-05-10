@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Home, Building2, Filter, FileText, Plus, Clock } from "lucide-react";
+import { Calendar, Home, Building2, Filter, FileText, Clock } from "lucide-react";
 import { getContracts } from "../../services/accounting.service";
 import { ACCOUNTING_ROUTES } from "../../constants/accounting.constants";
 import AccountingInvoiceTable from "../../components/accounting/AccountingInvoiceTable";
@@ -206,18 +206,6 @@ export default function AccountingContractListPage() {
             <span className="text-gray-900 font-bold">{contracts.length}</span> hợp đồng
           </p>
         </div>
-      </div>
-
-      {/* Floating Action Button - Mock */}
-      <div className="fixed bottom-8 left-72">
-        <button className="px-8 py-3.5 bg-[#0b2447] text-white rounded-[1.25rem] font-bold shadow-xl shadow-blue-900/30 hover:bg-blue-900 transition-colors">
-          Xuất báo cáo
-        </button>
-      </div>
-      <div className="fixed bottom-8 right-8">
-        <button className="w-14 h-14 bg-[#0b2447] text-white rounded-[1.25rem] font-bold shadow-xl shadow-blue-900/30 flex items-center justify-center hover:bg-blue-900 transition-transform hover:scale-105">
-          <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
-        </button>
       </div>
     </div>
   );
