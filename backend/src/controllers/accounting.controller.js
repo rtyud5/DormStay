@@ -122,6 +122,16 @@ const updateRefund = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Update refund voucher successful");
 });
 
+const listTransactions = asyncHandler(async (req, res) => {
+  const result = await AccountingService.listTransactions(req.query);
+  return sendSuccess(res, result, "Fetch transactions successful");
+});
+
+const getTransactionDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getTransactionDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch transaction detail successful");
+});
+
 const accountingApisTemporarilyDisabled = (req, res) => {
   const result = AccountingService.getApiResetStatus();
 
@@ -157,5 +167,7 @@ module.exports = {
   getRefundDetail,
   createRefund,
   updateRefund,
+  listTransactions,
+  getTransactionDetail,
   accountingApisTemporarilyDisabled,
 };

@@ -140,11 +140,18 @@ export default function AccountingTransactionPage() {
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    Giao dịch
+                    Loại giao dịch
+                  </th>
+                  <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Khách hàng
                   </th>
                   <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Số tiền</th>
                   <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                     Trạng thái
+                  </th>
+                  <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ngày lập</th>
+                  <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Ngày đến hạn
                   </th>
                   <th className="py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">
                     Thao tác
@@ -154,14 +161,14 @@ export default function AccountingTransactionPage() {
               <tbody className="divide-y divide-gray-100/50">
                 {loading && (
                   <tr>
-                    <td colSpan={4} className="py-10 px-6 text-center text-gray-400 font-medium">
+                    <td colSpan={7} className="py-10 px-6 text-center text-gray-400 font-medium">
                       Đang tải giao dịch...
                     </td>
                   </tr>
                 )}
                 {!loading && transactions.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-10 px-6 text-center text-gray-400 font-medium">
+                    <td colSpan={7} className="py-10 px-6 text-center text-gray-400 font-medium">
                       Chưa có giao dịch nào phù hợp với bộ lọc hiện tại.
                     </td>
                   </tr>
@@ -173,17 +180,22 @@ export default function AccountingTransactionPage() {
                       className={`hover:bg-gray-50/60 transition-colors ${selectedTransaction?.id === transaction.id ? "bg-[#f8fbff]" : ""}`}
                     >
                       <td className="py-5 px-6">
-                        <p className="font-extrabold text-[14px] text-gray-900 mb-1">{transaction.refNumber}</p>
-                        <p className="text-[12px] font-medium text-gray-500">Phiếu: {transaction.invoiceId || "--"}</p>
-                        <p className="text-[12px] font-medium text-gray-500">
-                          {transaction.transactionDate
-                            ? new Date(transaction.transactionDate).toLocaleString("vi-VN")
-                            : "--"}
-                        </p>
+                        <p className="font-black text-[13px] text-gray-900">{transaction.typeLabel}</p>
+                        <p className="text-[12px] font-medium text-gray-500 mt-1">{transaction.id}</p>
+                      </td>
+                      <td className="py-5 px-6">
+                        <p className="font-extrabold text-[13px] text-gray-900">{transaction.customerName}</p>
+                        <p className="text-[12px] font-medium text-gray-500 mt-1">{transaction.phone || "--"}</p>
                       </td>
                       <td className="py-5 px-6 font-black text-[#0b2447]">{formatCurrency(transaction.amount)}</td>
                       <td className="py-5 px-6">
                         <StatusPill value={transaction.status} />
+                      </td>
+                      <td className="py-5 px-6 text-sm text-gray-700">
+                        {transaction.createdDate ? new Date(transaction.createdDate).toLocaleDateString("vi-VN") : "--"}
+                      </td>
+                      <td className="py-5 px-6 text-sm text-gray-700">
+                        {transaction.dueDate ? new Date(transaction.dueDate).toLocaleDateString("vi-VN") : "--"}
                       </td>
                       <td className="py-5 px-6">
                         <div className="flex items-center justify-end gap-2">
@@ -233,23 +245,35 @@ export default function AccountingTransactionPage() {
 
           {selectedTransaction && (
             <>
-              <DetailRow label="Mã giao dịch" value={selectedTransaction.refNumber} />
-              <DetailRow label="Mã phiếu" value={selectedTransaction.invoiceId || "--"} />
+              <DetailRow label="Mã giao dịch" value={selectedTransaction.id} />
+              <DetailRow label="Loại giao dịch" value={selectedTransaction.typeLabel || "--"} />
+              <DetailRow label="Tên khách hàng" value={selectedTransaction.customerName || "--"} />
+              <DetailRow label="Điện thoại" value={selectedTransaction.phone || "--"} />
               <DetailRow label="Mã hợp đồng" value={selectedTransaction.contractId || "--"} />
+              <DetailRow label="Số tiền" value={formatCurrency(selectedTransaction.amount || 0)} />
+              {selectedTransaction.paidAmount !== undefined && (
+                <DetailRow label="Đã thanh toán" value={formatCurrency(selectedTransaction.paidAmount || 0)} />
+              )}
+              {selectedTransaction.beneficiaryName && (
+                <DetailRow label="Người nhận" value={selectedTransaction.beneficiaryName} />
+              )}
               <DetailRow
-                label="Ngày giao dịch"
+                label="Ngày lập"
                 value={
-                  selectedTransaction.transactionDate
-                    ? new Date(selectedTransaction.transactionDate).toLocaleString("vi-VN")
+                  selectedTransaction.createdDate
+                    ? new Date(selectedTransaction.createdDate).toLocaleDateString("vi-VN")
                     : "--"
                 }
               />
-              <DetailRow label="Số tiền hệ thống" value={formatCurrency(selectedTransaction.systemAmount || 0)} />
-              <DetailRow label="Số tiền thực nhận" value={formatCurrency(selectedTransaction.actualAmount || 0)} />
-              <DetailRow label="Chênh lệch" value={formatCurrency(selectedTransaction.variance || 0)} />
+              <DetailRow
+                label="Ngày đến hạn"
+                value={
+                  selectedTransaction.dueDate ? new Date(selectedTransaction.dueDate).toLocaleDateString("vi-VN") : "--"
+                }
+              />
               <DetailRow label="Trạng thái" value={selectedTransaction.status || "--"} />
               <div className="bg-[#f8fbff] border border-blue-100 rounded-2xl p-4 text-sm text-gray-600 font-medium">
-                {selectedTransaction.notes || "Không có ghi chú xử lý bổ sung."}
+                Giao dịch từ {selectedTransaction.typeLabel}
               </div>
             </>
           )}

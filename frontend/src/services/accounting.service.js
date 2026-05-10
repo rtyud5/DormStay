@@ -18,7 +18,7 @@ import {
 } from "../mockdata/accounting.mockdata";
 
 // Mock flag
-const USE_MOCK_DATA = import.meta.env.VITE_USE_ACCOUNTING_MOCK === "true";
+const USE_MOCK_DATA = import.meta.env.VITE_USE_ACCOUNTING_MOCK === "false";
 
 const unwrapPayload = (response) => response?.data?.data ?? null;
 const unwrapSuccess = (response) => response?.data?.success ?? false;

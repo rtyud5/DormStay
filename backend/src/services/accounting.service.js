@@ -59,6 +59,15 @@ const AccountingService = {
     return AccountingPageModels.accountingReconciliationPageModel.updateDraft(reconciliationId, payload);
   },
 
+  // Transaction audit APIs
+  async listTransactions(filters) {
+    return AccountingPageModels.accountingTransactionPageModel.listTransactions(filters);
+  },
+
+  async getTransactionDetail(transactionId) {
+    return AccountingPageModels.accountingTransactionPageModel.getTransactionDetail(transactionId);
+  },
+
   async finalizeReconciliation(reconciliationId) {
     return AccountingPageModels.accountingReconciliationPageModel.finalize(reconciliationId);
   },
