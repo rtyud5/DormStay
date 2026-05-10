@@ -22,6 +22,18 @@ const AccountingService = {
     };
   },
 
+  async getDashboardKpi() {
+    return AccountingPageModels.accountingDashboardPageModel.getKpiOverview();
+  },
+
+  async getContracts(filters) {
+    return AccountingPageModels.accountingContractListPageModel.listContracts(filters);
+  },
+
+  async getContractDetail(contractId) {
+    return AccountingPageModels.accountingContractListPageModel.getContractDetail(contractId);
+  },
+
   async getReconciliationWorkItems(filters) {
     return AccountingPageModels.accountingReconciliationPageModel.listWorkItems(filters);
   },

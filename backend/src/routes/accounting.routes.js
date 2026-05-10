@@ -8,6 +8,10 @@ const router = express.Router();
 
 router.use(authMiddleware, requireAccountingAccess);
 
+router.get("/dashboard", AccountingController.getDashboardKpi);
+router.get("/contracts", AccountingController.getContracts);
+router.get("/contracts/:id", AccountingController.getContractDetail);
+
 router.get("/reconciliation/work-items", AccountingController.getReconciliationWorkItems);
 router.get("/reconciliation/work-items/:checkoutRequestId", AccountingController.getReconciliationWorkItemDetail);
 router.post(

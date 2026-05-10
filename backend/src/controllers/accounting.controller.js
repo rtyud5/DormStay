@@ -2,6 +2,21 @@ const AccountingService = require("../services/accounting.service");
 const asyncHandler = require("../utils/asyncHandler");
 const { sendSuccess } = require("../utils/apiResponse");
 
+const getDashboardKpi = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getDashboardKpi();
+  return sendSuccess(res, result, "Fetch accounting dashboard KPI successful");
+});
+
+const getContracts = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getContracts(req.query);
+  return sendSuccess(res, result, "Fetch accounting contracts successful");
+});
+
+const getContractDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getContractDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch accounting contract detail successful");
+});
+
 const getReconciliationWorkItems = asyncHandler(async (req, res) => {
   const result = await AccountingService.getReconciliationWorkItems(req.query);
   return sendSuccess(res, result, "Fetch reconciliation work items successful");
@@ -98,6 +113,9 @@ const accountingApisTemporarilyDisabled = (req, res) => {
 };
 
 module.exports = {
+  getDashboardKpi,
+  getContracts,
+  getContractDetail,
   getReconciliationWorkItems,
   getReconciliationWorkItemDetail,
   previewReconciliation,
