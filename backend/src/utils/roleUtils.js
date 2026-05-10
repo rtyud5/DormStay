@@ -1,4 +1,6 @@
-const ACCOUNTING_ACCESS_ROLES = ["ADMIN", "NHAN_VIEN", "KE_TOAN"];
+// 🔐 Only ADMIN and KE_TOAN (accounting staff) can access accounting APIs
+// NHAN_VIEN (sales/manager) should NOT access sensitive financial data
+const ACCOUNTING_ACCESS_ROLES = ["ADMIN", "KE_TOAN"];
 
 const ROLE_ALIASES = {
   customer: "KHACH_HANG",

@@ -2,6 +2,21 @@ const AccountingService = require("../services/accounting.service");
 const asyncHandler = require("../utils/asyncHandler");
 const { sendSuccess } = require("../utils/apiResponse");
 
+const getDashboardKpi = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getDashboardKpi();
+  return sendSuccess(res, result, "Fetch accounting dashboard KPI successful");
+});
+
+const getContracts = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getContracts(req.query);
+  return sendSuccess(res, result, "Fetch accounting contracts successful");
+});
+
+const getContractDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getContractDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch accounting contract detail successful");
+});
+
 const getReconciliationWorkItems = asyncHandler(async (req, res) => {
   const result = await AccountingService.getReconciliationWorkItems(req.query);
   return sendSuccess(res, result, "Fetch reconciliation work items successful");
@@ -87,6 +102,36 @@ const confirmAdditionalPaymentVouchersCash = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Confirm additional payment vouchers by cash successful");
 });
 
+const getRefunds = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getRefunds(req.query);
+  return sendSuccess(res, result, "Fetch refund vouchers successful");
+});
+
+const getRefundDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getRefundDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch refund voucher detail successful");
+});
+
+const createRefund = asyncHandler(async (req, res) => {
+  const result = await AccountingService.createRefund(req.body);
+  return sendSuccess(res, result, "Create refund voucher successful", 201);
+});
+
+const updateRefund = asyncHandler(async (req, res) => {
+  const result = await AccountingService.updateRefund(req.params.id, req.body);
+  return sendSuccess(res, result, "Update refund voucher successful");
+});
+
+const listTransactions = asyncHandler(async (req, res) => {
+  const result = await AccountingService.listTransactions(req.query);
+  return sendSuccess(res, result, "Fetch transactions successful");
+});
+
+const getTransactionDetail = asyncHandler(async (req, res) => {
+  const result = await AccountingService.getTransactionDetail(req.params.id);
+  return sendSuccess(res, result, "Fetch transaction detail successful");
+});
+
 const accountingApisTemporarilyDisabled = (req, res) => {
   const result = AccountingService.getApiResetStatus();
 
@@ -98,6 +143,9 @@ const accountingApisTemporarilyDisabled = (req, res) => {
 };
 
 module.exports = {
+  getDashboardKpi,
+  getContracts,
+  getContractDetail,
   getReconciliationWorkItems,
   getReconciliationWorkItemDetail,
   previewReconciliation,
@@ -115,5 +163,11 @@ module.exports = {
   getAdditionalPaymentVouchers,
   getAdditionalPaymentVoucherDetail,
   confirmAdditionalPaymentVouchersCash,
+  getRefunds,
+  getRefundDetail,
+  createRefund,
+  updateRefund,
+  listTransactions,
+  getTransactionDetail,
   accountingApisTemporarilyDisabled,
 };

@@ -1,4 +1,5 @@
 const AccountingPageModels = require("../models/accounting");
+const { AppError } = require("../utils/errors");
 
 const AccountingService = {
   getPageModelRegistry() {
@@ -20,6 +21,18 @@ const AccountingService = {
       message: "Accounting APIs are temporarily disabled for page-by-page review and redesign.",
       pages: this.getPageModelRegistry(),
     };
+  },
+
+  async getDashboardKpi() {
+    return AccountingPageModels.accountingDashboardPageModel.getKpiOverview();
+  },
+
+  async getContracts(filters) {
+    return AccountingPageModels.accountingContractListPageModel.listContracts(filters);
+  },
+
+  async getContractDetail(contractId) {
+    return AccountingPageModels.accountingContractListPageModel.getContractDetail(contractId);
   },
 
   async getReconciliationWorkItems(filters) {
@@ -44,6 +57,15 @@ const AccountingService = {
 
   async updateReconciliationDraft(reconciliationId, payload) {
     return AccountingPageModels.accountingReconciliationPageModel.updateDraft(reconciliationId, payload);
+  },
+
+  // Transaction audit APIs
+  async listTransactions(filters) {
+    return AccountingPageModels.accountingTransactionPageModel.listTransactions(filters);
+  },
+
+  async getTransactionDetail(transactionId) {
+    return AccountingPageModels.accountingTransactionPageModel.getTransactionDetail(transactionId);
   },
 
   async finalizeReconciliation(reconciliationId) {
@@ -91,6 +113,27 @@ const AccountingService = {
 
   async confirmAdditionalPaymentVouchersCash(payload) {
     return AccountingPageModels.accountingExtraInvoicePageModel.confirmSettlementVouchersCash(payload);
+  },
+
+  async getRefunds(filters) {
+    return AccountingPageModels.accountingRefundPageModel.listRefundVouchers(filters);
+  },
+
+  async getRefundDetail(refundId) {
+    return AccountingPageModels.accountingRefundPageModel.getRefundVoucherDetail(refundId);
+  },
+
+  async createRefund(payload) {
+    const reconciliationId = payload?.reconciliationId;
+    if (!reconciliationId) {
+      throw new AppError("reconciliationId is required", 400);
+    }
+
+    return AccountingPageModels.accountingReconciliationPageModel.createRefundVoucher(reconciliationId, payload);
+  },
+
+  async updateRefund(refundId, payload) {
+    return AccountingPageModels.accountingRefundPageModel.updateRefundVoucher(refundId, payload);
   },
 };
 
