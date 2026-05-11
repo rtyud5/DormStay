@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "db:reset-demo": "node scripts/reset-demo-data.js"
   },
   "dependencies": {
     "@payos/node": "^2.0.5",
