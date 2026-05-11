@@ -11,8 +11,10 @@ export default function AccountingTransactionPage() {
   const [stats, setStats] = useState({ confirmed: 0, failed: 0, pending: 0 });
   const [filters, setFilters] = useState({ search: "", status: "all" });
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
 
-  const loadTransactions = async (nextFilters = filters, selectedId = null) => {
+  const loadTransactions = async (nextFilters = filters) => {
     try {
       setLoading(true);
       const requestFilters = {};
@@ -24,21 +26,33 @@ export default function AccountingTransactionPage() {
 
       setTransactions(nextTransactions);
       setStats(response.stats || { confirmed: 0, failed: 0, pending: 0 });
-
-      const nextSelectedId = selectedId || selectedTransaction?.id || nextTransactions[0]?.id;
-      if (nextSelectedId) {
-        const detailResponse = await getTransactionDetail(nextSelectedId);
-        setSelectedTransaction(detailResponse.data || null);
-      } else {
-        setSelectedTransaction(null);
-      }
+      setSelectedTransaction(null);
+      setDetailError("");
     } catch (error) {
       console.error("Error loading transactions:", error);
       setTransactions([]);
       setSelectedTransaction(null);
       setStats({ confirmed: 0, failed: 0, pending: 0 });
+      setDetailError("");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewTransaction = async (transactionId) => {
+    if (!transactionId) return;
+
+    try {
+      setDetailLoading(true);
+      setDetailError("");
+      const detailResponse = await getTransactionDetail(transactionId);
+      setSelectedTransaction(detailResponse.data || null);
+    } catch (error) {
+      console.error("Error loading transaction detail:", error);
+      setSelectedTransaction(null);
+      setDetailError("Không thể tải chi tiết giao dịch. Vui lòng thử lại.");
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -183,7 +197,7 @@ export default function AccountingTransactionPage() {
                       </td>
                       <td className="py-5 px-6">
                         <button
-                          onClick={() => loadTransactions(filters, transaction.id)}
+                          onClick={() => handleViewTransaction(transaction.id)}
                           className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
                           title="Xem chi tiết"
                         >
@@ -203,11 +217,15 @@ export default function AccountingTransactionPage() {
             <h2 className="text-[13px] font-black tracking-widest text-[#0b2447] uppercase">Chi tiết giao dịch</h2>
           </div>
 
-          {!selectedTransaction && (
+          {!detailLoading && !detailError && !selectedTransaction && (
             <p className="text-sm text-gray-500 font-medium">Chọn một giao dịch để xem chi tiết.</p>
           )}
 
-          {selectedTransaction && (
+          {detailLoading && <p className="text-sm text-gray-500 font-medium">Đang tải chi tiết giao dịch...</p>}
+
+          {!detailLoading && detailError && <p className="text-sm text-red-500 font-medium">{detailError}</p>}
+
+          {!detailLoading && selectedTransaction && (
             <>
               <DetailRow label="Mã giao dịch" value={selectedTransaction.id} />
               <DetailRow label="Loại giao dịch" value={selectedTransaction.typeLabel || "--"} />
