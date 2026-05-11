@@ -9,7 +9,6 @@ import {
   Landmark,
   Plus,
   ReceiptText,
-  RotateCcw,
   Search,
   ShieldCheck,
   Trash2,
@@ -408,10 +407,6 @@ export default function AccountingReconciliationPage() {
 
   const canSubmitForm = Boolean(selectedRecord) && !savingAction && isValid;
 
-  const handleReloadFromBackend = () => {
-    loadWorkItems();
-  };
-
   const buildDraftPayload = (values) => ({
     checkoutRequestId: selectedRecord?.checkoutRequestId,
     contractId: selectedRecord?.contractId,
@@ -645,7 +640,7 @@ export default function AccountingReconciliationPage() {
           </div>
         )}
 
-        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mb-8 flex flex-col gap-5">
           <div>
             <p className="mb-3 text-[11px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">
               Accounting Workspace
@@ -653,24 +648,6 @@ export default function AccountingReconciliationPage() {
             <h1 className="mb-3 text-[2rem] font-black leading-none tracking-tight text-[#0b2447] sm:text-[2.3rem] xl:text-[2.5rem]">
               Lập bảng đối soát trả phòng
             </h1>
-            <p className="max-w-3xl text-[15px] font-medium leading-7 text-gray-500">
-              Giao diện mới tập trung đúng quy trình thanh lý: chọn hồ sơ trả phòng, áp dụng tỷ lệ hoàn cọc, tổng hợp
-              khấu trừ, xác định số tiền hoàn lại hoặc số tiền khách phải thanh toán thêm.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3 lg:justify-end">
-            <button
-              onClick={handleReloadFromBackend}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-3 font-black text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Tải lại dữ liệu backend
-            </button>
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#0b2447] px-6 py-3 font-black text-white shadow-lg shadow-[#0b2447]/15">
-              <ShieldCheck className="h-4 w-4" />
-              {loadingRecords || loadingDetail ? "Đang đồng bộ API đối soát" : "Đã nối API đối soát"}
-            </div>
           </div>
         </div>
 

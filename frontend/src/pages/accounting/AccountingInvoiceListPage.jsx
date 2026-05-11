@@ -1,24 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Download,
-  Plus,
-  Calendar,
-  CreditCard,
-  FileText,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  Wallet,
-  TrendingUp,
-} from "lucide-react";
-import { ACCOUNTING_ROUTES } from "../../constants/accounting.constants";
+import { Calendar, CreditCard, FileText, CheckCircle2, AlertTriangle, Clock, Wallet, TrendingUp } from "lucide-react";
 import AccountingInvoiceTable from "../../components/accounting/AccountingInvoiceTable";
 import { getInvoices } from "../../services/accounting.service";
 import { formatCurrency } from "../../utils/accounting.utils";
 
 export default function AccountingInvoiceListPage() {
-  const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
   const [summaryInvoices, setSummaryInvoices] = useState([]);
   const [summaryTotalInvoices, setSummaryTotalInvoices] = useState(0);
@@ -146,21 +132,7 @@ export default function AccountingInvoiceListPage() {
     <div className="p-8 lg:p-10 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-[2rem] font-extrabold text-[#111827] mb-2 tracking-tight">Danh sách Phiếu thu</h1>
-          <p className="text-gray-500 font-medium max-w-lg leading-relaxed">
-            Giám sát thanh toán bất động sản, theo dõi trạng thái và duy trì sức khỏe tài chính.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-[#f3f4f6] text-gray-700 rounded-full font-bold hover:bg-gray-200 transition-colors text-sm">
-            <Download className="w-4 h-4" /> Xuất CSV
-          </button>
-          <button
-            onClick={() => navigate(ACCOUNTING_ROUTES.BILLING)}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#0b2447] text-white rounded-full font-bold hover:bg-blue-900 transition-colors shadow-md shadow-blue-900/20 text-sm"
-          >
-            <Plus className="w-4 h-4" strokeWidth={3} /> Tạo mới
-          </button>
+          <h1 className="text-[2rem] font-extrabold text-[#111827] tracking-tight">Danh sách Phiếu thu</h1>
         </div>
       </div>
 
