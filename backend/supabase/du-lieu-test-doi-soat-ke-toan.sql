@@ -281,7 +281,7 @@ insert into public.phong (
   trang_thai,
   gioi_tinh
 )
-select t.ma_toa, tg.ma_tang, room_data.ma_phong_hien_thi, 'STANDARD', 1, room_data.gia_thang, 'DANG_O', 'Nam/Nữ'
+select t.ma_toa, tg.ma_tang, room_data.ma_phong_hien_thi, 'STANDARD', 1, room_data.gia_thang, 'DAY', 'Nam/Nữ'
 from public.toa t
 join public.tang tg on tg.ma_toa = t.ma_toa and tg.so_tang = 9
 join (
@@ -294,7 +294,7 @@ join (
 where t.ma_dinh_danh = 'TEST-RECON';
 
 insert into public.giuong (ma_phong, ma_giuong_hien_thi, nhan_giuong, gia_thang, trang_thai)
-select p.ma_phong, 'G1', concat('Bed-', p.ma_phong_hien_thi), p.gia_thang, 'DANG_O'
+select p.ma_phong, 'G1', concat('Bed-', p.ma_phong_hien_thi), p.gia_thang, 'DA_THUE'
 from public.phong p
 join public.toa t on t.ma_toa = p.ma_toa
 where t.ma_dinh_danh = 'TEST-RECON';

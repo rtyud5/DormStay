@@ -93,7 +93,7 @@ const mapAdditionalPaymentVoucherUiFields = (voucher) => ({
 const normalizeRefundStatus = (rawStatus) => {
   const value = String(rawStatus || "").toUpperCase();
 
-  if (["COMPLETED", "DA_HOAN", "HOAN_TAT"].some((item) => value.includes(item))) return "COMPLETED";
+  if (["COMPLETED", "DA_HOAN"].some((item) => value.includes(item))) return "COMPLETED";
   if (["PROCESSING", "DANG_XU_LY"].some((item) => value.includes(item))) return "PROCESSING";
   if (["FAILED", "THAT_BAI", "HUY"].some((item) => value.includes(item))) return "FAILED";
   return "PENDING";

@@ -3,16 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import ContractService from "../services/contract.service";
 import { formatCurrency, formatDate } from "../lib/format";
 
-const ACTIVE_STATUSES = new Set(["HIEU_LUC", "DANG_HIEU_LUC"]);
-const ENDED_STATUSES = new Set(["HET_HAN", "DA_KET_THUC", "DA_THANH_LY", "HOAN_TAT"]);
+const ACTIVE_STATUSES = new Set(["HIEU_LUC"]);
+const ENDED_STATUSES = new Set(["HET_HAN", "DA_KET_THUC", "DA_THANH_LY"]);
 
 const STATUS_META = {
   HIEU_LUC: {
-    label: "Đang hiệu lực",
-    className: "bg-emerald-600/90 text-white",
-    dotClassName: "bg-white animate-pulse",
-  },
-  DANG_HIEU_LUC: {
     label: "Đang hiệu lực",
     className: "bg-emerald-600/90 text-white",
     dotClassName: "bg-white animate-pulse",

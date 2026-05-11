@@ -8,14 +8,10 @@ import ContractService from "../services/contract.service";
 import PaymentService from "../services/payment.service";
 import PayOS from "./PayOS";
 
-const ENDED_CONTRACT_STATUSES = new Set(["HET_HAN", "DA_KET_THUC", "DA_THANH_LY", "HOAN_TAT"]);
+const ENDED_CONTRACT_STATUSES = new Set(["HET_HAN", "DA_KET_THUC", "DA_THANH_LY"]);
 
 const CONTRACT_STATUS_META = {
   HIEU_LUC: {
-    label: "Đang hiệu lực",
-    className: "bg-emerald-100 text-emerald-700 ring-emerald-200",
-  },
-  DANG_HIEU_LUC: {
     label: "Đang hiệu lực",
     className: "bg-emerald-100 text-emerald-700 ring-emerald-200",
   },

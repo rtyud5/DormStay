@@ -339,13 +339,13 @@ const handleSliderChange = (e, type) => {
                   <h3 className="text-[12px] font-extrabold text-[#64748B] uppercase tracking-wider mb-3">TRẠNG THÁI</h3>
                   <div className="space-y-3">
                      <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
-                        const newStatus = filters.status.includes('CON_TRONG') 
-                           ? filters.status.filter(s => s !== 'CON_TRONG')
-                           : [...filters.status, 'CON_TRONG'];
+                        const newStatus = filters.status.includes('TRONG')
+                           ? filters.status.filter(s => s !== 'TRONG')
+                           : [...filters.status, 'TRONG'];
                         setFilters({...filters, status: newStatus});
                      }}>
-                        <div className={`w-5 h-5 rounded-full border-2 border-[#0F172A] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('CON_TRONG') ? '' : 'border-[#CBD5E1]'}`}>
-                           <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('CON_TRONG') ? '' : 'bg-transparent'}`}></div>
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#0F172A] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('TRONG') ? '' : 'border-[#CBD5E1]'}`}>
+                           <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('TRONG') ? '' : 'bg-transparent'}`}></div>
                         </div>
                         <span className="text-[14px] font-medium text-[#0F172A] transition-colors">Còn trống</span>
                      </label>
@@ -363,13 +363,13 @@ const handleSliderChange = (e, type) => {
                      </label>
 
                      <label className="flex items-center gap-3 cursor-pointer group" onClick={() => {
-                        const newStatus = filters.status.includes('DA_DAY') 
-                           ? filters.status.filter(s => s !== 'DA_DAY')
-                           : [...filters.status, 'DA_DAY'];
+                        const newStatus = filters.status.includes('DAY')
+                           ? filters.status.filter(s => s !== 'DAY')
+                           : [...filters.status, 'DAY'];
                         setFilters({...filters, status: newStatus});
                      }}>
-                        <div className={`w-5 h-5 rounded-full border-2 border-[#CBD5E1] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('DA_DAY') ? 'border-[#0F172A]' : ''}`}>
-                           <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('DA_DAY') ? '' : 'bg-transparent'}`}></div>
+                        <div className={`w-5 h-5 rounded-full border-2 border-[#CBD5E1] bg-white flex items-center justify-center p-0.5 ${filters.status.includes('DAY') ? 'border-[#0F172A]' : ''}`}>
+                           <div className={`w-full h-full bg-[#0F172A] rounded-full ${filters.status.includes('DAY') ? '' : 'bg-transparent'}`}></div>
                         </div>
                         <span className="text-[14px] font-medium text-[#475569] group-hover:text-[#0F172A] transition-colors">Đã đầy</span>
                      </label>
@@ -458,9 +458,9 @@ const handleSliderChange = (e, type) => {
                            <Link to={`/rooms/${room.id}`} className="flex-1">
                               <button className="w-full bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-slate-50 text-[#0F172A] py-2.5 rounded-xl font-bold text-[14px] transition-all cursor-pointer">Chi tiết</button>
                            </Link>
-                           {room.status === 'ĐÃ ĐẦY' ? (
+                           {room.canBook === false ? (
                               <div className="flex-1">
-                                 <button className="w-full bg-gray-300 text-gray-500 py-2.5 rounded-xl font-bold text-[14px] cursor-not-allowed">Phòng đã đầy</button>
+                                 <button className="w-full bg-gray-300 text-gray-500 py-2.5 rounded-xl font-bold text-[14px] cursor-not-allowed">Không thể đặt</button>
                               </div>
                            ) : (
                               <Link to={`/booking/${room.id}`} className="flex-1">

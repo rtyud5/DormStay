@@ -126,7 +126,7 @@ function RoomDetailPage() {
                      // 1. Tạo object map để dịch status
                      const statusTextMap = {
                         DA_THUE: 'Đã thuê',
-                        CON_TRONG: 'Còn trống',
+                        TRONG: 'Còn trống',
                         DANG_GIU : 'Đang giữ chỗ' // Thêm nếu có trạng thái này trong DB
                      };
 
@@ -247,9 +247,9 @@ function RoomDetailPage() {
                 </div>
 
                 {/* Kiểm tra trạng thái phòng để hiển thị nút đặt cọc */}
-                {room.status === 'ĐÃ ĐẦY' ? (
+                {room.canBook === false ? (
                    <div className="block text-center w-full bg-gray-300 text-gray-500 py-4 rounded-2xl font-bold text-[15px] mb-4 cursor-not-allowed">
-                      Phòng đã đầy
+                      Không thể đặt
                    </div>
                 ) : (
                    <Link to={`/booking/${room.id}`} className="block text-center w-full bg-[#0A192F] hover:bg-[#112240] text-white py-4 rounded-2xl font-bold text-[15px] transition-colors shadow-lg hover:shadow-xl mb-4">

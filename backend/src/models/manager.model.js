@@ -1,12 +1,12 @@
 const { supabase } = require("../config/supabase");
 const { AppError } = require("../utils/errors");
 
-const ACTIVE_CONTRACT_STATUSES = ["HIEU_LUC", "DANG_HIEU_LUC"];
+const ACTIVE_CONTRACT_STATUSES = ["HIEU_LUC"];
 const CLOSED_CONTRACT_STATUSES = ["HET_HAN", "DA_KET_THUC"];
 const ACTIVE_CHECKOUT_STATUSES = ["CHO_XU_LY", "DANG_KIEM_TRA"];
-const COMPLETED_CHECKOUT_STATUSES = ["DA_THANH_LY", "HOAN_TAT"];
+const COMPLETED_CHECKOUT_STATUSES = ["DA_THANH_LY"];
 const OCCUPIED_BED_STATUSES = ["DA_THUE", "DANG_O", "DANG_SU_DUNG", "DA_THUE_HET"];
-const EMPTY_BED_STATUSES = ["CON_TRONG", "TRONG"];
+const EMPTY_BED_STATUSES = ["TRONG", "CON_TRONG"];
 
 const normalizeContractStatus = (status) => {
   const value = String(status || "").toUpperCase();
@@ -18,7 +18,7 @@ const normalizeBedStatus = (status) => {
   const value = String(status || "").toUpperCase();
   if (EMPTY_BED_STATUSES.includes(value)) return "TRONG";
   if (OCCUPIED_BED_STATUSES.includes(value)) return "DA_THUE";
-  return value || "TRONG";
+  return "TRONG";
 };
 
 const normalizeRoomStatus = (status, beds = [], capacity = 0) => {
@@ -31,7 +31,7 @@ const normalizeRoomStatus = (status, beds = [], capacity = 0) => {
   }
 
   const value = String(status || "").toUpperCase();
-  if (["DAY", "DA_THUE_HET", "DANG_O"].includes(value)) return "DAY";
+  if (["DAY", "DANG_O", "DA_THUE_HET"].includes(value)) return "DAY";
   if (value === "SAP_DAY") return "SAP_DAY";
   return "TRONG";
 };
@@ -76,6 +76,24 @@ const getLatestByContract = async (table, contractIds, select = "*") => {
 
   return (data || []).reduce((map, row) => {
     if (!map[row.ma_hop_dong]) map[row.ma_hop_dong] = row;
+    return map;
+  }, {});
+};
+
+const getActiveHoldMap = async (roomIds = []) => {
+  if (!roomIds.length) return {};
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("giu_cho_tam")
+    .select("ma_giuong, ma_phong, trang_thai, thoi_gian_het_han")
+    .in("ma_phong", roomIds)
+    .in("trang_thai", ["DANG_GIU", "DA_XAC_NHAN_COC"])
+    .or(`thoi_gian_het_han.is.null,thoi_gian_het_han.gt.${now}`);
+
+  if (error) throw error;
+
+  return (data || []).reduce((map, hold) => {
+    if (hold.ma_giuong) map[hold.ma_giuong] = hold;
     return map;
   }, {});
 };
@@ -146,7 +164,7 @@ const ManagerModel = {
     // Đang ở = Số hợp đồng hiệu lực
     const { count: activeContracts } = await supabase.from('hop_dong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'HIEU_LUC');
 
-    const { count: emptyRooms } = await supabase.from('phong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'CON_TRONG');
+    const { count: emptyRooms } = await supabase.from('phong').select('*', { count: 'exact', head: true }).in('trang_thai', ['TRONG', 'CON_TRONG']);
 
     // Bảo trì
     const { count: maintenanceRooms } = await supabase.from('phong').select('*', { count: 'exact', head: true }).eq('trang_thai', 'BAO_TRI');
@@ -662,7 +680,7 @@ const ManagerModel = {
       // Status logic
       const inspectionDone = (y.bien_ban_kiem_tra || []).length > 0 || y.trang_thai === 'DA_KIEM_TRA';
       let liquidationStatus = 'CHO_KIEM_TRA';
-      if (COMPLETED_CHECKOUT_STATUSES.includes(y.trang_thai)) liquidationStatus = 'HOAN_TAT';
+      if (COMPLETED_CHECKOUT_STATUSES.includes(y.trang_thai)) liquidationStatus = 'DA_THANH_LY';
       else if (!inspectionDone) liquidationStatus = 'CHO_KIEM_TRA';
       else if (!reconciliation) liquidationStatus = 'CHO_DOI_SOAT';
       else if (reconciliation.trang_thai === 'DA_CHOT') liquidationStatus = 'CHO_THANH_LY';
@@ -937,20 +955,20 @@ const ManagerModel = {
     if (contract?.loai_muc_tieu === 'GIUONG' && bedId) {
       const { error: bedError } = await supabase
         .from('giuong')
-        .update({ trang_thai: 'CON_TRONG' })
+        .update({ trang_thai: 'TRONG' })
         .eq('ma_giuong', bedId);
       if (bedError) throw bedError;
       await refreshRoomAvailabilityStatus(roomId);
     } else if (roomId) {
       const { error: bedsError } = await supabase
         .from('giuong')
-        .update({ trang_thai: 'CON_TRONG' })
+        .update({ trang_thai: 'TRONG' })
         .eq('ma_phong', roomId);
       if (bedsError) throw bedsError;
 
       const { error: roomError } = await supabase
         .from('phong')
-        .update({ trang_thai: 'CON_TRONG' })
+        .update({ trang_thai: 'TRONG' })
         .eq('ma_phong', roomId);
       if (roomError) throw roomError;
     }
@@ -967,7 +985,7 @@ const ManagerModel = {
       ma_ban_ghi: yctp.ma_hop_dong,
       hanh_dong: 'THANH_LY_HOP_DONG',
       ma_ho_so_nguoi_thuc_hien: payload?.performedByProfileId || null,
-      ghi_chu: `Manager thanh ly hop dong HD-${yctp.ma_hop_dong}. Doi soat #${reconciliation.ma_doi_soat}. Hoan ${toNumber(reconciliation.so_tien_hoan_lai)}d, phat sinh ${toNumber(reconciliation.so_tien_can_thanh_toan_them)}d. Phong/giuong da tra ve CON_TRONG.`,
+      ghi_chu: `Manager thanh ly hop dong HD-${yctp.ma_hop_dong}. Doi soat #${reconciliation.ma_doi_soat}. Hoan ${toNumber(reconciliation.so_tien_hoan_lai)}d, phat sinh ${toNumber(reconciliation.so_tien_can_thanh_toan_them)}d. Phong/giuong da tra ve TRONG.`,
     });
 
     return {
@@ -1001,6 +1019,7 @@ const ManagerModel = {
     const bedIds = (data || []).flatMap((p) => (p.giuong || []).map((g) => g.ma_giuong));
     let tenantByBed = {};
     let tenantByRoom = {};
+    let holdByBed = {};
 
     if (roomIds.length || bedIds.length) {
       const { data: contracts, error: contractError } = await supabase
@@ -1027,23 +1046,37 @@ const ManagerModel = {
       });
     }
 
+    if (roomIds.length) {
+      holdByBed = await getActiveHoldMap(roomIds);
+    }
+
     let formatData = (data || []).map(p => {
       const beds = p.giuong || [];
       const mappedBeds = beds.map(g => ({
         id: g.ma_giuong,
         display: g.nhan_giuong || g.ma_giuong_hien_thi || `Giường ${g.ma_giuong}`,
-        status: normalizeBedStatus(g.trang_thai),
+        status: holdByBed[g.ma_giuong] ? "DANG_GIU" : normalizeBedStatus(g.trang_thai),
         tenant: tenantByBed[g.ma_giuong] || null,
         price: toNumber(p.gia_thang)
       }));
       const occupied = mappedBeds.filter(g => g.status === 'DA_THUE').length;
-      const reserved = 0;
-      const empty = mappedBeds.filter(g => g.status === 'CON_TRONG').length;
+      const reserved = mappedBeds.filter(g => g.status === 'DANG_GIU').length;
+      const empty = mappedBeds.filter(g => g.status === 'TRONG').length;
       const total = beds.length;
       const capacity = Number(p.suc_chua) || total || 1;
       const hasRoomTenant = !!tenantByRoom[p.ma_phong];
       const occupiedCount = total > 0 ? occupied : (hasRoomTenant ? capacity : 0);
-      const status = total > 0 ? normalizeRoomStatus(p.trang_thai, beds, capacity) : (hasRoomTenant ? "DAY" : normalizeRoomStatus(p.trang_thai, beds, capacity));
+      const roomStatusValue = String(p.trang_thai || "").toUpperCase();
+      const unavailableCount = occupied + reserved;
+      const status = roomStatusValue === "BAO_TRI"
+        ? "BAO_TRI"
+        : total > 0
+          ? unavailableCount >= total
+            ? "DAY"
+            : unavailableCount > 0
+              ? "SAP_DAY"
+              : "TRONG"
+          : (hasRoomTenant ? "DAY" : normalizeRoomStatus(p.trang_thai, beds, capacity));
 
       return {
         id: p.ma_phong,
@@ -1060,7 +1093,7 @@ const ManagerModel = {
         reservedCount: reserved,
         price: Number(p.gia_thang) || 0,
         holdRequests: reserved,
-        occupancyRate: Math.round((occupiedCount / Math.max(capacity, 1)) * 100) + '%',
+        occupancyRate: Math.round(((occupiedCount + reserved) / Math.max(capacity, 1)) * 100) + '%',
         bedsText: total > 0 ? `${occupiedCount} đã thuê, ${empty} trống` : (hasRoomTenant ? "Đang thuê nguyên phòng" : "Phòng trống"),
         tenant: tenantByRoom[p.ma_phong] || null,
         beds: mappedBeds
@@ -1080,15 +1113,15 @@ const ManagerModel = {
       total: count || 0,
       occupied: formatData.filter(r => r.status === 'SAP_DAY' || r.status === 'DAY' || r.occupiedCount > 0).length,
       reserved: formatData.filter(r => r.reservedCount > 0).length,
-      empty: formatData.filter(r => r.status === 'CON_TRONG').length,
-      maintenance: 0,
+      empty: formatData.filter(r => r.status === 'TRONG').length,
+      maintenance: formatData.filter(r => r.status === 'BAO_TRI').length,
     };
 
     return { items: formatData, total: count || 0, stats };
   },
 
   async updateRoomStatus(roomId, statusData) {
-    if (!["TRONG", "SAP_DAY", "DAY"].includes(statusData.status)) {
+    if (!["TRONG", "SAP_DAY", "DAY", "BAO_TRI"].includes(statusData.status)) {
       throw new AppError("Trạng thái phòng không hợp lệ", 400);
     }
     const { error } = await supabase.from('phong').update({ trang_thai: statusData.status }).eq('ma_phong', roomId);

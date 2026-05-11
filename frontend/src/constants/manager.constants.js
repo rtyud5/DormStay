@@ -82,29 +82,11 @@ export const ROOM_STATUS = {
     textColor: "text-blue-700",
     dot: "bg-blue-500",
   },
-  DANG_O: {
-    label: "Đang ở",
-    color: "bg-blue-100",
-    textColor: "text-blue-700",
-    dot: "bg-blue-500",
-  },
-  DANG_COC: {
-    label: "Đang cọc",
-    color: "bg-yellow-100",
-    textColor: "text-yellow-700",
-    dot: "bg-yellow-500",
-  },
   BAO_TRI: {
     label: "Bảo trì",
     color: "bg-red-100",
     textColor: "text-red-700",
     dot: "bg-red-500",
-  },
-  DONG_CUA: {
-    label: "Đóng cửa",
-    color: "bg-gray-100",
-    textColor: "text-gray-600",
-    dot: "bg-gray-400",
   },
 };
 
@@ -122,8 +104,8 @@ export const BED_STATUS = {
     textColor: "text-blue-700",
     dot: "bg-blue-500",
   },
-  DA_COC: {
-    label: "Đã cọc",
+  DANG_GIU: {
+    label: "Đang giữ",
     color: "bg-yellow-100",
     textColor: "text-yellow-700",
     dot: "bg-yellow-500",
@@ -196,23 +178,11 @@ export const LIQUIDATION_STATUS = {
     textColor: "text-purple-700",
     dot: "bg-purple-500",
   },
-  CHO_CHOT: {
-    label: "Chờ chốt",
-    color: "bg-yellow-100",
-    textColor: "text-yellow-700",
-    dot: "bg-yellow-500",
-  },
-  DA_CHOT: {
-    label: "Đã chốt",
+  DA_THANH_LY: {
+    label: "Đã thanh lý",
     color: "bg-green-100",
     textColor: "text-green-700",
     dot: "bg-green-500",
-  },
-  HOAN_TAT: {
-    label: "Hoàn tất",
-    color: "bg-gray-100",
-    textColor: "text-gray-600",
-    dot: "bg-gray-400",
   },
 };
 

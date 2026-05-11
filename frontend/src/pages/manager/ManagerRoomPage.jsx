@@ -13,6 +13,7 @@ const ROOM_STATUS_OPTS = [
   { value: "SAP_DAY", label: "Sắp đầy" },
   { value: "TRONG", label: "Trống" },
   { value: "DAY", label: "Đầy" },
+  { value: "BAO_TRI", label: "Bảo trì" },
 ];
 
 export default function ManagerRoomPage() {
@@ -221,7 +222,7 @@ export default function ManagerRoomPage() {
                       disabled={updating === room.id}
                       className="flex-1 px-3 py-2.5 bg-[#0b2447] text-white rounded-xl text-sm font-bold appearance-none focus:outline-none disabled:opacity-60 cursor-pointer"
                     >
-                      {["TRONG", "SAP_DAY", "DAY"].map((key) => {
+                      {["TRONG", "SAP_DAY", "DAY", "BAO_TRI"].map((key) => {
                         const val = ROOM_STATUS[key];
                         return (
                         <option key={key} value={key} className="bg-white text-gray-900">

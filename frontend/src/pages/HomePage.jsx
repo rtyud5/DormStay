@@ -181,9 +181,9 @@ function HomePage() {
             <div className="relative">
               <select value={homeFilters.status} onChange={(e) => setHomeFilters({...homeFilters, status: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
                 <option value="">Tất cả</option>
-                <option value="CON_TRONG">Còn trống</option>
+                <option value="TRONG">Còn trống</option>
                 <option value="SAP_DAY">Sắp đầy</option>
-                <option value="DA_DAY">Đã đầy</option>
+                <option value="DAY">Đã đầy</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-slate-400">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>

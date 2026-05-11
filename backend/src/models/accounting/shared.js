@@ -125,7 +125,7 @@ function normalizeInvoiceStatus(invoice) {
 function normalizePaymentStatus(payment) {
   const rawStatus = String(payment.trang_thai || "").toUpperCase();
 
-  if (includesAny(rawStatus, ["XAC_NHAN", "CONFIRM", "HOAN_TAT", "SUCCESS"])) return "CONFIRMED";
+  if (includesAny(rawStatus, ["XAC_NHAN", "CONFIRM", "SUCCESS"])) return "CONFIRMED";
   if (includesAny(rawStatus, ["THAT_BAI", "FAILED"])) return "FAILED";
   if (includesAny(rawStatus, ["HUY", "CANCEL"])) return "CANCELLED";
   return "PENDING";
@@ -152,7 +152,7 @@ function normalizeInvoiceType(rawType) {
 function normalizeRefundStatus(rawStatus) {
   const value = String(rawStatus || "").toUpperCase();
 
-  if (includesAny(value, ["HOAN_TAT", "DA_HOAN", "COMPLETED"])) return "COMPLETED";
+  if (includesAny(value, ["DA_HOAN", "COMPLETED"])) return "COMPLETED";
   if (includesAny(value, ["DANG", "PROCESS"])) return "PROCESSING";
   if (includesAny(value, ["HUY", "FAILED"])) return "FAILED";
   return "PENDING";

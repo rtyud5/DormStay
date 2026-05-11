@@ -132,7 +132,7 @@ create table public.yeu_cau_thue (
   ngay_du_kien_vao_o date not null,
   gia_thue_thang numeric(14,2) not null default 0 check (gia_thue_thang >= 0),
   so_tien_dat_coc numeric(14,2) not null default 0 check (so_tien_dat_coc >= 0),
-  trang_thai varchar(50) not null default 'MOI_TAO',
+  trang_thai varchar(50) not null default 'DANG_XU_LY',
   checkoutUrl text,
   paymentLinkId text,
   created_at timestamptz not null default now(),

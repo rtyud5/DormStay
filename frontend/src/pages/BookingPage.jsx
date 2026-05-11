@@ -48,7 +48,8 @@ function BookingPage() {
 
   const allBedsEmpty =
     beds.length > 0 &&
-    beds.every((b) => b.status === "CON_TRONG");
+    beds.every((b) => b.status === "TRONG");
+  const isRoomBookable = room?.canBook !== false;
 
   const handleInputChange = (e) => {
     if (paymentInitiated) return; // Không cho sửa khi đang thanh toán
@@ -57,8 +58,8 @@ function BookingPage() {
   };
 
   const toggleBed = (bedId, bedStatus) => {
-    if (paymentInitiated) return;
-    if (bedStatus !== "CON_TRONG") return;
+    if (paymentInitiated || !isRoomBookable) return;
+    if (bedStatus !== "TRONG") return;
 
     setSelectedBeds((prev) => {
       if (prev.includes(bedId)) return prev.filter((id) => id !== bedId);
@@ -67,14 +68,14 @@ function BookingPage() {
   };
 
   const rentWholeRoom = async () => {
-    if (paymentInitiated) return;
+    if (paymentInitiated || !isRoomBookable) return;
     if (!allBedsEmpty) return;
 
     // Refresh bed data to check latest availability
     try {
       const bedsRes = await RoomService.getRoomBeds(id);
       const latestBeds = bedsRes.data.data || [];
-      const latestAllBedsEmpty = latestBeds.length > 0 && latestBeds.every((b) => b.status === "CON_TRONG");
+      const latestAllBedsEmpty = latestBeds.length > 0 && latestBeds.every((b) => b.status === "TRONG");
       
       if (!latestAllBedsEmpty) {
         alert("Không thể đặt cọc nguyên phòng vì một số giường đã được đặt. Vui lòng chọn giường riêng lẻ.");
@@ -96,6 +97,10 @@ function BookingPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isRoomBookable) {
+      alert("Phong nay hien khong the dat.");
+      return;
+    }
     if (!agreed) {
       alert("Vui lòng đồng ý với Điều khoản dịch vụ và Chính sách bảo mật.");
       return;
@@ -115,7 +120,7 @@ function BookingPage() {
       // Check if selected beds are still available
       const unavailableBeds = selectedBeds.filter(bedId => {
         const bed = latestBeds.find(b => b.id === bedId);
-        return !bed || bed.status !== "CON_TRONG";
+        return !bed || bed.status !== "TRONG";
       });
       
       if (unavailableBeds.length > 0) {
@@ -352,9 +357,9 @@ function BookingPage() {
                       <button
                         type="button"
                         onClick={rentWholeRoom}
-                        disabled={!allBedsEmpty || paymentInitiated}
+                        disabled={!allBedsEmpty || paymentInitiated || !isRoomBookable}
                         className={`text-[12px] font-bold px-4 py-1.5 rounded-full border transition-colors flex items-center gap-1.5 ${
-                          !allBedsEmpty || paymentInitiated
+                          !allBedsEmpty || paymentInitiated || !isRoomBookable
                             ? "bg-slate-50 text-[#94A3B8] border-slate-200 cursor-not-allowed"
                             : "bg-[#E0E7FF] text-[#4338CA] border-[#C7D2FE] hover:bg-[#C7D2FE] cursor-pointer"
                         }`}
@@ -378,7 +383,7 @@ function BookingPage() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {beds.map((bed) => {
-                        const isAvailable = bed.status === "CON_TRONG";
+                        const isAvailable = bed.status === "TRONG";
                         const isHeld = bed.status === "DANG_GIU";
                         const isSelected = selectedBeds.includes(bed.id);
 
@@ -392,7 +397,7 @@ function BookingPage() {
                                 : isSelected
                                 ? "bg-white border-[#0052CC] shadow-[0_0_0_4px_rgba(0,82,204,0.1)] cursor-pointer"
                                 : "bg-white border-[#E2E8F0] hover:border-[#CBD5E1] cursor-pointer shadow-sm"
-                            } ${paymentInitiated ? "pointer-events-none opacity-60" : ""}`}
+                            } ${paymentInitiated || !isRoomBookable ? "pointer-events-none opacity-60" : ""}`}
                           >
                             <div
                               className={`absolute top-3 right-3 w-4 h-4 rounded-full border-2 ${
@@ -522,14 +527,14 @@ function BookingPage() {
                       type="checkbox"
                       className="hidden"
                       checked={agreed}
-                      onChange={() => !paymentInitiated && setAgreed(!agreed)}
-                      disabled={paymentInitiated}
+                      onChange={() => !paymentInitiated && isRoomBookable && setAgreed(!agreed)}
+                      disabled={paymentInitiated || !isRoomBookable}
                     />
                   </label>
 
                   <button
                     type="submit"
-                    disabled={paymentInitiated}
+                    disabled={paymentInitiated || !isRoomBookable}
                     className="bg-[#0F172A] hover:bg-[#1E293B] text-white px-8 py-3.5 rounded-2xl font-bold text-[15px] transition-colors disabled:opacity-70 shadow-lg shadow-slate-200"
                   >
                     {paymentInitiated ? "Đang xử lý thanh toán..." : "Đặt cọc ngay"}

@@ -1,7 +1,7 @@
 const { supabase } = require("../config/supabase");
 
 const TABLE_NAME = "hop_dong";
-const ENDED_CONTRACT_STATUSES = new Set(["HET_HAN", "DA_KET_THUC", "DA_THANH_LY", "HOAN_TAT"]);
+const ENDED_CONTRACT_STATUSES = new Set(["HET_HAN", "DA_KET_THUC", "DA_THANH_LY"]);
 
 const toNumber = (value) => {
   const parsed = Number(value || 0);

@@ -20,7 +20,6 @@ const PAYMENT_META = {
   CHO_HOAN: { label: "Chờ hoàn", className: "bg-amber-100 text-amber-700 ring-amber-200" },
   DANG_XU_LY: { label: "Đang xử lý", className: "bg-blue-100 text-blue-700 ring-blue-200" },
   DA_HOAN: { label: "Đã hoàn", className: "bg-emerald-100 text-emerald-700 ring-emerald-200" },
-  HOAN_TAT: { label: "Hoàn tất", className: "bg-emerald-100 text-emerald-700 ring-emerald-200" },
 };
 
 function Badge({ value, metaMap, fallbackClassName = "bg-slate-100 text-slate-700 ring-slate-200" }) {

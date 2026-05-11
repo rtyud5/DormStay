@@ -33,7 +33,7 @@ function RequestDetailPage() {
   useEffect(() => {
     if (request && request.checkoutUrl) {
       // Thêm chốt chặn: Chỉ bật form nếu trạng thái vẫn chưa được duyệt
-      const pendingStatuses = ['DANG_XU_LY', 'CHO_THANH_TOAN', 'MOI_TAO'];
+      const pendingStatuses = ['DANG_XU_LY', 'CHO_THANH_TOAN'];
       
       if (pendingStatuses.includes(request.trang_thai)) {
         setShowPayment(true);
@@ -44,7 +44,7 @@ function RequestDetailPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500">Đang tải thông tin yêu cầu...</div>;
   if (!request) return <div className="min-h-screen flex items-center justify-center font-bold text-red-500">Không tìm thấy yêu cầu thuê này.</div>;
 
-  const isPendingPayment = request.trang_thai === 'DANG_XU_LY' || request.trang_thai === 'CHO_THANH_TOAN' || request.trang_thai === 'MOI_TAO';
+  const isPendingPayment = request.trang_thai === 'DANG_XU_LY' || request.trang_thai === 'CHO_THANH_TOAN';
   const deadline = request.thoi_gian_het_han ? new Date(request.thoi_gian_het_han) : null;
   const isExpired = deadline ? new Date() > deadline : false;
   

@@ -248,17 +248,17 @@ export const getRoomsOverview = async (filters = {}) => {
       data = data.filter((r) => r.displayId.toLowerCase().includes(q));
     }
 
-    return {
-      success: true,
-      data,
-      total: data.length,
-      stats: {
-        total: mockRooms.length,
-        occupied: mockRooms.filter((r) => r.status === "DANG_O").length,
-        reserved: mockRooms.filter((r) => r.status === "DANG_COC").length,
-        empty: mockRooms.filter((r) => r.status === "TRONG").length,
-        maintenance: mockRooms.filter((r) => r.status === "BAO_TRI").length,
-      },
+      return {
+        success: true,
+        data,
+        total: data.length,
+        stats: {
+          total: mockRooms.length,
+          occupied: mockRooms.filter((r) => ["SAP_DAY", "DAY"].includes(r.status)).length,
+          reserved: mockRooms.filter((r) => Number(r.holdRequests || 0) > 0).length,
+          empty: mockRooms.filter((r) => r.status === "TRONG").length,
+          maintenance: mockRooms.filter((r) => r.status === "BAO_TRI").length,
+        },
     };
   }
 

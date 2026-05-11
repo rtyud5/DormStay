@@ -7,6 +7,21 @@ const formatPrice = (price) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 };
 
+const ROOM_STATUS_FILTER_ALIASES = {
+  TRONG: ["TRONG", "CON_TRONG"],
+  SAP_DAY: ["SAP_DAY"],
+  DAY: ["DAY", "DANG_O", "DANG_SU_DUNG", "DA_THUE_HET"],
+  BAO_TRI: ["BAO_TRI"],
+};
+
+const expandRoomStatusFilters = (statuses = []) => {
+  const expanded = statuses.flatMap((status) => {
+    const value = String(status || "").toUpperCase();
+    return ROOM_STATUS_FILTER_ALIASES[value] || [value];
+  });
+  return [...new Set(expanded)];
+};
+
 /**
  * Fetch active holds for a set of room IDs.
  * Returns a map: { [ma_giuong]: holdRow }
@@ -38,23 +53,23 @@ async function getActiveHoldsForRoom(roomId) {
 
 /**
  * Normalize bed status considering holds.
- * Returns one of: CON_TRONG | DANG_GIU | DA_THUE
+ * Returns one of: TRONG | DANG_GIU | DA_THUE
  */
 function normalizeBedStatus(rawStatus, holdInfo) {
   // Normalize the various DB status strings first
   const s = String(rawStatus || "").toUpperCase();
-  if (s === "DA_THUE" || s === "DA_THUE_HET" || s === "DANG_O" || s === "DANG_SU_DUNG") {
+  if (["DA_THUE", "DANG_O", "DANG_SU_DUNG", "DA_THUE_HET"].includes(s)) {
     return "DA_THUE";
   }
-  if (holdInfo) {
+  if (s === "DANG_GIU" || holdInfo) {
     return "DANG_GIU";
   }
-  if (s === "CON_TRONG" || s === "TRONG") {
-    return "CON_TRONG";
+  if (["TRONG", "CON_TRONG"].includes(s)) {
+    return "TRONG";
   }
 
   // Default: if unknown, treat as available
-  return "CON_TRONG";
+  return "TRONG";
 }
 
 // Data Mapper Adapter
@@ -62,6 +77,7 @@ const mapRoomToFrontendFormat = (raw, holdMap = {}) => {
   const isDorm = raw.loai_phong === 'PHONG_CHUNG';
   const bedList = raw.giuong || [];
   const totalBeds = bedList.length;
+  const rawStatus = String(raw.trang_thai || "").toUpperCase();
 
   // Map beds with hold-aware status
   const mappedBeds = bedList.map(bed => {
@@ -77,21 +93,26 @@ const mapRoomToFrontendFormat = (raw, holdMap = {}) => {
     };
   });
 
-  const availableBeds = mappedBeds.filter(b => b.status === 'CON_TRONG').length;
+  const availableBeds = mappedBeds.filter(b => b.status === 'TRONG').length;
   
   // Status Mapping: derive room level status from bed availability when possible
   let status = "CÒN TRỐNG";
   let statusColor = "text-emerald-700 bg-emerald-100";
-  if (availableBeds === 0 && totalBeds > 0) {
+  if (rawStatus === "BAO_TRI") {
+    status = "Báº£o trĂ¬";
+    statusColor = "text-red-700 bg-red-100";
+  } else if (availableBeds === 0 && totalBeds > 0) {
     status = "ĐÃ ĐẦY";
     statusColor = "text-red-600 bg-red-100";
-  } else if (raw.trang_thai === 'SAP_DAY' || (availableBeds > 0 && availableBeds <= 1 && totalBeds > 1)) {
+  } else if (rawStatus === 'SAP_DAY' || (availableBeds > 0 && availableBeds <= 1 && totalBeds > 1)) {
     status = "SẮP ĐẦY";
     statusColor = "text-orange-600 bg-orange-100";
-  } else if (raw.trang_thai === 'DA_THUE_HET' || raw.trang_thai === 'DAY') {
+  } else if (["DAY", "DANG_O", "DA_THUE_HET"].includes(rawStatus)) {
     status = "ĐÃ ĐẦY";
     statusColor = "text-red-600 bg-red-100";
   }
+
+  const canBook = rawStatus !== "BAO_TRI" && !(availableBeds === 0 && totalBeds > 0) && !["DAY", "DANG_O", "DA_THUE_HET"].includes(rawStatus);
 
   // Cover Image mapping
   let image = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80";
@@ -121,6 +142,7 @@ const mapRoomToFrontendFormat = (raw, holdMap = {}) => {
     bedCount: totalBeds,
     availableBeds,
     beds: mappedBeds,
+    canBook,
     type: raw.loai_phong
   };
 };
@@ -182,7 +204,7 @@ const RoomModel = {
     }
 
     if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
-      const dbStatus = filters.status;
+      const dbStatus = expandRoomStatusFilters(filters.status);
       query = query.in('trang_thai', dbStatus);
     }
 

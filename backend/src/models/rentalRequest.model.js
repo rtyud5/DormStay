@@ -6,7 +6,30 @@ const formatPrice = (price) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 };
 
+const toNumber = (value) => {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeRequestStatus = (status) => {
+  const value = String(status || "").toUpperCase();
+  if (["MOI_TAO", "CHO_XU_LY"].includes(value)) return "DANG_XU_LY";
+  if (value === "DA_DUYET") return "DA_XAC_NHAN";
+  if (value === "TU_CHOI") return "QUA_HAN";
+  return value;
+};
+
+const normalizeBedAvailabilityStatus = (status) => {
+  const value = String(status || "").toUpperCase();
+  if (["TRONG", "CON_TRONG"].includes(value)) return "TRONG";
+  if (["DA_THUE", "DANG_O", "DANG_SU_DUNG", "DA_THUE_HET"].includes(value)) return "DA_THUE";
+  if (value === "DANG_GIU") return "DANG_GIU";
+  return value;
+};
+
 const mapRequestToFrontendFormat = (raw) => {
+  const status = normalizeRequestStatus(raw.trang_thai);
+
   // Status mapping
   let statusText = "Mới tạo";
   let statusBadge = "bg-[#E6F0FF] text-[#0052CC]";
@@ -14,7 +37,7 @@ const mapRequestToFrontendFormat = (raw) => {
   let actionStyle = "bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A]";
   let iconType = "document";
 
-  switch (raw.trang_thai) {
+  switch (status) {
     case 'MOI_TAO':
     case 'CHO_XU_LY':
       statusText = "Đang xử lý";
@@ -24,6 +47,13 @@ const mapRequestToFrontendFormat = (raw) => {
       statusText = "Chờ thanh toán cọc";
       statusBadge = "bg-[#FFF3E0] text-[#E65100]";
       actionLabel = "Thanh toán ngay";
+      actionStyle = "bg-[#0A192F] hover:bg-[#112240] text-white border border-[#0A192F]";
+      iconType = "lightning";
+      break;
+    case 'CHO_THANH_TOAN':
+      statusText = "Chá» thanh toĂ¡n cá»c";
+      statusBadge = "bg-[#FFF3E0] text-[#E65100]";
+      actionLabel = "Thanh toĂ¡n ngay";
       actionStyle = "bg-[#0A192F] hover:bg-[#112240] text-white border border-[#0A192F]";
       iconType = "lightning";
       break;
@@ -67,6 +97,7 @@ const mapRequestToFrontendFormat = (raw) => {
 
   return {
     ...raw,
+    trang_thai: status,
     id: `#REQ-${raw.ma_yeu_cau_thue.toString().padStart(4, '0')}`,
     rawId: raw.ma_yeu_cau_thue,
     statusText,
@@ -160,20 +191,100 @@ const RentalRequestModel = {
   async createWithHolds(payload) {
     if (!supabase) return null;
 
-    const { data, error } = await supabase.rpc('create_rental_request_with_holds', {
-      p_ma_ho_so_khach_hang: payload.ma_ho_so_khach_hang,
-      p_loai_muc_tieu: payload.loai_muc_tieu,
-      p_ma_phong: payload.ma_phong,
-      p_selected_beds: payload.selectedBeds || [],
-      p_ngay_du_kien_vao_o: payload.ngay_du_kien_vao_o,
-      p_gia_thue_thang: payload.gia_thue_thang,
-      p_so_tien_dat_coc: payload.so_tien_dat_coc,
-      p_trang_thai: payload.trang_thai || 'DANG_XU_LY',
-      p_thoi_gian_het_han: payload.thoi_gian_het_han || null,
-    });
+    const selectedBeds = Array.isArray(payload.selectedBeds)
+      ? [...new Set(payload.selectedBeds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))]
+      : [];
 
-    if (error) throw error;
-    return data;
+    if (!selectedBeds.length) {
+      throw new Error("Vui lòng chọn ít nhất 1 giường");
+    }
+
+    const roomId = Number(payload.ma_phong);
+    const requestStatus = normalizeRequestStatus(payload.trang_thai || "DANG_XU_LY");
+    const holdExpiry = payload.thoi_gian_het_han ? new Date(payload.thoi_gian_het_han) : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const holdExpiryIso = Number.isNaN(holdExpiry.getTime())
+      ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      : holdExpiry.toISOString();
+
+    const { data: bedRows, error: bedError } = await supabase
+      .from("giuong")
+      .select("ma_giuong, ma_phong, trang_thai")
+      .in("ma_giuong", selectedBeds);
+
+    if (bedError) throw bedError;
+    if (!bedRows || bedRows.length !== selectedBeds.length) {
+      throw new Error("Một hoặc nhiều giường đã không tồn tại");
+    }
+
+    const resolvedRoomId = Number.isInteger(roomId) && roomId > 0 ? roomId : Number(bedRows[0]?.ma_phong || 0);
+    if (!resolvedRoomId) {
+      throw new Error("Thiếu thông tin phòng");
+    }
+
+    const outOfRoomBeds = bedRows.filter((bed) => Number(bed.ma_phong) !== resolvedRoomId);
+    if (outOfRoomBeds.length > 0) {
+      throw new Error(`Một hoặc nhiều giường không thuộc phòng ${resolvedRoomId}`);
+    }
+
+    const unavailableBed = bedRows.find((bed) => normalizeBedAvailabilityStatus(bed.trang_thai) !== "TRONG");
+    if (unavailableBed) {
+      throw new Error(`Bed ${unavailableBed.ma_giuong} is not available (status: ${unavailableBed.trang_thai})`);
+    }
+
+    const nowIso = new Date().toISOString();
+    const { data: activeHolds, error: holdError } = await supabase
+      .from("giu_cho_tam")
+      .select("ma_giuong, trang_thai, thoi_gian_het_han")
+      .in("ma_giuong", selectedBeds)
+      .in("trang_thai", ["DANG_GIU", "DA_XAC_NHAN_COC"])
+      .or(`thoi_gian_het_han.is.null,thoi_gian_het_han.gt.${nowIso}`);
+
+    if (holdError) throw holdError;
+    if ((activeHolds || []).length > 0) {
+      throw new Error(`One or more beds already have active holds (${activeHolds.length} conflicts)`);
+    }
+
+    const requestPayload = {
+      ma_ho_so_khach_hang: payload.ma_ho_so_khach_hang,
+      loai_muc_tieu: payload.loai_muc_tieu,
+      ma_phong: resolvedRoomId,
+      ma_giuong: selectedBeds.length === 1 && String(payload.loai_muc_tieu || "").toUpperCase() === "GIUONG" ? selectedBeds[0] : null,
+      so_luong_giuong_dat: selectedBeds.length,
+      ngay_du_kien_vao_o: payload.ngay_du_kien_vao_o,
+      gia_thue_thang: toNumber(payload.gia_thue_thang),
+      so_tien_dat_coc: toNumber(payload.so_tien_dat_coc),
+      trang_thai: requestStatus,
+      checkoutUrl: payload.checkoutUrl || null,
+      paymentLinkId: payload.paymentLinkId || null,
+    };
+
+    const { data: request, error: requestError } = await supabase
+      .from(TABLE_NAME)
+      .insert(requestPayload)
+      .select("*")
+      .single();
+
+    if (requestError) throw requestError;
+
+    const holdRows = selectedBeds.map((bedId) => ({
+      ma_yeu_cau_thue: request.ma_yeu_cau_thue,
+      loai_muc_tieu: "GIUONG",
+      ma_phong: resolvedRoomId,
+      ma_giuong: bedId,
+      trang_thai: "DANG_GIU",
+      thoi_gian_het_han: holdExpiryIso,
+    }));
+
+    const { error: createHoldError } = await supabase
+      .from("giu_cho_tam")
+      .insert(holdRows);
+
+    if (createHoldError) {
+      await supabase.from(TABLE_NAME).delete().eq("ma_yeu_cau_thue", request.ma_yeu_cau_thue);
+      throw createHoldError;
+    }
+
+    return request;
   },
 
   /**

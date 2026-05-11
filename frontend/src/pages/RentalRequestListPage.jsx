@@ -74,7 +74,7 @@ function RentalRequestListPage() {
               TẤT CẢ ({requests.length})
             </button>
             <button className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-[#64748B] text-[13px] font-bold uppercase tracking-tighter hover:border-[#0052CC] hover:text-[#0052CC] transition-all">
-              ĐANG CHỜ ({requests.filter(r => ['MOI_TAO', 'CHO_THANH_TOAN', 'DA_COC'].includes(r.trang_thai)).length})
+              ĐANG CHỜ ({requests.filter(r => ['DANG_XU_LY', 'CHO_THANH_TOAN', 'DA_COC'].includes(r.trang_thai)).length})
             </button>
             <button className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-[#64748B] text-[13px] font-bold uppercase tracking-tighter hover:border-[#22A06B] hover:text-[#22A06B] transition-all">
               ĐÃ XÁC NHẬN ({requests.filter(r => r.trang_thai === 'DA_XAC_NHAN').length})

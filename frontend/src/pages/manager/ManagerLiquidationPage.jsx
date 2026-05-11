@@ -15,7 +15,7 @@ const STATUS_TABS = [
   { value: "CHO_DOI_SOAT", label: "Chờ đối soát" },
   { value: "DANG_DOI_SOAT", label: "Đang đối soát" },
   { value: "CHO_THANH_LY", label: "Chờ thanh lý" },
-  { value: "HOAN_TAT", label: "Hoàn tất" },
+  { value: "DA_THANH_LY", label: "Đã thanh lý" },
 ];
 
 export default function ManagerLiquidationPage() {
@@ -41,7 +41,7 @@ export default function ManagerLiquidationPage() {
   };
 
   const pendingCount = liquidations.filter((l) => l.liquidationStatus === "CHO_THANH_LY").length;
-  const completedCount = liquidations.filter((l) => l.liquidationStatus === "HOAN_TAT").length;
+  const completedCount = liquidations.filter((l) => l.liquidationStatus === "DA_THANH_LY").length;
   const totalRefund = liquidations.reduce((s, l) => s + (l.estimatedRefund || 0), 0);
 
   return (

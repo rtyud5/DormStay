@@ -29,7 +29,7 @@ const SaleModel = {
       { count: checkoutRequestsThisMonth },
     ] = await Promise.all([
       supabase.from("yeu_cau_thue").select("*", { count: "exact", head: true })
-        .in("trang_thai", ["DANG_XU_LY", "MOI_TAO", "CHO_THANH_TOAN"]),
+        .in("trang_thai", ["DANG_XU_LY", "CHO_THANH_TOAN", "DA_COC"]),
       supabase.from("ho_so").select("*", { count: "exact", head: true })
         .eq("vai_tro", "KHACH_HANG"),
       supabase.from("hop_dong").select("*", { count: "exact", head: true })
@@ -44,7 +44,7 @@ const SaleModel = {
     ]);
 
     // Status breakdown
-    const statuses = ["MOI_TAO", "DANG_XU_LY", "CHO_THANH_TOAN", "DA_COC", "DA_XAC_NHAN"];
+    const statuses = ["DANG_XU_LY", "CHO_THANH_TOAN", "DA_COC", "DA_XAC_NHAN", "QUA_HAN"];
     const statusBreakdown = {};
     await Promise.all(
       statuses.map(async (s) => {

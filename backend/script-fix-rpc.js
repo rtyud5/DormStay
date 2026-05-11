@@ -57,13 +57,13 @@ BEGIN
     END IF;
   END IF;
 
-  -- 4) Validate beds are available (trang_thai IN ('TRONG', 'CON_TRONG'))
+  -- 4) Validate beds are available (trang_thai = 'TRONG')
   IF v_bed_count > 0 THEN
     FOR v_bed_record IN
       SELECT g.ma_giuong, g.ma_giuong_hien_thi, g.trang_thai
       FROM public.giuong g
       WHERE g.ma_giuong = ANY(p_selected_beds)
-        AND g.trang_thai NOT IN ('TRONG', 'CON_TRONG')
+        AND g.trang_thai <> 'TRONG'
     LOOP
       RAISE EXCEPTION 'Bed % (%) is not available (status: %)',
         v_bed_record.ma_giuong, v_bed_record.ma_giuong_hien_thi, v_bed_record.trang_thai;

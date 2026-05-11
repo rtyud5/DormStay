@@ -84,7 +84,7 @@ export default function ManagerLiquidationDetailPage() {
   }
 
   const d = data;
-  const isCompleted = ["DA_THANH_LY", "HOAN_TAT"].includes(d.checkoutStatus);
+  const isCompleted = ["DA_THANH_LY"].includes(d.checkoutStatus);
   const canLiquidate = !isCompleted && d.liquidationReady;
 
   return (
