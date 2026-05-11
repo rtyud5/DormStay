@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import {
+  AlertCircle,
   ArrowRightLeft,
   CalendarDays,
+  CheckCircle2,
   ClipboardList,
   Landmark,
   Plus,
@@ -12,6 +14,7 @@ import {
   ShieldCheck,
   Trash2,
   Wallet,
+  X,
 } from "lucide-react";
 import {
   createReconciliationDraft,
@@ -158,6 +161,7 @@ export default function AccountingReconciliationPage() {
   const [previewSummary, setPreviewSummary] = useState(null);
   const [savingAction, setSavingAction] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [toastNotification, setToastNotification] = useState(null);
 
   const {
     control,
@@ -184,16 +188,23 @@ export default function AccountingReconciliationPage() {
   const watchedLineItems = watch("lineItems") || [];
 
   const hydrateSelectedRecord = (detail) => {
-    setSelectedRecord(detail || null);
+    const normalizedDetail = detail
+      ? {
+          ...detail,
+          reconciliationId: detail.reconciliationId || detail.id || null,
+        }
+      : null;
 
-    const nextLineItems = detail?.lineItems?.length
-      ? detail.lineItems
-      : detail?.suggestedLineItems?.length
-        ? detail.suggestedLineItems
+    setSelectedRecord(normalizedDetail);
+
+    const nextLineItems = normalizedDetail?.lineItems?.length
+      ? normalizedDetail.lineItems
+      : normalizedDetail?.suggestedLineItems?.length
+        ? normalizedDetail.suggestedLineItems
         : [];
 
     reset({
-      refundReason: detail?.refundReason || "",
+      refundReason: normalizedDetail?.refundReason || "",
       lineItems: cloneLineItems(nextLineItems),
     });
     setPreviewSummary(null);
@@ -398,20 +409,60 @@ export default function AccountingReconciliationPage() {
         status: nextWorkflowStatus,
       };
 
-      const response = selectedRecord.reconciliationId
-        ? await updateReconciliationDraft(selectedRecord.reconciliationId, payload)
-        : await createReconciliationDraft(payload);
+      let response;
+      try {
+        response = selectedRecord.reconciliationId
+          ? await updateReconciliationDraft(selectedRecord.reconciliationId, payload)
+          : await createReconciliationDraft(payload);
+      } catch (error) {
+        // Handle 409 conflict: draft already exists, try to update it
+        if (error.response?.status === 409 && !selectedRecord.reconciliationId) {
+          console.warn("Draft already exists for this contract, fetching existing reconciliation...");
+          const detailResponse = await getReconciliationWorkItemDetail(selectedRecord.checkoutRequestId);
+          const existingId = detailResponse.data?.reconciliationId || detailResponse.data?.id;
+          if (existingId) {
+            response = await updateReconciliationDraft(existingId, payload);
+          } else {
+            throw error;
+          }
+        } else {
+          throw error;
+        }
+      }
 
-      hydrateSelectedRecord(response.data);
-      await loadWorkItems();
-      setStatusMessage(
-        nextWorkflowStatus === "DANG_LAP"
-          ? "Đã lưu bản nháp đối soát vào backend."
-          : "Đã cập nhật trạng thái hồ sơ đối soát.",
-      );
+      const nextReconciliationId =
+        response.data?.reconciliationId || response.data?.id || selectedRecord.reconciliationId;
+      const updatedRecord = { ...selectedRecord, reconciliationId: nextReconciliationId };
+      hydrateSelectedRecord(response.data || updatedRecord);
+      setSelectedContractId(updatedRecord.checkoutRequestId || selectedRecord.checkoutRequestId || null);
+
+      // When saving from "Chờ đối soát", item becomes "Đang lập" and would disappear under current filter.
+      // Auto-switch filter so user still sees the item they just edited.
+      if (nextWorkflowStatus === "DANG_LAP" && filterStatus === "CHO_DOI_SOAT") {
+        setFilterStatus("DANG_LAP");
+        setCurrentPage(1);
+      } else {
+        await loadWorkItems();
+      }
+
+      setToastNotification({
+        type: "success",
+        title: nextWorkflowStatus === "DANG_LAP" ? "Lưu bản nháp thành công" : "Cập nhật trạng thái thành công",
+        message:
+          nextWorkflowStatus === "DANG_LAP"
+            ? "Bảng đối soát đã được lưu vào hệ thống. Bạn có thể tiếp tục chỉnh sửa hoặc chốt kết quả sau."
+            : "Trạng thái hồ sơ đã được cập nhật.",
+      });
+      setTimeout(() => setToastNotification(null), 5000);
     } catch (error) {
       console.error("Error saving reconciliation draft:", error);
-      window.alert("Không thể lưu bản nháp đối soát. Kiểm tra console để xem chi tiết.");
+      setToastNotification({
+        type: "error",
+        title: "Lỗi khi lưu bản nháp",
+        message:
+          error.response?.data?.message || "Không thể lưu bản nháp đối soát. Vui lòng kiểm tra lại form và thử lại.",
+      });
+      setTimeout(() => setToastNotification(null), 5000);
     } finally {
       setSavingAction("");
     }
@@ -436,12 +487,19 @@ export default function AccountingReconciliationPage() {
           status: "DANG_LAP",
         });
         hydrateSelectedRecord(draftResponse.data);
-        reconciliationId = draftResponse.data?.id;
+        reconciliationId = draftResponse.data?.reconciliationId || draftResponse.data?.id;
       }
 
       const response = await finalizeReconciliation(reconciliationId);
       hydrateSelectedRecord(response.data);
-      await loadWorkItems();
+      setSelectedContractId(selectedRecord.checkoutRequestId || null);
+
+      if (filterStatus !== "DA_CHOT") {
+        setFilterStatus("DA_CHOT");
+        setCurrentPage(1);
+      } else {
+        await loadWorkItems();
+      }
 
       const autoGenerated = response.data?.autoGeneratedDocument;
       if (autoGenerated?.type === "ADDITIONAL_PAYMENT") {
@@ -475,6 +533,52 @@ export default function AccountingReconciliationPage() {
   return (
     <div className="min-h-screen bg-[#f7f8fa] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <div className="mx-auto max-w-screen-2xl">
+        {toastNotification && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center p-4 pointer-events-none sm:items-center sm:p-0">
+            <div
+              className={`pointer-events-auto max-w-md w-full rounded-2xl shadow-2xl p-6 animate-in fade-in slide-in-from-bottom-4 ${
+                toastNotification.type === "success"
+                  ? "bg-[#ecfdf5] border border-[#d1fae5]"
+                  : "bg-[#fef2f2] border border-[#fee2e2]"
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`shrink-0 ${toastNotification.type === "success" ? "text-[#10b981]" : "text-[#ef4444]"}`}
+                >
+                  {toastNotification.type === "success" ? (
+                    <CheckCircle2 className="w-6 h-6" />
+                  ) : (
+                    <AlertCircle className="w-6 h-6" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3
+                    className={`font-black text-sm ${
+                      toastNotification.type === "success" ? "text-[#065f46]" : "text-[#991b1b]"
+                    }`}
+                  >
+                    {toastNotification.title}
+                  </h3>
+                  <p
+                    className={`mt-1 text-sm font-medium ${
+                      toastNotification.type === "success" ? "text-[#047857]" : "text-[#b91c1c]"
+                    }`}
+                  >
+                    {toastNotification.message}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setToastNotification(null)}
+                  className="shrink-0 ml-2 inline-flex text-gray-400 hover:text-gray-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-3 text-[11px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">

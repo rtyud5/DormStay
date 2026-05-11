@@ -465,6 +465,7 @@ async function getReconciliationDetailPayload(reconciliationId) {
 
   return {
     id: reconciliation.ma_doi_soat,
+    reconciliationId: reconciliation.ma_doi_soat,
     checkoutRequestId: checkoutRequest?.ma_yeu_cau_tra_phong || null,
     contractId: reconciliation.ma_hop_dong,
     customerName: customer?.ho_ten || "Khách thuê chưa cập nhật",
@@ -637,6 +638,7 @@ const AccountingReconciliationPageModel = {
 
       return {
         id: checkoutRequest.ma_yeu_cau_tra_phong,
+        reconciliationId: null,
         checkoutRequestId: checkoutRequest.ma_yeu_cau_tra_phong,
         contractId: checkoutRequest.ma_hop_dong,
         customerName: customer?.ho_ten || "Khách thuê chưa cập nhật",
@@ -683,6 +685,7 @@ const AccountingReconciliationPageModel = {
     const detail = await getReconciliationDetailPayload(latestReconciliation.ma_doi_soat);
     return {
       ...detail,
+      reconciliationId: detail.reconciliationId || detail.id || latestReconciliation.ma_doi_soat,
       checkoutRequestId,
       suggestedLineItems,
       refundVoucher: refundVoucher ? detail.refundVoucher : null,
