@@ -87,6 +87,17 @@ const formatDate = (value) =>
 
 const getPolicy = (reasonValue) => REFUND_POLICY_OPTIONS.find((option) => option.value === reasonValue) || null;
 
+const getDefaultRefundReason = (detail) => {
+  const directReason = detail?.refundReason;
+  if (directReason) return directReason;
+
+  const policyReason = detail?.refundPolicy?.reason;
+  if (policyReason) return policyReason;
+
+  const stayMonths = Number(detail?.stayMonths || 0);
+  return stayMonths < 6 ? "EARLY_TERMINATION_SHORT_STAY" : "EARLY_TERMINATION_LONG_STAY";
+};
+
 const computeFinancialSummary = (depositAmount, refundReason, lineItems) => {
   const policy = getPolicy(refundReason);
   const ratio = policy?.ratio || 0;
@@ -166,6 +177,7 @@ export default function AccountingReconciliationPage() {
     control,
     register,
     reset,
+    setValue,
     watch,
     handleSubmit,
     formState: { errors, isValid },
@@ -187,9 +199,12 @@ export default function AccountingReconciliationPage() {
   const watchedLineItems = watch("lineItems") || [];
 
   const hydrateSelectedRecord = (detail) => {
+    const resolvedRefundReason = detail ? getDefaultRefundReason(detail) : "";
+
     const normalizedDetail = detail
       ? {
           ...detail,
+          refundReason: resolvedRefundReason,
           reconciliationId: detail.reconciliationId ?? null,
         }
       : null;
@@ -203,11 +218,26 @@ export default function AccountingReconciliationPage() {
         : [];
 
     reset({
-      refundReason: normalizedDetail?.refundReason || "",
+      refundReason: resolvedRefundReason,
       lineItems: cloneLineItems(nextLineItems),
     });
     setPreviewSummary(null);
   };
+
+  useEffect(() => {
+    if (!selectedRecord) {
+      return;
+    }
+
+    if (watchedRefundReason) {
+      return;
+    }
+
+    const fallbackReason = getDefaultRefundReason(selectedRecord);
+    if (fallbackReason) {
+      setValue("refundReason", fallbackReason, { shouldValidate: true, shouldDirty: false });
+    }
+  }, [selectedRecord, watchedRefundReason, setValue]);
 
   const loadWorkItems = async () => {
     try {
@@ -385,7 +415,7 @@ export default function AccountingReconciliationPage() {
   const buildDraftPayload = (values) => ({
     checkoutRequestId: selectedRecord?.checkoutRequestId,
     contractId: selectedRecord?.contractId,
-    refundReason: values.refundReason,
+    refundReason: values.refundReason || getDefaultRefundReason(selectedRecord),
     lineItems: (values.lineItems || []).map((item) => ({
       category: item.category,
       direction: item.direction,
@@ -546,7 +576,7 @@ export default function AccountingReconciliationPage() {
         ? "refund"
         : "balanced";
 
-  const currentPolicy = getPolicy(watchedRefundReason);
+  const currentPolicy = getPolicy(watchedRefundReason || getDefaultRefundReason(selectedRecord));
 
   const totalPages = Math.max(Math.ceil(totalRecords / pageSize), 1);
 
