@@ -70,7 +70,11 @@ function RoomDetailPage() {
                    <img src={room.image} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                    <div className="absolute top-6 left-6">
                       <span className="bg-[#0A192F] text-white px-4 py-2 rounded-full text-[11px] font-extrabold tracking-widest uppercase shadow-md">
-                         {room.type === 'PHONG_STUDIO' ? 'PHÒNG STUDIO' : 'PHÒNG CHUNG'}
+                         {room.type === 'PHONG_RIENG'
+                            ? 'PHÒNG RIÊNG'
+                            : room.type === 'PHONG_STUDIO'
+                              ? 'PHÒNG STUDIO'
+                              : 'PHÒNG CHUNG'}
                       </span>
                    </div>
                 </div>

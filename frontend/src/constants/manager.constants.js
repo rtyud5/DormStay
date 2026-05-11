@@ -276,11 +276,8 @@ export const GENDER_OPTIONS = [
 
 export const ROOM_TYPE_OPTIONS = [
   { value: "all", label: "Tất cả loại" },
-  { value: "KTX_4", label: "KTX 4 giường" },
-  { value: "KTX_6", label: "KTX 6 giường" },
-  { value: "KTX_8", label: "KTX 8 giường" },
-  { value: "PHONG_DOI", label: "Phòng đôi" },
-  { value: "PHONG_DON", label: "Phòng đơn" },
+  { value: "PHONG_CHUNG", label: "Phòng chung" },
+  { value: "PHONG_RIENG", label: "Phòng riêng" },
 ];
 
 export const PAGINATION = {

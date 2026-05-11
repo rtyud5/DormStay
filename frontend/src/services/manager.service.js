@@ -13,6 +13,16 @@ import {
 } from "../mockdata/manager.mockdata";
 
 const USE_MOCK = import.meta.env.VITE_USE_MANAGER_MOCK === "true";
+const ROOM_TYPE_FILTER_ALIASES = {
+  PHONG_CHUNG: ["PHONG_CHUNG", "KTX_4", "KTX_6", "KTX_8"],
+  PHONG_RIENG: ["PHONG_RIENG", "PHONG_DOI", "PHONG_DON", "PHONG_STUDIO"],
+  KTX_4: ["KTX_4", "PHONG_CHUNG"],
+  KTX_6: ["KTX_6", "PHONG_CHUNG"],
+  KTX_8: ["KTX_8", "PHONG_CHUNG"],
+  PHONG_DOI: ["PHONG_DOI", "PHONG_RIENG"],
+  PHONG_DON: ["PHONG_DON", "PHONG_RIENG"],
+  PHONG_STUDIO: ["PHONG_STUDIO", "PHONG_RIENG"],
+};
 
 // ==================== HELPERS ====================
 const getInitials = (fullName = "") =>
@@ -24,6 +34,12 @@ const getInitials = (fullName = "") =>
     .join("");
 
 const sleep = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+const matchesRoomType = (roomType, filterType) => {
+  const value = String(filterType || "").trim().toUpperCase();
+  if (!value || value === "ALL") return true;
+  const accepted = ROOM_TYPE_FILTER_ALIASES[value] || [value];
+  return accepted.includes(String(roomType || "").trim().toUpperCase());
+};
 
 // ==================== DASHBOARD ====================
 
@@ -241,7 +257,7 @@ export const getRoomsOverview = async (filters = {}) => {
       data = data.filter((r) => r.gender === filters.gender);
     }
     if (filters.roomType && filters.roomType !== "all") {
-      data = data.filter((r) => r.roomType === filters.roomType);
+      data = data.filter((r) => matchesRoomType(r.roomType, filters.roomType));
     }
     if (filters.search) {
       const q = filters.search.toLowerCase();

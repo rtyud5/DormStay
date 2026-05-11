@@ -7,6 +7,24 @@ const ACTIVE_CHECKOUT_STATUSES = ["CHO_XU_LY", "DANG_KIEM_TRA"];
 const COMPLETED_CHECKOUT_STATUSES = ["DA_THANH_LY"];
 const OCCUPIED_BED_STATUSES = ["DA_THUE", "DANG_O", "DANG_SU_DUNG", "DA_THUE_HET"];
 const EMPTY_BED_STATUSES = ["TRONG", "CON_TRONG"];
+const ROOM_TYPE_FILTER_ALIASES = {
+  PHONG_CHUNG: ["PHONG_CHUNG", "KTX_4", "KTX_6", "KTX_8"],
+  PHONG_RIENG: ["PHONG_RIENG", "PHONG_DON", "PHONG_DOI", "PHONG_STUDIO"],
+  KTX_4: ["KTX_4", "PHONG_CHUNG"],
+  KTX_6: ["KTX_6", "PHONG_CHUNG"],
+  KTX_8: ["KTX_8", "PHONG_CHUNG"],
+  PHONG_DON: ["PHONG_DON", "PHONG_RIENG", "PHONG_STUDIO"],
+  PHONG_DOI: ["PHONG_DOI", "PHONG_RIENG"],
+  PHONG_STUDIO: ["PHONG_STUDIO", "PHONG_RIENG"],
+};
+const ROOM_TYPE_LABELS = {
+  KTX_4: "KTX 4 gi\u01b0\u1eddng",
+  KTX_6: "KTX 6 gi\u01b0\u1eddng",
+  KTX_8: "KTX 8 gi\u01b0\u1eddng",
+  PHONG_DON: "Ph\u00f2ng \u0111\u01a1n",
+  PHONG_DOI: "Ph\u00f2ng \u0111\u00f4i",
+  PHONG_STUDIO: "Ph\u00f2ng studio",
+};
 
 const normalizeContractStatus = (status) => {
   const value = String(status || "").toUpperCase();
@@ -34,6 +52,19 @@ const normalizeRoomStatus = (status, beds = [], capacity = 0) => {
   if (["DAY", "DANG_O", "DA_THUE_HET"].includes(value)) return "DAY";
   if (value === "SAP_DAY") return "SAP_DAY";
   return "TRONG";
+};
+
+const expandRoomTypeFilter = (roomType) => {
+  const value = String(roomType || "").trim().toUpperCase();
+  if (!value || value === "ALL") return [];
+  return ROOM_TYPE_FILTER_ALIASES[value] || [value];
+};
+
+const formatRoomTypeLabel = (roomType, capacity = 0) => {
+  const value = String(roomType || "").trim().toUpperCase();
+  if (value === "PHONG_CHUNG") return "Ph\u00f2ng chung";
+  if (value === "PHONG_RIENG") return "Ph\u00f2ng ri\u00eang";
+  return ROOM_TYPE_LABELS[value] || String(roomType || "").trim();
 };
 
 const toNumber = (value) => {
@@ -1012,7 +1043,8 @@ const ManagerModel = {
       giuong (ma_giuong, ma_giuong_hien_thi, trang_thai, nhan_giuong, gia_thang)
     `, { count: 'exact' });
 
-    if (filters.roomType && filters.roomType !== "all") query = query.eq('loai_phong', filters.roomType);
+    const roomTypeFilters = expandRoomTypeFilter(filters.roomType);
+    if (roomTypeFilters.length) query = query.in('loai_phong', roomTypeFilters);
 
     const { data, count } = await query;
     const roomIds = (data || []).map((p) => p.ma_phong);
@@ -1068,6 +1100,7 @@ const ManagerModel = {
       const occupiedCount = total > 0 ? occupied : (hasRoomTenant ? capacity : 0);
       const roomStatusValue = String(p.trang_thai || "").toUpperCase();
       const unavailableCount = occupied + reserved;
+      const roomType = String(p.loai_phong || '').trim();
       const status = roomStatusValue === "BAO_TRI"
         ? "BAO_TRI"
         : total > 0
@@ -1084,8 +1117,8 @@ const ManagerModel = {
         floor: p.tang?.ten_tang || '',
         floorValue: p.tang?.so_tang?.toString() || p.tang?.ten_tang || '',
         floorLabel: p.tang?.ten_tang || '',
-        roomType: String(p.loai_phong || '').trim(),
-        roomTypeLabel: String(p.loai_phong || '').trim(),
+        roomType,
+        roomTypeLabel: formatRoomTypeLabel(roomType, capacity),
         gender: p.gioi_tinh || 'Nam/Nữ',
         status,
         capacity,
