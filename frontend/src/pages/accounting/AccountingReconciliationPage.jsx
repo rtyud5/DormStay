@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import {
+  AlertCircle,
   ArrowRightLeft,
   CalendarDays,
+  CheckCircle2,
   ClipboardList,
   Landmark,
   Plus,
@@ -12,6 +14,7 @@ import {
   ShieldCheck,
   Trash2,
   Wallet,
+  X,
 } from "lucide-react";
 import {
   createReconciliationDraft,
@@ -61,7 +64,6 @@ const LINE_ITEM_CATEGORIES = [
 ];
 
 const SIDEBAR_FILTER_OPTIONS = [
-  { value: "ALL", label: "Tất cả" },
   { value: "CHO_DOI_SOAT", label: "Chờ đối soát" },
   { value: "DANG_LAP", label: "Đang lập" },
   { value: "CAN_THU_THEM", label: "Cần thu thêm" },
@@ -84,6 +86,17 @@ const formatDate = (value) =>
     : "--";
 
 const getPolicy = (reasonValue) => REFUND_POLICY_OPTIONS.find((option) => option.value === reasonValue) || null;
+
+const getDefaultRefundReason = (detail) => {
+  const directReason = detail?.refundReason;
+  if (directReason) return directReason;
+
+  const policyReason = detail?.refundPolicy?.reason;
+  if (policyReason) return policyReason;
+
+  const stayMonths = Number(detail?.stayMonths || 0);
+  return stayMonths < 6 ? "EARLY_TERMINATION_SHORT_STAY" : "EARLY_TERMINATION_LONG_STAY";
+};
 
 const computeFinancialSummary = (depositAmount, refundReason, lineItems) => {
   const policy = getPolicy(refundReason);
@@ -150,7 +163,7 @@ export default function AccountingReconciliationPage() {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [debouncedSearchKeyword, setDebouncedSearchKeyword] = useState("");
-  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState("CHO_DOI_SOAT");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
   const [loadingRecords, setLoadingRecords] = useState(true);
@@ -158,11 +171,13 @@ export default function AccountingReconciliationPage() {
   const [previewSummary, setPreviewSummary] = useState(null);
   const [savingAction, setSavingAction] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [toastNotification, setToastNotification] = useState(null);
 
   const {
     control,
     register,
     reset,
+    setValue,
     watch,
     handleSubmit,
     formState: { errors, isValid },
@@ -184,20 +199,45 @@ export default function AccountingReconciliationPage() {
   const watchedLineItems = watch("lineItems") || [];
 
   const hydrateSelectedRecord = (detail) => {
-    setSelectedRecord(detail || null);
+    const resolvedRefundReason = detail ? getDefaultRefundReason(detail) : "";
 
-    const nextLineItems = detail?.lineItems?.length
-      ? detail.lineItems
-      : detail?.suggestedLineItems?.length
-        ? detail.suggestedLineItems
+    const normalizedDetail = detail
+      ? {
+          ...detail,
+          refundReason: resolvedRefundReason,
+          reconciliationId: detail.reconciliationId ?? null,
+        }
+      : null;
+
+    setSelectedRecord(normalizedDetail);
+
+    const nextLineItems = normalizedDetail?.lineItems?.length
+      ? normalizedDetail.lineItems
+      : normalizedDetail?.suggestedLineItems?.length
+        ? normalizedDetail.suggestedLineItems
         : [];
 
     reset({
-      refundReason: detail?.refundReason || "",
+      refundReason: resolvedRefundReason,
       lineItems: cloneLineItems(nextLineItems),
     });
     setPreviewSummary(null);
   };
+
+  useEffect(() => {
+    if (!selectedRecord) {
+      return;
+    }
+
+    if (watchedRefundReason) {
+      return;
+    }
+
+    const fallbackReason = getDefaultRefundReason(selectedRecord);
+    if (fallbackReason) {
+      setValue("refundReason", fallbackReason, { shouldValidate: true, shouldDirty: false });
+    }
+  }, [selectedRecord, watchedRefundReason, setValue]);
 
   const loadWorkItems = async () => {
     try {
@@ -209,7 +249,7 @@ export default function AccountingReconciliationPage() {
         limit: pageSize,
       };
 
-      if (filterStatus !== "ALL") {
+      if (filterStatus) {
         listFilters.status = filterStatus;
       }
 
@@ -375,7 +415,7 @@ export default function AccountingReconciliationPage() {
   const buildDraftPayload = (values) => ({
     checkoutRequestId: selectedRecord?.checkoutRequestId,
     contractId: selectedRecord?.contractId,
-    refundReason: values.refundReason,
+    refundReason: values.refundReason || getDefaultRefundReason(selectedRecord),
     lineItems: (values.lineItems || []).map((item) => ({
       category: item.category,
       direction: item.direction,
@@ -398,20 +438,60 @@ export default function AccountingReconciliationPage() {
         status: nextWorkflowStatus,
       };
 
-      const response = selectedRecord.reconciliationId
-        ? await updateReconciliationDraft(selectedRecord.reconciliationId, payload)
-        : await createReconciliationDraft(payload);
+      let response;
+      try {
+        response = selectedRecord.reconciliationId
+          ? await updateReconciliationDraft(selectedRecord.reconciliationId, payload)
+          : await createReconciliationDraft(payload);
+      } catch (error) {
+        // Handle 409 conflict: draft already exists, try to update it
+        if (error.response?.status === 409 && !selectedRecord.reconciliationId) {
+          console.warn("Draft already exists for this contract, fetching existing reconciliation...");
+          const detailResponse = await getReconciliationWorkItemDetail(selectedRecord.checkoutRequestId);
+          const existingId = detailResponse.data?.reconciliationId;
+          if (existingId) {
+            response = await updateReconciliationDraft(existingId, payload);
+          } else {
+            throw error;
+          }
+        } else {
+          throw error;
+        }
+      }
 
-      hydrateSelectedRecord(response.data);
-      await loadWorkItems();
-      setStatusMessage(
-        nextWorkflowStatus === "DANG_LAP"
-          ? "Đã lưu bản nháp đối soát vào backend."
-          : "Đã cập nhật trạng thái hồ sơ đối soát.",
-      );
+      const nextReconciliationId =
+        response.data?.reconciliationId || response.data?.id || selectedRecord.reconciliationId;
+      const updatedRecord = { ...selectedRecord, reconciliationId: nextReconciliationId };
+      hydrateSelectedRecord(response.data || updatedRecord);
+      setSelectedContractId(updatedRecord.checkoutRequestId || selectedRecord.checkoutRequestId || null);
+
+      // When saving from "Chờ đối soát", item becomes "Đang lập" and would disappear under current filter.
+      // Auto-switch filter so user still sees the item they just edited.
+      if (nextWorkflowStatus === "DANG_LAP" && filterStatus === "CHO_DOI_SOAT") {
+        setFilterStatus("DANG_LAP");
+        setCurrentPage(1);
+      } else {
+        await loadWorkItems();
+      }
+
+      setToastNotification({
+        type: "draft",
+        title: nextWorkflowStatus === "DANG_LAP" ? "Lưu bản nháp thành công" : "Cập nhật trạng thái thành công",
+        message:
+          nextWorkflowStatus === "DANG_LAP"
+            ? "Bảng đối soát đã được lưu vào hệ thống. Bạn có thể tiếp tục chỉnh sửa hoặc chốt kết quả sau."
+            : "Trạng thái hồ sơ đã được cập nhật.",
+      });
+      setTimeout(() => setToastNotification(null), 5000);
     } catch (error) {
       console.error("Error saving reconciliation draft:", error);
-      window.alert("Không thể lưu bản nháp đối soát. Kiểm tra console để xem chi tiết.");
+      setToastNotification({
+        type: "error",
+        title: "Lỗi khi lưu bản nháp",
+        message:
+          error.response?.data?.message || "Không thể lưu bản nháp đối soát. Vui lòng kiểm tra lại form và thử lại.",
+      });
+      setTimeout(() => setToastNotification(null), 5000);
     } finally {
       setSavingAction("");
     }
@@ -436,12 +516,23 @@ export default function AccountingReconciliationPage() {
           status: "DANG_LAP",
         });
         hydrateSelectedRecord(draftResponse.data);
-        reconciliationId = draftResponse.data?.id;
+        reconciliationId = draftResponse.data?.reconciliationId || draftResponse.data?.id || null;
+      }
+
+      if (!reconciliationId) {
+        throw new Error("Unable to resolve reconciliation ID for finalize.");
       }
 
       const response = await finalizeReconciliation(reconciliationId);
       hydrateSelectedRecord(response.data);
-      await loadWorkItems();
+      setSelectedContractId(selectedRecord.checkoutRequestId || null);
+
+      if (filterStatus !== "DA_CHOT") {
+        setFilterStatus("DA_CHOT");
+        setCurrentPage(1);
+      } else {
+        await loadWorkItems();
+      }
 
       const autoGenerated = response.data?.autoGeneratedDocument;
       if (autoGenerated?.type === "ADDITIONAL_PAYMENT") {
@@ -453,9 +544,26 @@ export default function AccountingReconciliationPage() {
       } else {
         setStatusMessage("Đã chốt kết quả đối soát trên backend.");
       }
+
+      setToastNotification({
+        type: "finalize",
+        title: "Chốt đối soát thành công",
+        message:
+          autoGenerated?.type === "ADDITIONAL_PAYMENT"
+            ? `Đã chốt và tạo phiếu thanh toán phát sinh #${autoGenerated.voucher?.id || "--"}.`
+            : autoGenerated?.type === "REFUND"
+              ? `Đã chốt và tạo phiếu hoàn cọc #${autoGenerated.voucher?.id || "--"}.`
+              : "Bảng đối soát đã được chốt thành công.",
+      });
+      setTimeout(() => setToastNotification(null), 5000);
     } catch (error) {
       console.error("Error finalizing reconciliation:", error);
-      window.alert("Không thể chốt kết quả đối soát. Kiểm tra console để xem chi tiết.");
+      setToastNotification({
+        type: "error",
+        title: "Lỗi khi chốt đối soát",
+        message: error.response?.data?.message || "Không thể chốt kết quả đối soát. Vui lòng thử lại.",
+      });
+      setTimeout(() => setToastNotification(null), 5000);
     } finally {
       setSavingAction("");
     }
@@ -468,13 +576,75 @@ export default function AccountingReconciliationPage() {
         ? "refund"
         : "balanced";
 
-  const currentPolicy = getPolicy(watchedRefundReason);
+  const currentPolicy = getPolicy(watchedRefundReason || getDefaultRefundReason(selectedRecord));
 
   const totalPages = Math.max(Math.ceil(totalRecords / pageSize), 1);
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <div className="mx-auto max-w-screen-2xl">
+        {toastNotification && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center p-4 pointer-events-none sm:items-center sm:p-0">
+            <div
+              className={`pointer-events-auto max-w-md w-full rounded-2xl shadow-2xl p-6 animate-in fade-in slide-in-from-bottom-4 ${
+                toastNotification.type === "draft"
+                  ? "bg-[#eff6ff] border border-[#dbeafe]"
+                  : toastNotification.type === "finalize"
+                    ? "bg-[#ecfdf5] border border-[#d1fae5]"
+                    : "bg-[#fef2f2] border border-[#fee2e2]"
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`shrink-0 ${
+                    toastNotification.type === "draft"
+                      ? "text-[#2563eb]"
+                      : toastNotification.type === "finalize"
+                        ? "text-[#10b981]"
+                        : "text-[#ef4444]"
+                  }`}
+                >
+                  {toastNotification.type === "draft" || toastNotification.type === "finalize" ? (
+                    <CheckCircle2 className="w-6 h-6" />
+                  ) : (
+                    <AlertCircle className="w-6 h-6" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3
+                    className={`font-black text-sm ${
+                      toastNotification.type === "draft"
+                        ? "text-[#1e40af]"
+                        : toastNotification.type === "finalize"
+                          ? "text-[#065f46]"
+                          : "text-[#991b1b]"
+                    }`}
+                  >
+                    {toastNotification.title}
+                  </h3>
+                  <p
+                    className={`mt-1 text-sm font-medium ${
+                      toastNotification.type === "draft"
+                        ? "text-[#1d4ed8]"
+                        : toastNotification.type === "finalize"
+                          ? "text-[#047857]"
+                          : "text-[#b91c1c]"
+                    }`}
+                  >
+                    {toastNotification.message}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setToastNotification(null)}
+                  className="shrink-0 ml-2 inline-flex text-gray-400 hover:text-gray-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-3 text-[11px] font-black uppercase tracking-[0.28em] text-[#7c8aa5]">
@@ -1049,7 +1219,7 @@ function StatusBadge({ status }) {
 
   return (
     <span
-      className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-widest ${toneMap[status] || "bg-gray-100 text-gray-600"}`}
+      className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-widest ${toneMap[status] || "bg-gray-100 text-gray-600"}`}
     >
       {labelMap[status] || status}
     </span>

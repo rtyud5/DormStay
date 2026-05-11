@@ -12,18 +12,21 @@ const TABLES = {
 
 function normalizeTransactionStatus(rawStatus) {
   const value = String(rawStatus || "").toUpperCase();
-  if (includesAny(value, ["DA_XAC_NHAN", "CONFIRMED", "DA_THANH_TOAN"])) return "CONFIRMED";
-  if (includesAny(value, ["CHO_XAC_NHAN", "CHO_THANH_TOAN", "PENDING"])) return "PENDING";
-  if (includesAny(value, ["THAT_BAI", "FAILED", "HUY", "CANCEL"])) return "FAILED";
+  if (includesAny(value, ["DA_XAC_NHAN", "CONFIRMED", "DA_THANH_TOAN", "DA_HOAN", "HOAN_TAT", "COMPLETED", "DA_NHAN"]))
+    return "CONFIRMED";
+  if (includesAny(value, ["CHO_XAC_NHAN", "CHO_THANH_TOAN", "PENDING", "CHO_HOAN", "DANG_XU_LY", "PROCESS"]))
+    return "PENDING";
+  if (includesAny(value, ["THAT_BAI", "FAILED", "HUY", "CANCEL", "QUA_HAN", "OVERDUE"])) return "FAILED";
   return "PENDING";
 }
 
 function mapStatusFilter(filterStatus) {
   if (!filterStatus || filterStatus === "all" || filterStatus === "ALL") return null;
   const value = String(filterStatus).toUpperCase();
-  if (value === "CONFIRMED") return ["DA_XAC_NHAN", "CONFIRMED", "DA_THANH_TOAN"];
-  if (value === "PENDING") return ["CHO_XAC_NHAN", "CHO_THANH_TOAN", "PENDING"];
-  if (value === "FAILED") return ["THAT_BAI", "FAILED", "HUY", "CANCEL"];
+  if (value === "CONFIRMED")
+    return ["DA_XAC_NHAN", "CONFIRMED", "DA_THANH_TOAN", "DA_HOAN", "HOAN_TAT", "COMPLETED", "DA_NHAN"];
+  if (value === "PENDING") return ["CHO_XAC_NHAN", "CHO_THANH_TOAN", "PENDING", "CHO_HOAN", "DANG_XU_LY", "PROCESSING"];
+  if (value === "FAILED") return ["THAT_BAI", "FAILED", "HUY", "CANCEL", "QUA_HAN", "OVERDUE"];
   return null;
 }
 
@@ -46,11 +49,11 @@ function mapInvoiceTransaction(invoice, customer) {
   if (invoiceType.includes("PHAT_SINH") || invoiceType.includes("EXTRA")) type = "INVOICE_EXTRA";
 
   return {
-    id: `INV-${invoice.ma_hoa_don}`,
+    id: invoice.ma_hoa_don ? `INV-${invoice.ma_hoa_don}` : undefined,
     type,
     typeLabel: getTransactionTypeLabel(type),
-    invoiceId: invoice.ma_hoa_don,
-    contractId: invoice.ma_hop_dong,
+    invoiceId: invoice.ma_hoa_don ?? undefined,
+    contractId: invoice.ma_hop_dong ?? undefined,
     customerName: customer?.ho_ten || "Khách thuê chưa cập nhật",
     phone: customer?.so_dien_thoai || "",
     amount: toNumber(invoice.tong_so_tien),
@@ -65,11 +68,11 @@ function mapInvoiceTransaction(invoice, customer) {
 
 function mapRefundTransaction(refund, customer) {
   return {
-    id: `REF-${refund.ma_phieu_hoan_coc}`,
+    id: refund.ma_phieu_hoan_coc ? `REF-${refund.ma_phieu_hoan_coc}` : undefined,
     type: "REFUND",
     typeLabel: "Phiếu hoàn cọc",
-    refundId: refund.ma_phieu_hoan_coc,
-    contractId: refund.ma_hop_dong,
+    refundId: refund.ma_phieu_hoan_coc ?? undefined,
+    contractId: refund.ma_hop_dong ?? undefined,
     customerName: customer?.ho_ten || "Khách thuê chưa cập nhật",
     phone: customer?.so_dien_thoai || "",
     beneficiaryName: refund.ten_nguoi_nhan,
@@ -84,11 +87,11 @@ function mapRefundTransaction(refund, customer) {
 
 function mapExtraPaymentTransaction(payment, customer) {
   return {
-    id: `EXP-${payment.ma_phieu_tt_phat_sinh}`,
+    id: payment.ma_phieu_tt_phat_sinh ? `EXP-${payment.ma_phieu_tt_phat_sinh}` : undefined,
     type: "EXTRA_PAYMENT",
     typeLabel: "Phiếu thanh toán phát sinh",
-    paymentId: payment.ma_phieu_tt_phat_sinh,
-    contractId: payment.ma_hop_dong,
+    paymentId: payment.ma_phieu_tt_phat_sinh ?? undefined,
+    contractId: payment.ma_hop_dong ?? undefined,
     customerName: customer?.ho_ten || "Khách thuê chưa cập nhật",
     phone: customer?.so_dien_thoai || "",
     amount: toNumber(payment.so_tien_thanh_toan),
@@ -205,7 +208,7 @@ const AccountingTransactionPageModel = {
 
     // Apply filters
     if (statusFilter) {
-      allTransactions = allTransactions.filter((tx) => statusFilter.includes(tx.statusRaw));
+      allTransactions = allTransactions.filter((tx) => statusFilter.includes(String(tx.statusRaw || "").toUpperCase()));
     }
 
     if (search) {

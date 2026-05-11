@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Clock,
+  Wallet,
   TrendingUp,
 } from "lucide-react";
 import { ACCOUNTING_ROUTES } from "../../constants/accounting.constants";
@@ -19,6 +20,8 @@ import { formatCurrency } from "../../utils/accounting.utils";
 export default function AccountingInvoiceListPage() {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
+  const [summaryInvoices, setSummaryInvoices] = useState([]);
+  const [summaryTotalInvoices, setSummaryTotalInvoices] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filterState, setFilterState] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,56 +32,75 @@ export default function AccountingInvoiceListPage() {
   const [totalInvoices, setTotalInvoices] = useState(0);
   const [pageSize] = useState(10);
 
-  const invoiceTotal = Math.max(totalInvoices || invoices.length, 1);
-  // Recalculate stats based on ALL invoices (for context), but update display per page
-  const completedCount = invoices.filter((invoice) => invoice.status === "COMPLETED").length;
-  const pendingCount = invoices.filter((invoice) => invoice.status === "PENDING").length;
-  const overdueCount = invoices.filter((invoice) => invoice.status === "OVERDUE").length;
+  const invoiceTotal = Math.max(summaryTotalInvoices || summaryInvoices.length, 1);
+  const completedCount = summaryInvoices.filter((invoice) => invoice.status === "COMPLETED").length;
+  const pendingCount = summaryInvoices.filter((invoice) => invoice.status === "PENDING").length;
+  const overdueCount = summaryInvoices.filter((invoice) => invoice.status === "OVERDUE").length;
   const completedPercent = Math.round((completedCount / invoiceTotal) * 100);
   const pendingPercent = Math.round((pendingCount / invoiceTotal) * 100);
   const overduePercent = Math.round((overdueCount / invoiceTotal) * 100);
+
+  const totalRevenue = summaryInvoices.reduce(
+    (sum, invoice) => sum + (invoice.paidAmount || (invoice.status === "COMPLETED" ? invoice.amount || 0 : 0)),
+    0,
+  );
+
+  const completedAmount = summaryInvoices
+    .filter((invoice) => invoice.status === "COMPLETED")
+    .reduce((sum, invoice) => sum + (invoice.amount || 0), 0);
+  const pendingAmount = summaryInvoices
+    .filter((invoice) => invoice.status === "PENDING")
+    .reduce((sum, invoice) => sum + (invoice.amount || 0), 0);
+  const overdueAmount = summaryInvoices
+    .filter((invoice) => invoice.status === "OVERDUE")
+    .reduce((sum, invoice) => sum + (invoice.amount || 0), 0);
+
+  useEffect(() => {
+    const loadSummaryInvoices = async () => {
+      try {
+        const response = await getInvoices({ page: 1, limit: 1000 });
+        const allInvoices = response.data?.items || response.data || [];
+        const totalAllInvoices = response.data?.total || allInvoices.length || 0;
+        setSummaryInvoices(allInvoices);
+        setSummaryTotalInvoices(totalAllInvoices);
+      } catch (error) {
+        console.error("Error loading summary invoices:", error);
+      }
+    };
+
+    loadSummaryInvoices();
+  }, []);
 
   useEffect(() => {
     const loadInvoices = async () => {
       try {
         setLoading(true);
 
-        // Load full data for stats (không lọc status)
-        const statsFilters = {};
+        const paginationFilters = {};
         if (searchTerm.trim()) {
-          statsFilters.search = searchTerm.trim();
+          paginationFilters.search = searchTerm.trim();
         }
         if (filterTimeRange !== "all") {
-          statsFilters.timeRange = filterTimeRange;
+          paginationFilters.timeRange = filterTimeRange;
         }
         if (filterPaymentMethod !== "all") {
-          statsFilters.paymentMethod = filterPaymentMethod;
+          paginationFilters.paymentMethod = filterPaymentMethod;
         }
         if (filterContractId.trim()) {
-          statsFilters.contractId = filterContractId.trim();
+          paginationFilters.contractId = filterContractId.trim();
         }
-        statsFilters.page = 1;
-        statsFilters.limit = 1000; // Load all for stats
-
-        // Load filtered data for pagination
-        const paginationFilters = { ...statsFilters };
         if (filterState !== "all") {
           paginationFilters.status = filterState.toUpperCase();
         }
         paginationFilters.page = currentPage;
         paginationFilters.limit = pageSize;
 
-        // Get full dataset for stats
-        const statsResponse = await getInvoices(statsFilters);
-        const allInvoices = statsResponse.data?.items || statsResponse.data || [];
-        const totalAllInvoices = statsResponse.data?.total || allInvoices.length || 0;
-
-        // Get paginated dataset for display
         const response = await getInvoices(paginationFilters);
         const pageInvoices = response.data?.items || response.data || [];
+        const total = response.data?.total || pageInvoices.length || 0;
 
         setInvoices(pageInvoices);
-        setTotalInvoices(totalAllInvoices); // Total across all statuses, không phải chỉ filtered
+        setTotalInvoices(total);
       } catch (error) {
         console.error("Error loading invoices:", error);
       } finally {
@@ -88,21 +110,6 @@ export default function AccountingInvoiceListPage() {
 
     loadInvoices();
   }, [filterState, searchTerm, filterTimeRange, filterPaymentMethod, filterContractId, currentPage, pageSize]);
-
-  const totalRevenue = invoices.reduce(
-    (sum, invoice) => sum + (invoice.paidAmount || (invoice.status === "COMPLETED" ? invoice.amount || 0 : 0)),
-    0,
-  );
-
-  const completedAmount = invoices
-    .filter((invoice) => invoice.status === "COMPLETED")
-    .reduce((sum, invoice) => sum + (invoice.amount || 0), 0);
-  const pendingAmount = invoices
-    .filter((invoice) => invoice.status === "PENDING")
-    .reduce((sum, invoice) => sum + (invoice.amount || 0), 0);
-  const overdueAmount = invoices
-    .filter((invoice) => invoice.status === "OVERDUE")
-    .reduce((sum, invoice) => sum + (invoice.amount || 0), 0);
 
   const renderStatusBadge = (status, text) => {
     switch (status) {
@@ -137,7 +144,6 @@ export default function AccountingInvoiceListPage() {
 
   return (
     <div className="p-8 lg:p-10 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-[2rem] font-extrabold text-[#111827] mb-2 tracking-tight">Danh sách Phiếu thu</h1>
@@ -158,9 +164,71 @@ export default function AccountingInvoiceListPage() {
         </div>
       </div>
 
-      {/* Filters Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-[#0b2447] rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-[#0b2447]/10">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20"></div>
+
+          <p className="text-[11px] font-bold text-blue-200 uppercase tracking-widest mb-4">TỔNG DOANH THU</p>
+          <h2 className="text-[2.5rem] font-extrabold tracking-tight leading-none mb-6">
+            {formatCurrency(totalRevenue).replace("₫", "")} <span className="text-2xl">đ</span>
+          </h2>
+
+          <div className="inline-flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-[#4ade80]" strokeWidth={3} />
+            <span className="text-sm font-bold text-blue-100">Luôn tính theo toàn bộ phiếu thu</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden">
+          <div className="absolute bottom-4 right-4 opacity-5 pointer-events-none">
+            <svg width="150" height="150" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 10h16v10H4zM2 22h20v-2H2v2zm10-18.5L2 8h20L12 3.5zM10 12h4v6h-4z" />
+            </svg>
+          </div>
+
+          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-6">PHÂN TÍCH THANH TOÁN</p>
+
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between text-xs font-bold mb-2">
+                <span className="text-gray-800">Đã thanh toán ({completedPercent}%)</span>
+                <span className="text-gray-900">
+                  {formatCurrency(completedAmount).replace("₫", "")} <span>đ</span>
+                </span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-1.5">
+                <div className="bg-[#22a654] h-1.5 rounded-full" style={{ width: `${completedPercent}%` }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-xs font-bold mb-2">
+                <span className="text-gray-800">Đang chờ ({pendingPercent}%)</span>
+                <span className="text-gray-900">
+                  {formatCurrency(pendingAmount).replace("₫", "")} <span>đ</span>
+                </span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-1.5">
+                <div className="bg-[#1a56db] h-1.5 rounded-full" style={{ width: `${pendingPercent}%` }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-xs font-bold mb-2">
+                <span className="text-gray-800">Quá hạn ({overduePercent}%)</span>
+                <span className="text-gray-900">
+                  {formatCurrency(overdueAmount).replace("₫", "")} <span>đ</span>
+                </span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-1.5">
+                <div className="bg-[#e02424] h-1.5 rounded-full" style={{ width: `${overduePercent}%` }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col xl:flex-row gap-6">
-        {/* Main Filters Cards */}
         <div className="flex-1 bg-[#fbfeff] rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6">
           <div className="flex-1 space-y-2">
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">THỜI GIAN</label>
@@ -179,6 +247,7 @@ export default function AccountingInvoiceListPage() {
               </select>
             </div>
           </div>
+
           <div className="flex-1 space-y-2">
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">PHƯƠNG THỨC</label>
             <div className="relative">
@@ -194,6 +263,7 @@ export default function AccountingInvoiceListPage() {
               </select>
             </div>
           </div>
+
           <div className="flex-1 space-y-2">
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">MÃ HỢP ĐỒNG</label>
             <div className="relative">
@@ -207,34 +277,56 @@ export default function AccountingInvoiceListPage() {
               />
             </div>
           </div>
+
+          <div className="flex-1 space-y-2">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">TÌM KIẾM</label>
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              type="text"
+              placeholder="Tên khách, mã phiếu..."
+              className="w-full px-4 py-3 bg-[#f4f7fa] border-none rounded-xl text-sm focus:ring-2 focus:ring-[#0b2447] placeholder-gray-400 font-medium"
+            />
+          </div>
         </div>
 
-        {/* Quick Filter Status Card */}
-        <div className="bg-[#fbfeff] rounded-3xl p-6 shadow-sm border border-gray-100 min-w-[#300px]">
+        <div className="bg-[#fbfeff] rounded-3xl p-6 shadow-sm border border-gray-100 min-w-[300px]">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">
             LỌC NHANH TRẠNG THÁI
           </label>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setFilterState("all")}
+              onClick={() => {
+                setFilterState("all");
+                setCurrentPage(1);
+              }}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-colors ${filterState === "all" ? "bg-[#0b2447] text-white shadow-md shadow-blue-900/20" : "bg-[#f4f7fa] text-gray-600 hover:bg-gray-200"}`}
             >
               Tất cả
             </button>
             <button
-              onClick={() => setFilterState("completed")}
+              onClick={() => {
+                setFilterState("completed");
+                setCurrentPage(1);
+              }}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-colors ${filterState === "completed" ? "bg-[#0b2447] text-white shadow-md shadow-blue-900/20" : "bg-[#f4f7fa] text-gray-600 hover:bg-gray-200"}`}
             >
               Đã trả
             </button>
             <button
-              onClick={() => setFilterState("overdue")}
+              onClick={() => {
+                setFilterState("overdue");
+                setCurrentPage(1);
+              }}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-colors ${filterState === "overdue" ? "bg-[#0b2447] text-white shadow-md shadow-blue-900/20" : "bg-[#f4f7fa] text-gray-600 hover:bg-gray-200"}`}
             >
               Quá hạn
             </button>
             <button
-              onClick={() => setFilterState("pending")}
+              onClick={() => {
+                setFilterState("pending");
+                setCurrentPage(1);
+              }}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-colors ${filterState === "pending" ? "bg-[#0b2447] text-white shadow-md shadow-blue-900/20" : "bg-[#f4f7fa] text-gray-600 hover:bg-gray-200"}`}
             >
               Chưa trả
@@ -243,7 +335,6 @@ export default function AccountingInvoiceListPage() {
         </div>
       </div>
 
-      {/* Table Section */}
       <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100">
         <AccountingInvoiceTable
           data={invoices}
@@ -323,7 +414,6 @@ export default function AccountingInvoiceListPage() {
           ]}
         />
 
-        {/* Pagination */}
         <div className="pt-6 mt-2 border-t border-gray-100 flex items-center justify-between px-2">
           <p className="text-sm text-gray-500 font-medium">
             Hiển thị <span className="text-gray-900 font-bold">{invoices.length}</span> /{" "}
@@ -344,7 +434,7 @@ export default function AccountingInvoiceListPage() {
             </button>
             <span className="text-sm text-gray-700 font-medium px-3 py-1.5">
               Trang <span className="font-bold text-gray-900">{currentPage}</span> /{" "}
-              <span className="font-bold text-gray-900">{Math.ceil(totalInvoices / pageSize)}</span>
+              <span className="font-bold text-gray-900">{Math.ceil(totalInvoices / pageSize) || 1}</span>
             </span>
             <button
               onClick={() => setCurrentPage(currentPage + 1)}
@@ -353,79 +443,6 @@ export default function AccountingInvoiceListPage() {
             >
               Tiếp →
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Stats Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Total Revenue Block */}
-        <div className="bg-[#0b2447] rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-[#0b2447]/10">
-          {/* Background elements mock */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20"></div>
-
-          <p className="text-[11px] font-bold text-blue-200 uppercase tracking-widest mb-4">TỔNG DOANH THU</p>
-          <h2 className="text-[2.5rem] font-extrabold tracking-tight leading-none mb-6">
-            {formatCurrency(totalRevenue).replace("₫", "")}{" "}
-            <span className="text-2xl line-through decoration-white/40 decoration-2">đ</span>
-          </h2>
-
-          <div className="inline-flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-[#4ade80]" strokeWidth={3} />
-            <span className="text-sm font-bold text-blue-100">Dữ liệu đang lấy từ invoice đã fetch</span>
-          </div>
-        </div>
-
-        {/* Analytics Block */}
-        <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden">
-          {/* Background Bank icon watermark mock */}
-          <div className="absolute bottom-4 right-4 opacity-5 pointer-events-none">
-            <svg width="150" height="150" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 10h16v10H4zM2 22h20v-2H2v2zm10-18.5L2 8h20L12 3.5zM10 12h4v6h-4z" />
-            </svg>
-          </div>
-
-          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-6">PHÂN TÍCH THANH TOÁN</p>
-
-          <div className="space-y-6">
-            <div>
-              <div className="flex justify-between text-xs font-bold mb-2">
-                <span className="text-gray-800">Đã thanh toán ({completedPercent}%)</span>
-                <span className="text-gray-900">
-                  {formatCurrency(completedAmount).replace("₫", "")}{" "}
-                  <span className="line-through decoration-gray-400">đ</span>
-                </span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-1.5">
-                <div className="bg-[#22a654] h-1.5 rounded-full" style={{ width: `${completedPercent}%` }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs font-bold mb-2">
-                <span className="text-gray-800">Đang chờ ({pendingPercent}%)</span>
-                <span className="text-gray-900">
-                  {formatCurrency(pendingAmount).replace("₫", "")}{" "}
-                  <span className="line-through decoration-gray-400">đ</span>
-                </span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-1.5">
-                <div className="bg-[#1a56db] h-1.5 rounded-full" style={{ width: `${pendingPercent}%` }}></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs font-bold mb-2">
-                <span className="text-gray-800">Quá hạn ({overduePercent}%)</span>
-                <span className="text-gray-900">
-                  {formatCurrency(overdueAmount).replace("₫", "")}{" "}
-                  <span className="line-through decoration-gray-400">đ</span>
-                </span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-1.5">
-                <div className="bg-[#e02424] h-1.5 rounded-full" style={{ width: `${overduePercent}%` }}></div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
