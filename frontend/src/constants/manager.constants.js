@@ -37,10 +37,16 @@ export const MANAGER_API = {
 // Hop dong
 export const CONTRACT_STATUS = {
   HIEU_LUC: {
-    label: "Hiệu lực",
+    label: "\u0110ang \u1edf",
     color: "bg-green-100",
     textColor: "text-green-700",
     dot: "bg-green-500",
+  },
+  DANG_COC: {
+    label: "\u0110ang c\u1ecdc",
+    color: "bg-yellow-100",
+    textColor: "text-yellow-700",
+    dot: "bg-yellow-500",
   },
   HET_HAN: {
     label: "Hết hạn",

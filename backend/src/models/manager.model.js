@@ -2,6 +2,8 @@ const { supabase } = require("../config/supabase");
 const { AppError } = require("../utils/errors");
 
 const ACTIVE_CONTRACT_STATUSES = ["HIEU_LUC"];
+const DEPOSIT_CONTRACT_STATUSES = ["CHO_LAP_KHOAN_THU_DAU", "CHO_THANH_TOAN_KY_DAU", "CHO_HIEU_LUC"];
+const RESIDENT_CONTRACT_STATUSES = [...ACTIVE_CONTRACT_STATUSES, ...DEPOSIT_CONTRACT_STATUSES];
 const CLOSED_CONTRACT_STATUSES = ["HET_HAN", "DA_KET_THUC"];
 const ACTIVE_CHECKOUT_STATUSES = ["CHO_XU_LY", "DANG_KIEM_TRA"];
 const COMPLETED_CHECKOUT_STATUSES = ["DA_THANH_LY"];
@@ -29,7 +31,9 @@ const ROOM_TYPE_LABELS = {
 const normalizeContractStatus = (status) => {
   const value = String(status || "").toUpperCase();
   if (CLOSED_CONTRACT_STATUSES.includes(value)) return "HET_HAN";
-  return "HIEU_LUC";
+  if (DEPOSIT_CONTRACT_STATUSES.includes(value)) return "DANG_COC";
+  if (ACTIVE_CONTRACT_STATUSES.includes(value)) return "HIEU_LUC";
+  return value || "HIEU_LUC";
 };
 
 const normalizeBedStatus = (status) => {
@@ -316,7 +320,7 @@ const ManagerModel = {
           ngay_ket_thuc
         )
       `, { count: 'exact' })
-      .in("trang_thai", ACTIVE_CONTRACT_STATUSES);
+      .in("trang_thai", RESIDENT_CONTRACT_STATUSES);
 
     if (filters.rentalType && filters.rentalType !== "all") {
       query = query.eq('loai_muc_tieu', filters.rentalType);
@@ -1142,10 +1146,13 @@ const ManagerModel = {
       formatData = formatData.filter(d => d.displayId.toLowerCase().includes(q));
     }
 
+    const occupiedRooms = formatData.filter(r => r.occupiedCount > 0);
+    const reservedRooms = formatData.filter(r => r.reservedCount > 0 && r.occupiedCount <= 0);
+
     let stats = {
       total: count || 0,
-      occupied: formatData.filter(r => r.status === 'SAP_DAY' || r.status === 'DAY' || r.occupiedCount > 0).length,
-      reserved: formatData.filter(r => r.reservedCount > 0).length,
+      occupied: occupiedRooms.length,
+      reserved: reservedRooms.length,
       empty: formatData.filter(r => r.status === 'TRONG').length,
       maintenance: formatData.filter(r => r.status === 'BAO_TRI').length,
     };
