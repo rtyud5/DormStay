@@ -281,7 +281,7 @@ function LiquidationCard({ item, onPay, activePaymentId, onClosePayment, onPayme
             </button>
           </div>
           <PayOS
-            amount={item.additionalPaymentAmount}
+            amount={item.additionalPaymentAmount/1000}
             amountLabel="Số tiền phát sinh:"
             description={`Thanh toan phat sinh HD ${item.contractId}`}
             existingCheckoutUrl={settlement?.checkoutUrl}
