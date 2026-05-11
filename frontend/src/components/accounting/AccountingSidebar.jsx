@@ -11,7 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 export default function AccountingSidebar({ open = false, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout, user, profile } = useAuth();
 
   const handleLogout = () => {
     onClose?.();
@@ -80,11 +80,15 @@ export default function AccountingSidebar({ open = false, onClose }) {
           <div className="rounded-2xl bg-[#f8f9fa] p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-[#0b2447] to-blue-800 text-white shadow-sm">
-                <span className="text-sm font-semibold">{user?.name?.charAt(0) || "M"}</span>
+                <span className="text-sm font-semibold">
+                  {profile?.ho_ten?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "M"}
+                </span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-gray-900">{user?.name || "Minh Tran"}</p>
-                <p className="truncate text-xs text-gray-500">Kế toán trưởng</p>
+                <p className="truncate text-sm font-bold text-gray-900">
+                  {profile?.ho_ten || user?.email || "Kế toán"}
+                </p>
+                <p className="truncate text-xs text-gray-500">Kế toán</p>
               </div>
             </div>
 
