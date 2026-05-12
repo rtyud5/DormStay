@@ -39,8 +39,11 @@ function HomePage() {
       if (filterParams.minPrice) params.minPrice = filterParams.minPrice;
       if (filterParams.gender && filterParams.gender !== 'Nam & Nữ') params.gender = filterParams.gender;
       if (filterParams.status) {
-        params.status = [filterParams.status];
+        params.status = Array.isArray(filterParams.status) ? filterParams.status.join(',') : filterParams.status;
       }
+
+      // Debug: log parameters sent from home page
+      console.log('Requesting rooms (home) with params:', params);
 
       const res = await RoomService.getRooms(params);
       const roomData = res.data.data;
@@ -132,7 +135,7 @@ function HomePage() {
               <select value={homeFilters.building} onChange={(e) => setHomeFilters({...homeFilters, building: e.target.value})} className="block w-full outline-none bg-transparent text-[#0F172A] font-semibold text-[14px] appearance-none cursor-pointer">
                 <option value="">Tất cả</option>
                 {buildings.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
+                  <option key={b.ma_toa || b.id} value={b.ma_toa || b.id}>{b.ten || b.name || `Tòa ${b.ma_toa || b.id}`}</option>
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-slate-400">

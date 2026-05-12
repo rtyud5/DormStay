@@ -14,6 +14,25 @@ const ROOM_STATUS_FILTER_ALIASES = {
   BAO_TRI: ["BAO_TRI"],
 };
 
+const DERIVED_ROOM_STATUS_LABELS = {
+  TRONG: "CÒN TRỐNG",
+  SAP_DAY: "SẮP ĐẦY",
+  DAY: "ĐÃ ĐẦY",
+};
+
+const getDerivedRoomStatusCode = (rawStatus, availableBeds, totalBeds) => {
+  if (rawStatus === "BAO_TRI") {
+    return "BAO_TRI";
+  }
+  if (availableBeds === 0 && totalBeds > 0) {
+    return "DAY";
+  }
+  if (rawStatus === "SAP_DAY" || (availableBeds > 0 && availableBeds <= 1 && totalBeds > 1)) {
+    return "SAP_DAY";
+  }
+  return "TRONG";
+};
+
 const expandRoomStatusFilters = (statuses = []) => {
   const expanded = statuses.flatMap((status) => {
     const value = String(status || "").toUpperCase();
@@ -114,6 +133,8 @@ const mapRoomToFrontendFormat = (raw, holdMap = {}) => {
 
   const canBook = rawStatus !== "BAO_TRI" && !(availableBeds === 0 && totalBeds > 0) && !["DAY", "DANG_O", "DA_THUE_HET"].includes(rawStatus);
 
+  const statusCode = getDerivedRoomStatusCode(rawStatus, availableBeds, totalBeds);
+
   // Cover Image mapping
   let image = "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80";
   let gallery = [];
@@ -131,6 +152,7 @@ const mapRoomToFrontendFormat = (raw, holdMap = {}) => {
     rawPrice: raw.gia_thang,
     unit: isDorm ? "/tháng/người" : "/tháng/phòng",
     status,
+    statusCode,
     statusColor,
     gender : raw.gioi_tinh,
     capacity: isDorm ? `${availableBeds} / ${totalBeds} giường trống` : `${raw.suc_chua || 0} người`,
@@ -150,6 +172,7 @@ const mapRoomToFrontendFormat = (raw, holdMap = {}) => {
 const RoomModel = {
   async list(filters = {}) {
     if (!supabase) return { data: [], total: 0, page: 1, limit: 10 };
+    console.log('RoomModel.list called with filters:', filters);
     
     // Normalise incoming filter types
     if (filters.status && !Array.isArray(filters.status)) {
@@ -188,6 +211,10 @@ const RoomModel = {
       }
     }
 
+    if (filters.building) {
+      query = query.eq('ma_toa', filters.building);
+    }
+
     if (filters.floor && filters.floor !== 'Tất cả các tầng') {
       query = query.eq('tang.ten_tang', filters.floor);
     }
@@ -203,10 +230,7 @@ const RoomModel = {
       query = query.lte('gia_thang', parseFloat(filters.maxPrice));
     }
 
-    if (filters.status && Array.isArray(filters.status) && filters.status.length > 0) {
-      const dbStatus = expandRoomStatusFilters(filters.status);
-      query = query.in('trang_thai', dbStatus);
-    }
+    const hasStatusFilter = filters.status && Array.isArray(filters.status) && filters.status.length > 0;
 
     if (filters.gender && filters.gender !== 'Tất cả') {
       const genderOptions = [filters.gender, 'Nam/Nữ'];
@@ -220,38 +244,75 @@ const RoomModel = {
     } else {
       query = query.order('gia_thang', { ascending: true });
     }
-    
-    query = query.range(offset, offset + limit - 1);
-      
-    const { data, error, count } = await query;
-    if (error) {
+    if (!hasStatusFilter) {
+      query = query.range(offset, offset + limit - 1);
+      const { data, error, count } = await query;
+      if (error) {
         console.error("Supabase Error:", error);
         throw error;
+      }
+
+      const roomIds = (data || []).map(r => r.ma_phong);
+      let allHoldsMap = {};
+      if (roomIds.length > 0) {
+        const now = new Date().toISOString();
+        const { data: holdsData } = await supabase
+          .from("giu_cho_tam")
+          .select("ma_giuong, ma_phong, trang_thai, thoi_gian_het_han")
+          .in("ma_phong", roomIds)
+          .in("trang_thai", ["DANG_GIU", "DA_XAC_NHAN_COC"])
+          .or(`thoi_gian_het_han.is.null,thoi_gian_het_han.gt.${now}`);
+        for (const hold of (holdsData || [])) {
+          if (hold.ma_giuong) {
+            allHoldsMap[hold.ma_giuong] = hold;
+          }
+        }
+      }
+
+      return {
+        data: Array.isArray(data) ? data.map(r => mapRoomToFrontendFormat(r, allHoldsMap)) : [],
+        total: count || 0,
+        page,
+        limit
+      };
     }
 
-    // For list view, we fetch holds per room to show accurate availability
-    // Batch fetch all active holds for the rooms in this page
-    const roomIds = (data || []).map(r => r.ma_phong);
+    // Status filter requires derived room status evaluation from bed availability and holds.
+    const { data: allRooms, error: allRoomsError } = await query;
+    if (allRoomsError) {
+      console.error("Supabase Error:", allRoomsError);
+      throw allRoomsError;
+    }
+
+    const allRoomIds = (allRooms || []).map(r => r.ma_phong);
     let allHoldsMap = {};
-    if (roomIds.length > 0) {
+    if (allRoomIds.length > 0) {
       const now = new Date().toISOString();
       const { data: holdsData } = await supabase
         .from("giu_cho_tam")
         .select("ma_giuong, ma_phong, trang_thai, thoi_gian_het_han")
-        .in("ma_phong", roomIds)
+        .in("ma_phong", allRoomIds)
         .in("trang_thai", ["DANG_GIU", "DA_XAC_NHAN_COC"])
         .or(`thoi_gian_het_han.is.null,thoi_gian_het_han.gt.${now}`);
-      
       for (const hold of (holdsData || [])) {
         if (hold.ma_giuong) {
           allHoldsMap[hold.ma_giuong] = hold;
         }
       }
     }
-    
+
+    const statusLookup = new Set(filters.status.map(s => String(s || '').toUpperCase()));
+    const allRoomsArray = Array.isArray(allRooms) ? allRooms : [];
+    const filteredRooms = allRoomsArray.filter(room => {
+      const mapped = mapRoomToFrontendFormat(room, allHoldsMap);
+      return statusLookup.has(mapped.statusCode);
+    });
+
+    console.log('RoomModel.list statusLookup:', Array.from(statusLookup), 'allRooms:', allRoomsArray.length, 'filteredRooms:', filteredRooms.length);
+
     return {
-      data: Array.isArray(data) ? data.map(r => mapRoomToFrontendFormat(r, allHoldsMap)) : [],
-      total: count || 0,
+      data: filteredRooms.slice(offset, offset + limit).map(r => mapRoomToFrontendFormat(r, allHoldsMap)),
+      total: filteredRooms.length,
       page,
       limit
     };

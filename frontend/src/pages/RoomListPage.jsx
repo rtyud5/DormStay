@@ -51,7 +51,9 @@ function RoomListPage() {
         params.maxPrice = filters.maxPrice;
       }
       if (filters.gender !== 'Tất cả') params.gender = filters.gender;
-      if (filters.status.length > 0) params.status = filters.status;
+   if (filters.status.length > 0) params.status = filters.status.join(',');
+
+   console.log('Requesting rooms with params:', params);
       if (filters.sort) params.sort = filters.sort;
 
       const res = await RoomService.getRooms(params);
@@ -181,7 +183,7 @@ const handleSliderChange = (e, type) => {
                   >
                      <option value="">Tất cả tòa</option>
                      {buildings.map(b => (
-                        <option key={b.id} value={b.id}>{b.name}</option>
+                        <option key={b.ma_toa || b.id} value={b.ma_toa || b.id}>{b.ten || b.name || `Tòa ${b.ma_toa || b.id}`}</option>
                      ))}
                   </select>
                </div>

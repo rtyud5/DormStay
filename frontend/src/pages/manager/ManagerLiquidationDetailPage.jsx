@@ -7,8 +7,8 @@ import {
 import { getLiquidationDetail, performLiquidation } from "../../services/manager.service";
 
 const CHECKLIST_ITEMS = [
-  { id: "keys", label: "Thu hồi Chìa khóa & Thẻ từ", description: "02 chìa cơ, 01 thẻ từ thang máy" },
-  { id: "bills", label: "Thanh toán công nợ cuối kỳ", description: "Điện, nước, internet đến ngày bàn giao" },
+  { id: "keys", label: "Thu hồi quyền thẻ từ", description: "2 thẻ từ thang máy và cửa" },
+  { id: "bills", label: "Xác nhận công nợ cuối kỳ", description: "Điện, nước, internet đến ngày bàn giao" },
   { id: "deposit", label: "Quyết toán tiền cọc", description: "Khấu trừ hư hại (nếu có) và hoàn trả" },
   { id: "clean", label: "Xác nhận vệ sinh phòng", description: "Phòng đã được dọn sạch sẽ, không rác thải" },
 ];
